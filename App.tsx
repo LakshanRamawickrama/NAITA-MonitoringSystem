@@ -22,6 +22,16 @@ import CenterManagerStudents from './src/pages/CenterManagerDashboard/Students';
 import CenterManagerCourses from './src/pages/CenterManagerDashboard/Courses';
 import CenterManagerInstructor from './src/pages/CenterManagerDashboard/Instructor';
 
+// Instructor Dashboard Pages
+import InstructorCourses from './src/pages/InstructorDashboard/InstructorCourses';
+import InstructorAttendance from './src/pages/InstructorDashboard/InstructorAttendance';
+import InstructorStudents from './src/pages/InstructorDashboard/InstructorStudents';
+
+// Data Entry Staff Dashboard Pages
+import DataEntryCourses from './src/pages/DataEntryDashboard/DataEntryCourses';
+import DataEntryEnrollments from './src/pages/DataEntryDashboard/DataEntryEnrollments';
+import DataEntryStudents from './src/pages/DataEntryDashboard/DataEntryStudents';
+
 const App: React.FC = () => {
   return (
     <Theme appearance="inherit" radius="large" scaling="100%">
@@ -45,15 +55,15 @@ const App: React.FC = () => {
             <Route path="/manager/instructors" element={<CenterManagerInstructor/>} />
             
             {/* Instructor Dashboard Routes */}
-            <Route path="/instructor" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
-            <Route path="/instructor/students" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
-            <Route path="/instructor/attendance" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
+            <Route path="/instructor" element={<InstructorCourses/>} />
+            <Route path="/instructor/students" element={<InstructorStudents/>} />
+            <Route path="/instructor/attendance" element={<InstructorAttendance/>} />
             
             {/* Data Entry Staff Dashboard Routes */}
-            <Route path="/data-entry" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
-            <Route path="/data-entry/courses" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
-            <Route path="/data-entry/enrollments" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
-            <Route path="/data-entry/attendance" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
+            <Route path="/data-entry" element={<DataEntryStudents/>} />
+            <Route path="/data-entry/courses" element={<DataEntryCourses/>} />
+            <Route path="/data-entry/enrollments" element={<DataEntryEnrollments/>} />
+            
             
             <Route path="*" element={<NotFound />} />
           </Routes>

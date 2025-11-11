@@ -29,18 +29,17 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName }) => {
           { path: '/manager/students', label: 'Students' },
           { path: '/manager/instructors', label: 'Instructors' }
         ];
-      case 'instructor':
+     case 'instructor':
         return [
           { path: '/instructor', label: 'My Courses' },
           { path: '/instructor/students', label: 'Students' },
           { path: '/instructor/attendance', label: 'Attendance' }
-        ];
+        ]; 
       case 'data_entry':
         return [
           { path: '/data-entry', label: 'Students' },
           { path: '/data-entry/courses', label: 'Courses' },
-          { path: '/data-entry/enrollments', label: 'Enrollments' },
-          { path: '/data-entry/attendance', label: 'Attendance' }
+          { path: '/data-entry/enrollments', label: 'Enrollments' }
         ];
       default:
         return [];
