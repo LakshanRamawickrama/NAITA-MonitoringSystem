@@ -19,6 +19,8 @@ import Reports from './src/pages/HeadOfficeDashboard/Reports';
 // Center Manager Dashboard Pages
 import CenterManagerOverview from './src/pages/CenterManagerDashboard/Overview';
 import CenterManagerStudents from './src/pages/CenterManagerDashboard/Students';
+import CenterManagerCourses from './src/pages/CenterManagerDashboard/Courses';
+import CenterManagerInstructor from './src/pages/CenterManagerDashboard/Instructor';
 
 const App: React.FC = () => {
   return (
@@ -39,8 +41,8 @@ const App: React.FC = () => {
             {/* Center Manager Dashboard Routes */}
             <Route path="/manager" element={<CenterManagerOverview />} />
             <Route path="/manager/students" element={<CenterManagerStudents />} />
-            <Route path="/manager/courses" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
-            <Route path="/manager/instructors" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />
+            <Route path="/manager/courses" element={<CenterManagerCourses/>} />
+            <Route path="/manager/instructors" element={<CenterManagerInstructor/>} />
             
             {/* Instructor Dashboard Routes */}
             <Route path="/instructor" element={<div className="p-8 text-center">Ask Meku to generate content for this page.</div>} />

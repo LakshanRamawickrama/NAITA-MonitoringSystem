@@ -1,7 +1,7 @@
 import React from 'react';
 import SharedNavbar from '../../components/SharedNavbar';
 import StatsCard from '../../components/StatsCard';
-import { Users, GraduationCap, BookOpen, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, TrendingUp, Calendar} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const Overview: React.FC = () => {
