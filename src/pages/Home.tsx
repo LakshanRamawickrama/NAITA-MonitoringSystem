@@ -7,7 +7,7 @@ const Home: React.FC = () => {
     {
       icon: Building2,
       title: 'Center Management',
-      description: 'Monitor and manage all 42 NAITA training centers across Uganda from a centralized dashboard.',
+      description: 'Monitor and manage all 49 NAITA training centers across Sri Lanka from a centralized dashboard.',
       color: 'green'
     },
     {
@@ -31,7 +31,7 @@ const Home: React.FC = () => {
   ];
 
   const stats = [
-    { label: 'Training Centers', value: '42', color: 'text-green-600' },
+    { label: 'Training Centers', value: '49', color: 'text-green-600' },
     { label: 'Active Students', value: '15,847', color: 'text-yellow-500' },
     { label: 'Instructors', value: '1,234', color: 'text-sky-400' },
     { label: 'Completion Rate', value: '87%', color: 'text-lime-800' }
@@ -70,7 +70,7 @@ const Home: React.FC = () => {
               <span className="text-green-600"> Monitoring System</span>
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              Centralized monitoring and management system for all 42 NAITA training centers across Uganda. 
+              Centralized monitoring and management system for all 49 NAITA training centers across Sri Lanka. 
               Track attendance, monitor progress, and generate comprehensive reports in real-time.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
