@@ -1,8 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import SharedNavbar from '../../components/SharedNavbar';
-import DataTable from '../../components/DataTable';
-import { Search, Plus,Mail, Shield, X, Loader2 } from 'lucide-react';
-import { fetchUsers, createUser, fetchCenters } from '../../api/api'; // Fixed path
+// src/pages/HeadOfficeDashboard/Users.tsx
+import React, { useState, useEffect, useMemo } from "react";
+import SharedNavbar from "../../components/SharedNavbar";
+import DataTable from "../../components/DataTable";
+import {
+  Search, Plus, Mail, Shield, X, Loader2,
+  Edit, Trash2, Key, AlertCircle
+} from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  fetchUsers, createUser, fetchCenters,
+  updateUser, deleteUser, changePassword
+} from "../../api/api";
 
 interface Center {
   id: number;
@@ -16,155 +24,199 @@ interface UserType {
   first_name: string;
   last_name: string;
   role: string;
-  center: { name: string } | null;
+  center: { id: number; name: string } | null;
   is_active: boolean;
   is_staff: boolean;
   last_login: string | null;
 }
 
 const Users: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [users, setUsers] = useState<UserType[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [error, setError] = useState("");
+
+  // Modals
+  const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+
+  // Delete loading
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Forms
+  const initialForm = {
+    username: "", email: "", password: "", first_name: "", last_name: "",
+    role: "", center_id: "", is_active: true, is_staff: false
+  };
+  const [addForm, setAddForm] = useState(initialForm);
+  const [editForm, setEditForm] = useState(initialForm);
+  const [pwdForm, setPwdForm] = useState({ new_password: "" });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    first_name: '',
-    last_name: '',
-    role: '',
-    center_id: '',
-    is_active: true,
-    is_staff: false,
-  });
-
   const pageSize = 10;
+  const isAdmin = localStorage.getItem("user_role") === "admin";
 
-  // Fetch users & centers
+  /* ========== FETCH DATA ========== */
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
       try {
-        setLoading(true);
-        setError('');
-        const [usersData, centersData] = await Promise.all([
-          fetchUsers(),
-          fetchCenters()
-        ]);
-        setUsers(usersData);
-        setCenters(centersData);
-      } catch (err: any) {
-        const msg = err.response?.data?.detail || 'Failed to load data. Please log in again.';
+        setLoading(true); setError("");
+        const [u, c] = await Promise.all([fetchUsers(), fetchCenters()]);
+        setUsers(u); setCenters(c);
+      } catch (e: any) {
+        const msg = e.response?.data?.detail || "Failed to load data";
         setError(msg);
-        if (err.response?.status === 401) {
-          localStorage.clear();
-          window.location.href = '/login';
-        }
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
     };
-    loadData();
+    load();
   }, []);
 
-  // Handle Add User
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /* ========== HELPERS ========== */
+  const resetForm = () => {
+    setAddForm(initialForm);
+    setEditForm(initialForm);
+    setPwdForm({ new_password: "" });
     setFormErrors({});
+  };
 
+  const openEdit = (u: UserType) => {
+    setSelectedUser(u);
+    setEditForm({
+      username: u.username, email: u.email, password: "",
+      first_name: u.first_name, last_name: u.last_name,
+      role: u.role, center_id: u.center?.id?.toString() || "",
+      is_active: u.is_active, is_staff: u.is_staff
+    });
+    setShowEdit(true);
+  };
+
+  const openPwd = (u: UserType) => { setSelectedUser(u); setPwdForm({ new_password: "" }); setShowPwd(true); };
+  const openDelete = (u: UserType) => { setSelectedUser(u); setShowDelete(true); };
+
+  /* ========== CRUD ========== */
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault(); setFormErrors({});
     try {
       const payload: any = {
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        first_name: formData.first_name.trim(),
-        last_name: formData.last_name.trim(),
-        role: formData.role,
-        is_active: formData.is_active,
-        is_staff: formData.is_staff,
+        username: addForm.username.trim(),
+        email: addForm.email.trim(),
+        password: addForm.password,
+        first_name: addForm.first_name.trim(),
+        last_name: addForm.last_name.trim(),
+        role: addForm.role,
+        is_active: addForm.is_active,
+        is_staff: addForm.is_staff
       };
-      if (formData.center_id) payload.center_id = Number(formData.center_id);
+      if (addForm.center_id) payload.center_id = Number(addForm.center_id);
 
-      const newUser = await createUser(payload);
-      setUsers(prev => [...prev, newUser]);
-      setShowAddModal(false);
-      resetForm();
-      alert('User created successfully!');
+      const nu = await createUser(payload);
+      setUsers(p => [...p, nu]);
+      setShowAdd(false); resetForm();
+      toast.success("User created successfully");
+    } catch (err: any) { handleApiError(err); }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault(); setFormErrors({});
+    if (!selectedUser) return;
+    try {
+      const payload: any = {
+        username: editForm.username.trim(),
+        email: editForm.email.trim(),
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+        role: editForm.role,
+        is_active: editForm.is_active,
+        is_staff: editForm.is_staff
+      };
+      if (editForm.center_id) payload.center_id = Number(editForm.center_id);
+
+      const upd = await updateUser(selectedUser.id, payload);
+      setUsers(p => p.map(u => u.id === selectedUser.id ? upd : u));
+      setShowEdit(false); resetForm();
+      toast.success("User updated");
+    } catch (err: any) { handleApiError(err); }
+  };
+
+  const handlePwd = async (e: React.FormEvent) => {
+    e.preventDefault(); setFormErrors({});
+    if (!selectedUser) return;
+    try {
+      await changePassword(selectedUser.id, pwdForm.new_password);
+      setShowPwd(false); resetForm();
+      toast.success("Password changed");
+    } catch (err: any) { handleApiError(err); }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedUser) return;
+    setDeleteLoading(true);
+    try {
+      await deleteUser(selectedUser.id);
+      setUsers(p => p.filter(u => u.id !== selectedUser.id));
+      setShowDelete(false);
+      toast.success(`${selectedUser.username} deleted`);
     } catch (err: any) {
-      const errors: Record<string, string> = {};
-      const data = err.response?.data;
-
-      if (data) {
-        Object.keys(data).forEach(key => {
-          errors[key] = Array.isArray(data[key]) ? data[key][0] : data[key];
-        });
-      } else {
-        errors.general = 'Failed to create user';
-      }
-
-      setFormErrors(errors);
+      const msg = err.response?.data?.detail || "Delete failed";
+      toast.error(msg);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      first_name: '',
-      last_name: '',
-      role: '',
-      center_id: '',
-      is_active: true,
-      is_staff: false,
-    });
-    setFormErrors({});
+  const handleApiError = (err: any) => {
+    const data = err.response?.data;
+    const errors: Record<string, string> = {};
+    if (data) {
+      Object.keys(data).forEach(k => errors[k] = Array.isArray(data[k]) ? data[k][0] : data[k]);
+    } else errors.general = "Operation failed";
+    setFormErrors(errors);
+    toast.error(errors.general || "Validation error");
   };
 
-  // Filter & Paginate
-  const filteredData = useMemo(() => {
-    return users
-      .filter(user => {
-        const search = searchTerm.toLowerCase();
-        const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
-        const centerName = user.center?.name.toLowerCase() || '';
-        return (
-          user.username.toLowerCase().includes(search) ||
-          user.email.toLowerCase().includes(search) ||
-          fullName.includes(search) ||
-          centerName.includes(search)
-        );
-      })
-      .filter(user => roleFilter ? user.role === roleFilter : true)
-      .filter(user => statusFilter ? (user.is_active ? 'Active' : 'Inactive') === statusFilter : true);
-  }, [users, searchTerm, roleFilter, statusFilter]);
+  /* ========== FILTER & PAGINATION ========== */
+  const filtered = useMemo(() => users
+    .filter(u => {
+      const s = searchTerm.toLowerCase();
+      const name = `${u.first_name} ${u.last_name}`.toLowerCase();
+      const center = u.center?.name.toLowerCase() || "";
+      return u.username.toLowerCase().includes(s) ||
+             u.email.toLowerCase().includes(s) ||
+             name.includes(s) || center.includes(s);
+    })
+    .filter(u => roleFilter ? u.role === roleFilter : true)
+    .filter(u => statusFilter ? (u.is_active ? "Active" : "Inactive") === statusFilter : true),
+    [users, searchTerm, roleFilter, statusFilter]);
 
-  const paginatedData = useMemo(() => {
+  const paginated = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredData.slice(start, start + pageSize);
-  }, [filteredData, currentPage]);
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage]);
 
-  const totalPages = Math.ceil(filteredData.length / pageSize);
+  const totalPages = Math.ceil(filtered.length / pageSize);
 
-  // Table Columns
+  /* ========== COLUMNS ========== */
   const columns = [
     {
-      key: 'username',
-      label: 'User',
-      render: (value: string, row: UserType) => (
+      key: "username",
+      label: "User",
+      render: (_: string, row: UserType) => (
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
             {row.first_name[0]}{row.last_name[0]}
           </div>
           <div>
-            <div className="font-medium text-gray-900">{value}</div>
+            <div className="font-medium text-gray-900">{row.username}</div>
             <div className="text-sm text-gray-500 flex items-center">
               <Mail className="w-3 h-3 mr-1" />
               {row.email}
@@ -174,73 +226,73 @@ const Users: React.FC = () => {
       )
     },
     {
-      key: 'role',
-      label: 'Role',
-      render: (value: string) => {
-        const roleStyles: Record<string, string> = {
-          admin: 'bg-purple-100 text-purple-800',
-          center_manager: 'bg-green-100 text-green-800',
-          instructor: 'bg-yellow-100 text-yellow-800',
-          data_entry: 'bg-blue-100 text-blue-800',
+      key: "role",
+      label: "Role",
+      render: (v: string) => {
+        const map: Record<string, string> = {
+          admin: "bg-purple-100 text-purple-800",
+          center_manager: "bg-green-100 text-green-800",
+          instructor: "bg-yellow-100 text-yellow-800",
+          data_entry: "bg-blue-100 text-blue-800",
         };
-        const label = value.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const label = v.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
         return (
           <div className="flex items-center">
             <Shield className="w-4 h-4 mr-1 text-gray-400" />
-            <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${roleStyles[value] || 'bg-gray-100 text-gray-800'}`}>
+            <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${map[v] || "bg-gray-100 text-gray-800"}`}>
               {label}
             </span>
           </div>
         );
       }
     },
+    { key: "center", label: "Center", render: (c: any) => <span className="text-sm font-medium">{c?.name || "—"}</span> },
     {
-      key: 'center',
-      label: 'Center',
-      render: (center: any) => (
-        <span className="text-sm text-gray-900 font-medium">{center?.name || '—'}</span>
-      )
-    },
-    {
-      key: 'is_active',
-      label: 'Status',
-      render: (is_active: boolean) => (
-        <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${
-          is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {is_active ? 'Active' : 'Inactive'}
+      key: "is_active",
+      label: "Status",
+      render: (a: boolean) => (
+        <span className={`inline-flex px-2.5 py-1 text-xs font-semibold rounded-full ${a ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+          {a ? "Active" : "Inactive"}
         </span>
       )
     },
-  ];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-3 text-gray-600">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span>Loading users...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg max-w-md">
-          <p className="font-semibold">Error</p>
-          <p className="text-sm mt-1">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-3 text-sm underline hover:no-underline"
-          >
-            Retry
+    ...(isAdmin ? [{
+      key: "actions",
+      label: "Actions",
+      render: (_: any, row: UserType) => (
+        <div className="flex space-x-2">
+          <button onClick={() => openEdit(row)} className="text-blue-600 hover:text-blue-800">
+            <Edit className="w-4 h-4" />
+          </button>
+          <button onClick={() => openPwd(row)} className="text-orange-600 hover:text-orange-800">
+            <Key className="w-4 h-4" />
+          </button>
+          <button onClick={() => openDelete(row)} className="text-red-600 hover:text-red-800">
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
+      )
+    }] : [])
+  ];
+
+  /* ========== RENDER ========== */
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center space-x-3">
+        <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+        <span className="text-gray-600">Loading users...</span>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg max-w-md">
+        <p className="font-semibold">Error</p>
+        <p className="text-sm mt-1">{error}</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -251,229 +303,211 @@ const Users: React.FC = () => {
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-            <p className="text-gray-600 mt-1">Manage system users and their permissions</p>
+            <p className="text-gray-600 mt-1">Manage system users and permissions</p>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add User</span>
-          </button>
+          {isAdmin && (
+            <button onClick={() => { resetForm(); setShowAdd(true); }}
+                    className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 flex items-center space-x-2 shadow-sm">
+              <Plus className="w-4 h-4" /><span>Add User</span>
+            </button>
+          )}
         </div>
 
         {/* Filters */}
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search by name, email, or center..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input type="text" placeholder="Search…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" />
           </div>
-
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-          >
+          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
             <option value="">All Roles</option>
             <option value="admin">Admin</option>
             <option value="center_manager">Center Manager</option>
             <option value="instructor">Instructor</option>
             <option value="data_entry">Data Entry</option>
           </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-          >
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
             <option value="">All Status</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
         </div>
 
-        {/* Table */}
-        <DataTable
-          columns={columns}
-          data={paginatedData}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
+        <DataTable columns={columns} data={paginated} currentPage={currentPage}
+                   totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
 
-      {/* Add User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h2 className="text-2xl font-bold text-gray-900">Add New User</h2>
+      {/* ========== ADD MODAL ========== */}
+      {showAdd && (
+        <Modal title="Add New User" onClose={() => { setShowAdd(false); resetForm(); }}>
+          <form onSubmit={handleAdd} className="space-y-5">
+            {formErrors.general && <Alert text={formErrors.general} />}
+            <Input label="Username *" value={addForm.username} onChange={v => setAddForm({ ...addForm, username: v })} error={formErrors.username} required />
+            <Input label="Email *" type="email" value={addForm.email} onChange={v => setAddForm({ ...addForm, email: v })} error={formErrors.email} required />
+            <Input label="Password *" type="password" value={addForm.password} onChange={v => setAddForm({ ...addForm, password: v })} error={formErrors.password} required minLength={8} />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="First Name" value={addForm.first_name} onChange={v => setAddForm({ ...addForm, first_name: v })} />
+              <Input label="Last Name" value={addForm.last_name} onChange={v => setAddForm({ ...addForm, last_name: v })} />
+            </div>
+            <Select label="Role *" options={roleOptions} value={addForm.role} onChange={v => setAddForm({ ...addForm, role: v })} error={formErrors.role} required />
+            <Select label="Center (Optional)" options={[{ value: "", label: "No Center" }, ...centers.map(c => ({ value: c.id.toString(), label: c.name }))]} value={addForm.center_id} onChange={v => setAddForm({ ...addForm, center_id: v })} />
+            <Checkboxes active={addForm.is_active} staff={addForm.is_staff} onActive={v => setAddForm({ ...addForm, is_active: v })} onStaff={v => setAddForm({ ...addForm, is_staff: v })} />
+            <ModalFooter onCancel={() => { setShowAdd(false); resetForm(); }} submitText="Create User" />
+          </form>
+        </Modal>
+      )}
+
+      {/* ========== EDIT MODAL ========== */}
+      {showEdit && selectedUser && (
+        <Modal title="Edit User" onClose={() => { setShowEdit(false); resetForm(); }}>
+          <form onSubmit={handleEdit} className="space-y-5">
+            {formErrors.general && <Alert text={formErrors.general} />}
+            <Input label="Username *" value={editForm.username} onChange={v => setEditForm({ ...editForm, username: v })} error={formErrors.username} required />
+            <Input label="Email *" type="email" value={editForm.email} onChange={v => setEditForm({ ...editForm, email: v })} error={formErrors.email} required />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="First Name" value={editForm.first_name} onChange={v => setEditForm({ ...editForm, first_name: v })} />
+              <Input label="Last Name" value={editForm.last_name} onChange={v => setEditForm({ ...editForm, last_name: v })} />
+            </div>
+            <Select label="Role *" options={roleOptions} value={editForm.role} onChange={v => setEditForm({ ...editForm, role: v })} error={formErrors.role} required />
+            <Select label="Center (Optional)" options={[{ value: "", label: "No Center" }, ...centers.map(c => ({ value: c.id.toString(), label: c.name }))]} value={editForm.center_id} onChange={v => setEditForm({ ...editForm, center_id: v })} />
+            <Checkboxes active={editForm.is_active} staff={editForm.is_staff} onActive={v => setEditForm({ ...editForm, is_active: v })} onStaff={v => setEditForm({ ...editForm, is_staff: v })} />
+            <ModalFooter onCancel={() => { setShowEdit(false); resetForm(); }} submitText="Save Changes" />
+          </form>
+        </Modal>
+      )}
+
+      {/* ========== PASSWORD MODAL ========== */}
+      {showPwd && selectedUser && (
+        <Modal title="Change Password" onClose={() => { setShowPwd(false); resetForm(); }}>
+          <form onSubmit={handlePwd} className="space-y-5">
+            <Input label="New Password *" type="password" value={pwdForm.new_password} onChange={v => setPwdForm({ new_password: v })} error={formErrors.new_password} required minLength={8} />
+            <ModalFooter onCancel={() => { setShowPwd(false); resetForm(); }} submitText="Change Password" />
+          </form>
+        </Modal>
+      )}
+
+      {/* ========== DELETE CONFIRM ========== */}
+      {showDelete && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="flex items-center space-x-2 text-red-600 mb-4">
+              <AlertCircle className="w-5 h-5" />
+              <h3 className="font-semibold text-lg">Delete User?</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Are you sure you want to delete <strong>{selectedUser.username}</strong>?
+            </p>
+            <p className="text-xs text-gray-500 mb-6">This action <strong>cannot be undone</strong>.</p>
+
+            <div className="flex justify-end space-x-3">
               <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600 transition"
+                onClick={() => setShowDelete(false)}
+                disabled={deleteLoading}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
-                <X className="w-6 h-6" />
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70"
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <span>Delete</span>
+                )}
               </button>
             </div>
-
-            <form onSubmit={handleAddUser} className="p-6 space-y-5">
-              {formErrors.general && (
-                <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
-                  {formErrors.general}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Username *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.username}
-                  onChange={e => setFormData({ ...formData, username: e.target.value })}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${
-                    formErrors.username ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {formErrors.username && <p className="text-red-600 text-xs mt-1">{formErrors.username}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${
-                    formErrors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {formErrors.email && <p className="text-red-600 text-xs mt-1">{formErrors.email}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  value={formData.password}
-                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${
-                    formErrors.password ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {formErrors.password && <p className="text-red-600 text-xs mt-1">{formErrors.password}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
-                  <input
-                    type="text"
-                    value={formData.first_name}
-                    onChange={e => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
-                  <input
-                    type="text"
-                    value={formData.last_name}
-                    onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role *</label>
-                <select
-                  required
-                  value={formData.role}
-                  onChange={e => setFormData({ ...formData, role: e.target.value })}
-                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${
-                    formErrors.role ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select Role</option>
-                  <option value="admin">Admin</option>
-                  <option value="center_manager">Center Manager</option>
-                  <option value="instructor">Instructor</option>
-                  <option value="data_entry">Data Entry</option>
-                </select>
-                {formErrors.role && <p className="text-red-600 text-xs mt-1">{formErrors.role}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Center (Optional)</label>
-                <select
-                  value={formData.center_id}
-                  onChange={e => setFormData({ ...formData, center_id: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-                >
-                  <option value="">No Center</option>
-                  {centers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center space-x-8">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_active}
-                    onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
-                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Active</span>
-                </label>
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_staff}
-                    onChange={e => setFormData({ ...formData, is_staff: e.target.checked })}
-                    className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Staff</span>
-                </label>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4 border-t">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetForm();
-                  }}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium shadow-sm"
-                >
-                  Create User
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+/* ========== REUSABLE COMPONENTS ========== */
+const roleOptions = [
+  { value: "admin", label: "Admin" },
+  { value: "center_manager", label: "Center Manager" },
+  { value: "instructor", label: "Instructor" },
+  { value: "data_entry", label: "Data Entry" },
+];
+
+type ModalProps = { title: string; onClose: () => void; children: React.ReactNode };
+const Modal = ({ title, onClose, children }: ModalProps) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
+      <div className="flex justify-between items-center p-6 border-b">
+        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  </div>
+);
+
+type InputProps = { label: string; type?: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; minLength?: number; };
+const Input = ({ label, type = "text", value, onChange, error, required, minLength }: InputProps) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+    <input
+      type={type} value={value} onChange={e => onChange(e.target.value)}
+      required={required} minLength={minLength}
+      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"}`}
+    />
+    {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
+  </div>
+);
+
+type SelectProps = { label: string; options: { value: string; label: string }[]; value: string; onChange: (v: string) => void; error?: string; required?: boolean; };
+const Select = ({ label, options, value, onChange, error, required }: SelectProps) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+    <select
+      value={value} onChange={e => onChange(e.target.value)} required={required}
+      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"}`}
+    >
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+    {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
+  </div>
+);
+
+type CheckboxesProps = { active: boolean; staff: boolean; onActive: (v: boolean) => void; onStaff: (v: boolean) => void; };
+const Checkboxes = ({ active, staff, onActive, onStaff }: CheckboxesProps) => (
+  <div className="flex items-center space-x-8">
+    <label className="flex items-center cursor-pointer">
+      <input type="checkbox" checked={active} onChange={e => onActive(e.target.checked)} className="w-4 h-4 text-green-600 rounded focus:ring-green-500" />
+      <span className="ml-2 text-sm text-gray-700">Active</span>
+    </label>
+    <label className="flex items-center cursor-pointer">
+      <input type="checkbox" checked={staff} onChange={e => onStaff(e.target.checked)} className="w-4 h-4 text-green-600 rounded focus:ring-green-500" />
+      <span className="ml-2 text-sm text-gray-700">Staff</span>
+    </label>
+  </div>
+);
+
+type ModalFooterProps = { onCancel: () => void; submitText: string; };
+const ModalFooter = ({ onCancel, submitText }: ModalFooterProps) => (
+  <div className="flex justify-end space-x-3 pt-4 border-t">
+    <button type="button" onClick={onCancel} className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">
+      Cancel
+    </button>
+    <button type="submit" className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm">
+      {submitText}
+    </button>
+  </div>
+);
+
+const Alert = ({ text }: { text: string }) => (
+  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{text}</div>
+);
 
 export default Users;
