@@ -1,7 +1,10 @@
+# naita_backend/urls.py
 from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('users.urls')),  # /api/token/ endpoint
+    path("admin/", admin.site.urls),
+    path("api/", include("users.urls")),      # /api/token/  &  /api/users/
+    path("api/centers/", include("centers.urls")),   # /api/centers/
+    # other apps …
 ]
