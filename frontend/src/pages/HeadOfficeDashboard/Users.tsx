@@ -61,11 +61,8 @@ const Users: React.FC = () => {
 
   const pageSize = 10;
 
-  // === Get user from localStorage ===
-  const userRole = localStorage.getItem("user_role") || "admin";
-  const userFirstName = localStorage.getItem("user_first_name") || "";
-  const userLastName = localStorage.getItem("user_last_name") || "";
-  const userName = `${userFirstName} ${userLastName}`.trim() || "User";
+  // === Get user role from localStorage (only needed for admin check) ===
+  const userRole = localStorage.getItem("user_role") || "data_entry";
   const isAdmin = userRole === "admin";
 
   /* ========== FETCH DATA ========== */
@@ -300,7 +297,7 @@ const Users: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -343,7 +340,7 @@ const Users: React.FC = () => {
                    totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
 
-      {/* ========== MODALS (unchanged) ========== */}
+      {/* ========== MODALS ========== */}
       {showAdd && (
         <Modal title="Add New User" onClose={() => { setShowAdd(false); resetForm(); }}>
           <form onSubmit={handleAdd} className="space-y-5">
@@ -391,8 +388,9 @@ const Users: React.FC = () => {
       )}
 
       {showDelete && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="fixed inset-0" onClick={() => setShowDelete(false)}></div>
+          <div className="relative bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
             <div className="flex items-center space-x-2 text-red-600 mb-4">
               <AlertCircle className="w-5 h-5" />
               <h3 className="font-semibold text-lg">Delete User?</h3>
@@ -413,7 +411,7 @@ const Users: React.FC = () => {
               <button
                 onClick={handleDelete}
                 disabled={deleteLoading}
-                className="px-4 py-2 bg-red-600テキスト-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70"
               >
                 {deleteLoading ? (
                   <>
@@ -432,7 +430,7 @@ const Users: React.FC = () => {
   );
 };
 
-/* ========== REUSABLE COMPONENTS (unchanged) ========== */
+/* ========== REUSABLE COMPONENTS ========== */
 const roleOptions = [
   { value: "admin", label: "Admin" },
   { value: "center_manager", label: "Center Manager" },
@@ -442,13 +440,18 @@ const roleOptions = [
 
 type ModalProps = { title: string; onClose: () => void; children: React.ReactNode };
 const Modal = ({ title, onClose, children }: ModalProps) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8">
-      <div className="flex justify-between items-center p-6 border-b">
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="fixed inset-0" onClick={onClose}></div>
+    <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-screen overflow-y-auto">
+      <div className="sticky top-0 bg-white flex justify-between items-center p-6 border-b z-10">
         <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+          <X className="w-6 h-6" />
+        </button>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-6">
+        {children}
+      </div>
     </div>
   </div>
 );
