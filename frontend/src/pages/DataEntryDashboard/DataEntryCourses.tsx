@@ -1,6 +1,4 @@
-// DataEntryCourses.tsx
 import React, { useState } from 'react';
-import SharedNavbar from '../../components/SharedNavbar';
 import { Plus, Search, Filter, Edit, Trash2, BookOpen, Download } from 'lucide-react';
 
 interface Course {
@@ -46,11 +44,6 @@ const DataEntryCourses: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Fixed Navbar */}
-      <header className="sticky top-0 z-50 shadow-md">
-        <SharedNavbar userRole="data_entry" userName="Tharindu Perera" />
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}

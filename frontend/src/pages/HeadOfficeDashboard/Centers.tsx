@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import SharedNavbar from '../../components/SharedNavbar';
 import DataTable from '../../components/DataTable';
 import { Search, Plus, MapPin, Users, Phone } from 'lucide-react';
 
@@ -144,8 +143,6 @@ const Centers: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SharedNavbar userRole="admin" userName="John Doe" />
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <div className="flex justify-between items-center">

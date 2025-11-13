@@ -2,13 +2,12 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
-import { loginUser } from "../api/api"; // Shared API functions
+import { loginUser } from "../api/api";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [userRole, setUserRole] = useState("admin");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
@@ -19,27 +18,10 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      await loginUser(email, password); // Uses shared api.ts
+      await loginUser(email, password); // Saves role, name, center_id
 
-      const role = localStorage.getItem("user_role") || userRole;
-
-      // Navigate based on role
-      switch (role) {
-        case "admin":
-          navigate("/admin");
-          break;
-        case "center_manager":
-          navigate("/manager");
-          break;
-        case "instructor":
-          navigate("/instructor");
-          break;
-        case "data_entry":
-          navigate("/data-entry");
-          break;
-        default:
-          navigate("/admin");
-      }
+      // Redirect to single dashboard
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
       console.error("Login failed:", err);
       setErrorMsg(err.response?.data?.detail || "Invalid email or password.");
@@ -62,24 +44,6 @@ const Login: React.FC = () => {
 
         {/* Form */}
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          {/* Role Selector */}
-          <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-              Login As
-            </label>
-            <select
-              id="role"
-              value={userRole}
-              onChange={(e) => setUserRole(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
-            >
-              <option value="admin">Head Office Admin</option>
-              <option value="center_manager">Center Manager</option>
-              <option value="instructor">Instructor</option>
-              <option value="data_entry">Data Entry Staff</option>
-            </select>
-          </div>
-
           {/* Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -154,7 +118,7 @@ const Login: React.FC = () => {
         {/* Footer */}
         <div className="text-center">
           <p className="text-sm text-gray-600">
-            Enter your credentials to continue
+            Enter your credentials to access your dashboard
           </p>
         </div>
       </div>

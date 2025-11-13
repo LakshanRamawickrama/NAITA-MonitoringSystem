@@ -1,6 +1,4 @@
-// ManagerCourses.tsx
 import React, { useState } from 'react';
-import SharedNavbar from '../../components/SharedNavbar';
 import { Search, Plus, Filter, Eye, Edit, Trash2, BookOpen } from 'lucide-react';
 
 const ManagerCourses: React.FC = () => {
@@ -45,8 +43,6 @@ const ManagerCourses: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SharedNavbar userRole="center_manager" userName="Sarah Nakato" />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

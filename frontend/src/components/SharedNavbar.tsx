@@ -12,44 +12,50 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const getNavItems = () => {
-    switch (userRole) {
-      case 'admin':
-        return [
-          { path: '/admin', label: 'Overview' },
-          { path: '/admin/centers', label: 'Centers' },
-          { path: '/admin/users', label: 'Users' },
-          { path: '/admin/approvals', label: 'Approvals' },
-          { path: '/admin/reports', label: 'Reports' }
-        ];
-      case 'center_manager':
-        return [
-          { path: '/manager', label: 'Overview' },
-          { path: '/manager/courses', label: 'Courses' },
-          { path: '/manager/students', label: 'Students' },
-          { path: '/manager/instructors', label: 'Instructors' }
-        ];
-     case 'instructor':
-        return [
-          { path: '/instructor', label: 'My Courses' },
-          { path: '/instructor/students', label: 'Students' },
-          { path: '/instructor/attendance', label: 'Attendance' }
-        ]; 
-      case 'data_entry':
-        return [
-          { path: '/data-entry', label: 'Students' },
-          { path: '/data-entry/courses', label: 'Courses' },
-          { path: '/data-entry/enrollments', label: 'Enrollments' }
-        ];
-      default:
-        return [];
-    }
-  };
+  // src/components/SharedNavbar.tsx
+// ... (your full code) ...
 
-  const handleLogout = () => {
-    // Handle logout logic here
-    navigate('/');
-  };
+const getNavItems = () => {
+  switch (userRole) {
+    case 'admin':
+      return [
+        { path: '/dashboard/admin', label: 'Overview' },
+        { path: '/dashboard/admin/centers', label: 'Centers' },
+        { path: '/dashboard/admin/users', label: 'Users' },
+        { path: '/dashboard/admin/approvals', label: 'Approvals' },
+        { path: '/dashboard/admin/reports', label: 'Reports' }
+      ];
+    case 'center_manager':
+      return [
+        { path: '/dashboard/manager', label: 'Overview' },
+        { path: '/dashboard/manager/courses', label: 'Courses' },
+        { path: '/dashboard/manager/students', label: 'Students' },
+        { path: '/dashboard/manager/instructors', label: 'Instructors' }
+      ];
+    case 'instructor':
+      return [
+        { path: '/dashboard/instructor', label: 'My Courses' },
+        { path: '/dashboard/instructor/students', label: 'Students' },
+        { path: '/dashboard/instructor/attendance', label: 'Attendance' }
+      ];
+    case 'data_entry':
+      return [
+        { path: '/dashboard/data-entry', label: 'Students' },
+        { path: '/dashboard/data-entry/courses', label: 'Courses' },
+        { path: '/dashboard/data-entry/enrollments', label: 'Enrollments' }
+      ];
+    default:
+      return [];
+  }
+};
+
+// Logout
+const handleLogout = () => {
+  localStorage.clear();
+  navigate("/");
+};
+
+  
 
   const navItems = getNavItems();
 

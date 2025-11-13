@@ -1,6 +1,5 @@
 // InstructorCourses.tsx
 import React, { useState } from 'react';
-import SharedNavbar from '../../components/SharedNavbar';
 import { Calendar, Users, Clock, BookOpen, BarChart3, Layers, Search, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -60,8 +59,7 @@ const InstructorCourses: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SharedNavbar userRole="instructor" userName="Alex Kato" />
-
+     
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
         <div className="flex justify-between items-center mb-8">

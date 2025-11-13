@@ -1,6 +1,5 @@
 // src/pages/HeadOfficeDashboard/Users.tsx
 import React, { useState, useEffect, useMemo } from "react";
-import SharedNavbar from "../../components/SharedNavbar";
 import DataTable from "../../components/DataTable";
 import {
   Search, Plus, Mail, Shield, X, Loader2,
@@ -61,7 +60,13 @@ const Users: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const pageSize = 10;
-  const isAdmin = localStorage.getItem("user_role") === "admin";
+
+  // === Get user from localStorage ===
+  const userRole = localStorage.getItem("user_role") || "admin";
+  const userFirstName = localStorage.getItem("user_first_name") || "";
+  const userLastName = localStorage.getItem("user_last_name") || "";
+  const userName = `${userFirstName} ${userLastName}`.trim() || "User";
+  const isAdmin = userRole === "admin";
 
   /* ========== FETCH DATA ========== */
   useEffect(() => {
@@ -296,8 +301,6 @@ const Users: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SharedNavbar userRole="admin" userName="Admin User" />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -340,7 +343,7 @@ const Users: React.FC = () => {
                    totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
 
-      {/* ========== ADD MODAL ========== */}
+      {/* ========== MODALS (unchanged) ========== */}
       {showAdd && (
         <Modal title="Add New User" onClose={() => { setShowAdd(false); resetForm(); }}>
           <form onSubmit={handleAdd} className="space-y-5">
@@ -360,7 +363,6 @@ const Users: React.FC = () => {
         </Modal>
       )}
 
-      {/* ========== EDIT MODAL ========== */}
       {showEdit && selectedUser && (
         <Modal title="Edit User" onClose={() => { setShowEdit(false); resetForm(); }}>
           <form onSubmit={handleEdit} className="space-y-5">
@@ -379,7 +381,6 @@ const Users: React.FC = () => {
         </Modal>
       )}
 
-      {/* ========== PASSWORD MODAL ========== */}
       {showPwd && selectedUser && (
         <Modal title="Change Password" onClose={() => { setShowPwd(false); resetForm(); }}>
           <form onSubmit={handlePwd} className="space-y-5">
@@ -389,7 +390,6 @@ const Users: React.FC = () => {
         </Modal>
       )}
 
-      {/* ========== DELETE CONFIRM ========== */}
       {showDelete && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
@@ -413,7 +413,7 @@ const Users: React.FC = () => {
               <button
                 onClick={handleDelete}
                 disabled={deleteLoading}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70"
+                className="px-4 py-2 bg-red-600テキスト-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70"
               >
                 {deleteLoading ? (
                   <>
@@ -432,7 +432,7 @@ const Users: React.FC = () => {
   );
 };
 
-/* ========== REUSABLE COMPONENTS ========== */
+/* ========== REUSABLE COMPONENTS (unchanged) ========== */
 const roleOptions = [
   { value: "admin", label: "Admin" },
   { value: "center_manager", label: "Center Manager" },

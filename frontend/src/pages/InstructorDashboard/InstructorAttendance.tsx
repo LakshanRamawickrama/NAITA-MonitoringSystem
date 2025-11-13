@@ -1,6 +1,5 @@
 // InstructorAttendance.tsx
 import React, { useState } from 'react';
-import SharedNavbar from '../../components/SharedNavbar';
 import { Calendar, Users, CheckCircle, XCircle, Clock, Download, Filter, Search } from 'lucide-react';
 
 interface AttendanceRecord {
@@ -84,8 +83,6 @@ const InstructorAttendance: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SharedNavbar userRole="instructor" userName="Alex Kato" />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
