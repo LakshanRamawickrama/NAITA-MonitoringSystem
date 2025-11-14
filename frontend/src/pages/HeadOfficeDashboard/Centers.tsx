@@ -9,9 +9,18 @@ import {
   Phone,
   Loader2,
   X,
+  Edit,
+  Trash2,
+  AlertCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { fetchCenters, createCenter, type Center } from "../../api/api";
+import {
+  fetchCenters,
+  createCenter,
+  updateCenter,
+  deleteCenter,
+  type Center,
+} from "../../api/api";
 
 const Centers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,7 +31,13 @@ const Centers: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newCenter, setNewCenter] = useState({
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editingCenter, setEditingCenter] = useState<Center | null>(null);
+  const [deletingCenter, setDeletingCenter] = useState<Center | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [form, setForm] = useState({
     name: "",
     location: "",
     manager: "",
@@ -32,7 +47,6 @@ const Centers: React.FC = () => {
     status: "Active",
     performance: "Average",
   });
-  const [submitting, setSubmitting] = useState(false);
 
   const pageSize = 10;
 
@@ -55,45 +69,108 @@ const Centers: React.FC = () => {
     load();
   }, []);
 
+  /* ========== OPEN EDIT MODAL ========== */
+  const openEditModal = (center: Center) => {
+    setEditingCenter(center);
+    setForm({
+      name: center.name,
+      location: center.location || "",
+      manager: center.manager || "",
+      phone: center.phone || "",
+      students: center.students?.toString() || "",
+      instructors: center.instructors?.toString() || "",
+      status: center.status || "Active",
+      performance: center.performance || "Average",
+    });
+    setShowEditModal(true);
+  };
+
+  /* ========== OPEN DELETE MODAL ========== */
+  const openDeleteModal = (center: Center) => {
+    setDeletingCenter(center);
+    setShowDeleteModal(true);
+  };
+
   /* ========== ADD CENTER ========== */
   const handleAddCenter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCenter.name.trim()) {
-      toast.error("Center name is required");
-      return;
-    }
+    if (!form.name.trim()) return toast.error("Center name is required");
 
     setSubmitting(true);
     try {
       const created = await createCenter({
-        name: newCenter.name.trim(),
-        location: newCenter.location.trim() || null,
-        manager: newCenter.manager.trim() || null,
-        phone: newCenter.phone.trim() || null,
-        students: newCenter.students ? Number(newCenter.students) : null,
-        instructors: newCenter.instructors ? Number(newCenter.instructors) : null,
-        status: newCenter.status,
-        performance: newCenter.performance || null,
+        name: form.name.trim(),
+        location: form.location.trim() || null,
+        manager: form.manager.trim() || null,
+        phone: form.phone.trim() || null,
+        students: form.students ? Number(form.students) : null,
+        instructors: form.instructors ? Number(form.instructors) : null,
+        status: form.status,
+        performance: form.performance || null,
       });
       setCenters(prev => [...prev, created]);
-      setShowAddModal(false);
-      setNewCenter({
-        name: "",
-        location: "",
-        manager: "",
-        phone: "",
-        students: "",
-        instructors: "",
-        status: "Active",
-        performance: "Average",
-      });
-      toast.success("Center added successfully");
+      closeAddModal();
+      toast.success("Center added");
     } catch (err: any) {
-      const msg = err.response?.data?.name?.[0] || "Failed to add center";
-      toast.error(msg);
+      toast.error(err.response?.data?.name?.[0] || "Failed to add center");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  /* ========== EDIT CENTER ========== */
+  const handleEditCenter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCenter || !form.name.trim()) return;
+
+    setSubmitting(true);
+    try {
+      const updated = await updateCenter(editingCenter.id, {
+        name: form.name.trim(),
+        location: form.location.trim() || null,
+        manager: form.manager.trim() || null,
+        phone: form.phone.trim() || null,
+        students: form.students ? Number(form.students) : null,
+        instructors: form.instructors ? Number(form.instructors) : null,
+        status: form.status,
+        performance: form.performance || null,
+      });
+      setCenters(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+      setShowEditModal(false);
+      toast.success("Center updated");
+    } catch (err: any) {
+      toast.error("Failed to update center");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /* ========== DELETE CENTER ========== */
+  const handleDeleteCenter = async () => {
+    if (!deletingCenter) return;
+
+    try {
+      await deleteCenter(deletingCenter.id);
+      setCenters(prev => prev.filter(c => c.id !== deletingCenter.id));
+      setShowDeleteModal(false);
+      toast.success("Center deleted");
+    } catch (err: any) {
+      toast.error("Failed to delete center");
+    }
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setForm({
+      name: "",
+      location: "",
+      manager: "",
+      phone: "",
+      students: "",
+      instructors: "",
+      status: "Active",
+      performance: "Average",
+    });
   };
 
   /* ========== FILTERING ========== */
@@ -118,7 +195,7 @@ const Centers: React.FC = () => {
 
   const totalPages = Math.ceil(filtered.length / pageSize);
 
-  /* ========== COLUMNS (same as your mock) ========== */
+  /* ========== COLUMNS ========== */
   const columns = [
     {
       key: "name",
@@ -136,7 +213,7 @@ const Centers: React.FC = () => {
     {
       key: "manager",
       label: "Manager",
-      render: (value: string | null, row: Center) => (
+      render: (value: string | null | undefined, row: Center) => (
         <div>
           <div className="font-medium text-gray-900">{value || "—"}</div>
           <div className="text-sm text-gray-500 flex items-center">
@@ -149,7 +226,7 @@ const Centers: React.FC = () => {
     {
       key: "students",
       label: "Students",
-      render: (value: number | null) => (
+      render: (value: number | null | undefined) => (
         <div className="flex items-center">
           <Users className="w-4 h-4 mr-1 text-gray-400" />
           <span className="font-medium">{value ?? 0}</span>
@@ -159,14 +236,14 @@ const Centers: React.FC = () => {
     {
       key: "instructors",
       label: "Instructors",
-      render: (value: number | null) => (
+      render: (value: number | null | undefined) => (
         <span className="font-medium">{value ?? 0}</span>
       ),
     },
     {
       key: "performance",
       label: "Performance",
-      render: (value: string | null) => {
+      render: (value: string | null | undefined) => {
         const badge = {
           Excellent: "bg-green-100 text-green-800",
           Good: "bg-yellow-100 text-yellow-800",
@@ -174,9 +251,7 @@ const Centers: React.FC = () => {
           "Needs Improvement": "bg-red-100 text-red-800",
         }[value || ""] || "bg-gray-100 text-gray-800";
         return (
-          <span
-            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${badge}`}
-          >
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${badge}`}>
             {value || "—"}
           </span>
         );
@@ -185,14 +260,34 @@ const Centers: React.FC = () => {
     {
       key: "status",
       label: "Status",
-      render: (value: string) => (
-        <span
-          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-            value === "Active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-          }`}
-        >
-          {value}
+      render: (value: string | undefined) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          value === "Active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+        }`}>
+          {value || "—"}
         </span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (_: any, row: Center) => (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => openEditModal(row)}
+            className="text-blue-600 hover:text-blue-800 p-1"
+            title="Edit"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => openDeleteModal(row)}
+            className="text-red-600 hover:text-red-800 p-1"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -333,30 +428,37 @@ const Centers: React.FC = () => {
         </div>
       </div>
 
-      {/* ========== ADD CENTER MODAL ========== */}
-      {showAddModal && (
+      {/* ========== ADD / EDIT MODAL (SHARED) ========== */}
+      {(showAddModal || showEditModal) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-screen overflow-y-auto">
             <button
-              onClick={() => setShowAddModal(false)}
+              onClick={() => {
+                showAddModal ? closeAddModal() : setShowEditModal(false);
+              }}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Center</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              {showAddModal ? "Add New Center" : "Edit Center"}
+            </h2>
 
-            <form onSubmit={handleAddCenter} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <form
+              onSubmit={showAddModal ? handleAddCenter : handleEditCenter}
+              className="grid grid-cols-1 md:grid-cols-2 gap-5"
+            >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Center Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={newCenter.name}
-                  onChange={e => setNewCenter({ ...newCenter, name: e.target.value })}
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="NAITA Colombo Center"
+                  placeholder="NAITA Kampala Center"
                   required
                 />
               </div>
@@ -367,10 +469,10 @@ const Centers: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={newCenter.location}
-                  onChange={e => setNewCenter({ ...newCenter, location: e.target.value })}
+                  value={form.location}
+                  onChange={e => setForm({ ...form, location: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="Colombo, Havelock Road"
+                  placeholder="Kampala, Central Region"
                 />
               </div>
 
@@ -380,10 +482,10 @@ const Centers: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={newCenter.manager}
-                  onChange={e => setNewCenter({ ...newCenter, manager: e.target.value })}
+                  value={form.manager}
+                  onChange={e => setForm({ ...form, manager: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="D.P Perera"
+                  placeholder="Sarah Nakato"
                 />
               </div>
 
@@ -393,10 +495,10 @@ const Centers: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={newCenter.phone}
-                  onChange={e => setNewCenter({ ...newCenter, phone: e.target.value })}
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="+9411 700 1234"
+                  placeholder="+256 700 123 456"
                 />
               </div>
 
@@ -406,8 +508,8 @@ const Centers: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={newCenter.students}
-                  onChange={e => setNewCenter({ ...newCenter, students: e.target.value })}
+                  value={form.students}
+                  onChange={e => setForm({ ...form, students: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                   placeholder="450"
                 />
@@ -419,8 +521,8 @@ const Centers: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  value={newCenter.instructors}
-                  onChange={e => setNewCenter({ ...newCenter, instructors: e.target.value })}
+                  value={form.instructors}
+                  onChange={e => setForm({ ...form, instructors: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                   placeholder="25"
                 />
@@ -431,8 +533,8 @@ const Centers: React.FC = () => {
                   Status
                 </label>
                 <select
-                  value={newCenter.status}
-                  onChange={e => setNewCenter({ ...newCenter, status: e.target.value })}
+                  value={form.status}
+                  onChange={e => setForm({ ...form, status: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                 >
                   <option value="Active">Active</option>
@@ -445,8 +547,8 @@ const Centers: React.FC = () => {
                   Performance
                 </label>
                 <select
-                  value={newCenter.performance}
-                  onChange={e => setNewCenter({ ...newCenter, performance: e.target.value })}
+                  value={form.performance}
+                  onChange={e => setForm({ ...form, performance: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                 >
                   <option value="Excellent">Excellent</option>
@@ -459,7 +561,9 @@ const Centers: React.FC = () => {
               <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    showAddModal ? closeAddModal() : setShowEditModal(false);
+                  }}
                   className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                   disabled={submitting}
                 >
@@ -468,19 +572,48 @@ const Centers: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
+                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green- Imagine-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
                 >
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Adding...</span>
+                      <span>Saving...</span>
                     </>
                   ) : (
-                    <span>Add Center</span>
+                    <span>{showAddModal ? "Add Center" : "Save Changes"}</span>
                   )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========== DELETE CONFIRMATION MODAL ========== */}
+      {showDeleteModal && deletingCenter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center space-x-3 text-red-600 mb-4">
+              <AlertCircle className="w-6 h-6" />
+              <h3 className="text-lg font-semibold">Delete Center?</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{deletingCenter.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteCenter}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

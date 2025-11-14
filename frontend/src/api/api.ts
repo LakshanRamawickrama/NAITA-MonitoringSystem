@@ -88,6 +88,30 @@ export const createCenter = async (data: {
   return res.data;
 };
 
+
+/* PATCH /api/centers/<id>/update/ */
+export const updateCenter = async (
+  id: number,
+  data: Partial<{
+    name: string;
+    location: string | null;
+    manager: string | null;
+    phone: string | null;
+    students: number | null;
+    instructors: number | null;
+    status: string;
+    performance: string | null;
+  }>
+): Promise<Center> => {
+  const res = await api.patch(`/api/centers/${id}/update/`, data);
+  return res.data;
+};
+
+/* DELETE /api/centers/<id>/delete/ */
+export const deleteCenter = async (id: number): Promise<void> => {
+  await api.delete(`/api/centers/${id}/delete/`);
+};
+
 /* ========== AUTH API ========== */
 export const loginUser = async (email: string, password: string) => {
   const res = await api.post("/api/token/", { email, password });
