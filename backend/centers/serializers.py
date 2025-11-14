@@ -6,4 +6,8 @@ from .models import Center
 class CenterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Center
-        fields = ["id", "name"]
+        fields = [
+            "id", "name", "location", "manager",
+            "students", "instructors", "phone",
+            "status", "performance"
+        ]

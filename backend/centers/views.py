@@ -1,4 +1,3 @@
-# centers/views.py
 from rest_framework import generics, permissions
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .models import Center
@@ -9,4 +8,10 @@ class CenterListView(generics.ListAPIView):
     queryset = Center.objects.all()
     serializer_class = CenterSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated]   # any logged-in user
+    permission_classes = [permissions.IsAuthenticated]   
+    
+class CenterCreateView(generics.CreateAPIView):
+    queryset = Center.objects.all()
+    serializer_class = CenterSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
