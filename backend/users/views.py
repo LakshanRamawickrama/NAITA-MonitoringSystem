@@ -7,7 +7,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model, authenticate
 from django.shortcuts import get_object_or_404
-from .serializers import UserListSerializer, UserCreateSerializer, CenterSerializer
+from .serializers import UserListSerializer, UserCreateSerializer
+from centers.serializers import CenterSerializer
 from centers.models import Center
 from rest_framework import serializers
 
