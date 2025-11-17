@@ -1,7 +1,8 @@
+// src/api/api.ts
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000", 
+  baseURL: "http://127.0.0.1:8000",
 });
 
 // Add JWT token to every request
@@ -25,9 +26,17 @@ export interface UserType {
   last_login: string | null;
 }
 
+/* ========== CENTER API (FULL UI SUPPORT) ========== */
 export interface Center {
   id: number;
   name: string;
+  location: string | null;
+  manager?: string | null;
+  phone?: string | null;
+  students?: number | null;
+  instructors?: number | null;
+  status?: string;
+  performance?: string | null;
 }
 
 /* GET /api/users/ */
@@ -64,6 +73,45 @@ export const fetchCenters = async (): Promise<Center[]> => {
   return res.data;
 };
 
+/* POST /api/centers/create/ */
+export const createCenter = async (data: {
+  name: string;
+  location?: string | null;
+  manager?: string | null;
+  phone?: string | null;
+  students?: number | null;
+  instructors?: number | null;
+  status?: string;
+  performance?: string | null;
+}): Promise<Center> => {
+  const res = await api.post("/api/centers/create/", data);
+  return res.data;
+};
+
+
+/* PATCH /api/centers/<id>/update/ */
+export const updateCenter = async (
+  id: number,
+  data: Partial<{
+    name: string;
+    location: string | null;
+    manager: string | null;
+    phone: string | null;
+    students: number | null;
+    instructors: number | null;
+    status: string;
+    performance: string | null;
+  }>
+): Promise<Center> => {
+  const res = await api.patch(`/api/centers/${id}/update/`, data);
+  return res.data;
+};
+
+/* DELETE /api/centers/<id>/delete/ */
+export const deleteCenter = async (id: number): Promise<void> => {
+  await api.delete(`/api/centers/${id}/delete/`);
+};
+
 /* ========== AUTH API ========== */
 export const loginUser = async (email: string, password: string) => {
   const res = await api.post("/api/token/", { email, password });
@@ -76,7 +124,6 @@ export const loginUser = async (email: string, password: string) => {
   localStorage.setItem("center_id", payload.center_id || "");
   localStorage.setItem("center_name", payload.center_name || "");
 
-  // Get full user info
   const me = await api.get("/api/users/me/");
   localStorage.setItem("user_first_name", me.data.first_name || "");
   localStorage.setItem("user_last_name", me.data.last_name || "");
