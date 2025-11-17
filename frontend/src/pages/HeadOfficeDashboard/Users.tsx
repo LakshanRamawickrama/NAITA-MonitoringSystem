@@ -233,8 +233,8 @@ const Users: React.FC = () => {
       render: (v: string) => {
         const map: Record<string, string> = {
           admin: "bg-purple-100 text-purple-800",
-          center_manager: "bg-green-100 text-green-800",
-          instructor: "bg-yellow-100 text-yellow-800",
+          district_manager: "bg-green-100 text-green-800",
+          training_officer: "bg-yellow-100 text-yellow-800",
           data_entry: "bg-blue-100 text-blue-800",
         };
         const label = v.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
@@ -324,8 +324,8 @@ const Users: React.FC = () => {
                   className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
             <option value="">All Roles</option>
             <option value="admin">Admin</option>
-            <option value="center_manager">Center Manager</option>
-            <option value="instructor">Instructor</option>
+            <option value="district_manager">District Manager</option>
+            <option value="training_officer">Training Officer</option>
             <option value="data_entry">Data Entry</option>
           </select>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
@@ -433,8 +433,8 @@ const Users: React.FC = () => {
 /* ========== REUSABLE COMPONENTS ========== */
 const roleOptions = [
   { value: "admin", label: "Admin" },
-  { value: "center_manager", label: "Center Manager" },
-  { value: "instructor", label: "Instructor" },
+  { value: "district_manager", label: "District Manager" },
+  { value: "training_officer", label: "Training Officer" },
   { value: "data_entry", label: "Data Entry" },
 ];
 

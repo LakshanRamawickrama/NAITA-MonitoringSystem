@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut, User, Bell } from 'lucide-react';
 
 interface NavbarProps {
-  userRole: 'admin' | 'center_manager' | 'instructor' | 'data_entry';
+  userRole: 'admin' | 'district_manager' | 'training_officer' | 'data_entry';
   userName: string;
 }
 
@@ -12,9 +12,7 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // src/components/SharedNavbar.tsx
-// ... (your full code) ...
-
+  
 const getNavItems = () => {
   switch (userRole) {
     case 'admin':
@@ -25,14 +23,14 @@ const getNavItems = () => {
         { path: '/dashboard/admin/approvals', label: 'Approvals' },
         { path: '/dashboard/admin/reports', label: 'Reports' }
       ];
-    case 'center_manager':
+    case 'district_manager':
       return [
         { path: '/dashboard/manager', label: 'Overview' },
         { path: '/dashboard/manager/courses', label: 'Courses' },
         { path: '/dashboard/manager/students', label: 'Students' },
         { path: '/dashboard/manager/instructors', label: 'Instructors' }
       ];
-    case 'instructor':
+    case 'training_officer':
       return [
         { path: '/dashboard/instructor', label: 'My Courses' },
         { path: '/dashboard/instructor/students', label: 'Students' },

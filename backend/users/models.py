@@ -6,8 +6,8 @@ from centers.models import Center
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('admin', 'Admin'),
-        ('center_manager', 'Center Manager'),
-        ('instructor', 'Instructor'),
+        ('district_manager', 'District Manager'),
+        ('training_officer', 'Training Officer'),
         ('data_entry', 'Data Entry'),
     )
 

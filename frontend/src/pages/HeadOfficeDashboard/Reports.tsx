@@ -1,35 +1,67 @@
-import React, { useState } from 'react';
-import { Download,FileText, BarChart3, PieChart, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Download, FileText, BarChart3, PieChart, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
+import toast from 'react-hot-toast';
+import { fetchReports, fetchCenters } from '../../api/api';
+import type { Center } from '../../api/api';
 
 const Reports: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
   const [selectedCenter, setSelectedCenter] = useState('all');
+  const [centers, setCenters] = useState<Center[]>([]);
+  const [reportData, setReportData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const enrollmentTrends = [
-    { month: 'Jul', students: 1100 },
-    { month: 'Aug', students: 1250 },
-    { month: 'Sep', students: 1180 },
-    { month: 'Oct', students: 1420 },
-    { month: 'Nov', students: 1380 },
-    { month: 'Dec', students: 1500 }
-  ];
+  // Fetch centers for dropdown
+  useEffect(() => {
+    const loadCenters = async () => {
+      try {
+        const data = await fetchCenters();
+        setCenters(data);
+      } catch (e: any) {
+        toast.error('Failed to load centers');
+      }
+    };
+    loadCenters();
+  }, []);
 
-  const completionRates = [
-    { center: 'Kampala', rate: 92 },
-    { center: 'Gulu', rate: 87 },
-    { center: 'Mbarara', rate: 89 },
-    { center: 'Jinja', rate: 85 },
-    { center: 'Arua', rate: 78 }
-  ];
+  // Fetch reports based on filters
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchReports(selectedPeriod, selectedCenter);
+        setReportData(data);
+      } catch (e: any) {
+        const msg = e.response?.data?.detail || 'Failed to load reports data';
+        toast.error(msg);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadReports();
+  }, [selectedPeriod, selectedCenter]);
 
-  const courseDistribution = [
-    { name: 'IT & Computing', value: 35, color: '#16a34a' },
-    { name: 'Welding & Fabrication', value: 25, color: '#eab308' },
-    { name: 'Automotive', value: 20, color: '#38bdf8' },
-    { name: 'Electrical', value: 15, color: '#365314' },
-    { name: 'Others', value: 5, color: '#6b7280' }
-  ];
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen text-gray-600">Loading reports...</div>;
+  }
+
+  // Fallbacks if data is missing
+  const enrollmentTrends = reportData?.enrollment_trends || [];
+  const completionRates = reportData?.completion_rates || [];
+  const courseDistribution = reportData?.course_distribution || [];
+  const keyMetrics = reportData?.key_metrics || {
+    overall_completion_rate: 0,
+    total_active_students: 0,
+    total_instructors: 0,
+    active_centers: 0,
+    trends: {
+      completion: 0,
+      students: 0,
+      instructors: 0,
+      centers: 0,
+    }
+  };
 
   const reportTemplates = [
     {
@@ -64,12 +96,12 @@ const Reports: React.FC = () => {
 
   const handleGenerateReport = (reportId: number) => {
     console.log('Generating report:', reportId);
-    // Handle report generation logic here
+    // TODO: Implement actual report generation, e.g., call backend endpoint
   };
 
   const handleExportData = (format: string) => {
     console.log('Exporting data as:', format);
-    // Handle data export logic here
+    // TODO: Implement actual export, e.g., call backend and use libraries like jsPDF or xlsx
   };
 
   return (
@@ -98,10 +130,9 @@ const Reports: React.FC = () => {
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
                 <option value="all">All Centers</option>
-                <option value="kampala">Kampala Center</option>
-                <option value="gulu">Gulu Center</option>
-                <option value="mbarara">Mbarara Center</option>
-                <option value="jinja">Jinja Center</option>
+                {centers.map((c) => (
+                  <option key={c.id} value={c.id.toString()}>{c.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -223,24 +254,24 @@ const Reports: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Key Performance Indicators</h3>
             <div className="grid grid-cols-2 gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">87%</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">{keyMetrics.overall_completion_rate}%</div>
                 <div className="text-sm text-gray-600">Overall Completion Rate</div>
-                <div className="text-xs text-green-600 mt-1">+5% from last month</div>
+                <div className="text-xs text-green-600 mt-1">+{keyMetrics.trends.completion}% from last month</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-500 mb-2">15,847</div>
+                <div className="text-3xl font-bold text-yellow-500 mb-2">{keyMetrics.total_active_students.toLocaleString()}</div>
                 <div className="text-sm text-gray-600">Total Active Students</div>
-                <div className="text-xs text-green-600 mt-1">+12% from last month</div>
+                <div className="text-xs text-green-600 mt-1">+{keyMetrics.trends.students}% from last month</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-sky-400 mb-2">1,234</div>
+                <div className="text-3xl font-bold text-sky-400 mb-2">{keyMetrics.total_instructors.toLocaleString()}</div>
                 <div className="text-sm text-gray-600">Total Instructors</div>
-                <div className="text-xs text-green-600 mt-1">+8% from last month</div>
+                <div className="text-xs text-green-600 mt-1">+{keyMetrics.trends.instructors}% from last month</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-lime-800 mb-2">42</div>
+                <div className="text-3xl font-bold text-lime-800 mb-2">{keyMetrics.active_centers}</div>
                 <div className="text-sm text-gray-600">Active Centers</div>
-                <div className="text-xs text-green-600 mt-1">+2 new centers</div>
+                <div className="text-xs text-green-600 mt-1">+{keyMetrics.trends.centers} new centers</div>
               </div>
             </div>
           </div>
