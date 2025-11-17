@@ -9,14 +9,14 @@ import Users from "./HeadOfficeDashboard/Users";
 import Approvals from "./HeadOfficeDashboard/Approvals";
 import Reports from "./HeadOfficeDashboard/Reports";
 
-import CenterManagerOverview from "./CenterManagerDashboard/Overview";
-import CenterManagerStudents from "./CenterManagerDashboard/Students";
-import CenterManagerCourses from "./CenterManagerDashboard/Courses";
-import CenterManagerInstructor from "./CenterManagerDashboard/Instructor";
+import CenterManagerOverview from "./DistrictManagerDashboard/Overview";
+import CenterManagerStudents from "./DistrictManagerDashboard/Students";
+import CenterManagerCourses from "./DistrictManagerDashboard/Courses";
+import CenterManagerInstructor from "./DistrictManagerDashboard/Instructor";
 
-import InstructorCourses from "./InstructorDashboard/InstructorCourses";
-import InstructorStudents from "./InstructorDashboard/InstructorStudents";
-import InstructorAttendance from "./InstructorDashboard/InstructorAttendance";
+import InstructorCourses from "./TrainingOfficerDashboard/InstructorCourses";
+import InstructorStudents from "./TrainingOfficerDashboard/InstructorStudents";
+import InstructorAttendance from "./TrainingOfficerDashboard/InstructorAttendance";
 
 import DataEntryStudents from "./DataEntryDashboard/DataEntryStudents";
 import DataEntryCourses from "./DataEntryDashboard/DataEntryCourses";
@@ -45,8 +45,8 @@ const Dashboard = () => {
   const getDefaultPath = (role: string) => {
     const map: Record<string, string> = {
       admin: "/dashboard/admin",
-      center_manager: "/dashboard/manager",
-      instructor: "/dashboard/instructor",
+      district_manager: "/dashboard/manager",
+      training_officer: "/dashboard/instructor",
       data_entry: "/dashboard/data-entry",
     };
     return map[role] || "/dashboard/admin";
@@ -67,15 +67,15 @@ const Dashboard = () => {
         {role === "admin" && location.pathname === "/dashboard/admin/reports" && <Reports />}
 
         {/* === CENTER MANAGER === */}
-        {role === "center_manager" && location.pathname === "/dashboard/manager" && <CenterManagerOverview />}
-        {role === "center_manager" && location.pathname === "/dashboard/manager/students" && <CenterManagerStudents />}
-        {role === "center_manager" && location.pathname === "/dashboard/manager/courses" && <CenterManagerCourses />}
-        {role === "center_manager" && location.pathname === "/dashboard/manager/instructors" && <CenterManagerInstructor />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager" && <CenterManagerOverview />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager/students" && <CenterManagerStudents />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager/courses" && <CenterManagerCourses />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager/instructors" && <CenterManagerInstructor />}
 
         {/* === INSTRUCTOR === */}
-        {role === "instructor" && location.pathname === "/dashboard/instructor" && <InstructorCourses />}
-        {role === "instructor" && location.pathname === "/dashboard/instructor/students" && <InstructorStudents />}
-        {role === "instructor" && location.pathname === "/dashboard/instructor/attendance" && <InstructorAttendance />}
+        {role === "training_officer" && location.pathname === "/dashboard/instructor" && <InstructorCourses />}
+        {role === "training_officer" && location.pathname === "/dashboard/instructor/students" && <InstructorStudents />}
+        {role === "training_officer" && location.pathname === "/dashboard/instructor/attendance" && <InstructorAttendance />}
 
         {/* === DATA ENTRY === */}
         {role === "data_entry" && location.pathname === "/dashboard/data-entry" && <DataEntryStudents />}

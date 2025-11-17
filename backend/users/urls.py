@@ -6,7 +6,8 @@ from .views import (
     UserRetrieveUpdateDestroyView,
     change_user_password,
     current_user,
-    CenterListView
+    CenterListView,
+    OverviewView
 )
 
 urlpatterns = [
@@ -21,4 +22,7 @@ urlpatterns = [
 
     # Centers
     path("api/centers/", CenterListView.as_view(), name="center_list"),
+    
+    #overview
+    path("api/overview/", OverviewView.as_view(), name="overview"),
 ]

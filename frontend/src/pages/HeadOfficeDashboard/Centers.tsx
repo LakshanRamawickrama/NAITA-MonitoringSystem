@@ -343,7 +343,7 @@ const Centers: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Training Centers</h1>
               <p className="text-gray-600 mt-2">
-                Manage all NAITA training centers across Uganda
+                Manage all NAITA training centers across Sri Lanka
               </p>
             </div>
             <button
@@ -458,7 +458,7 @@ const Centers: React.FC = () => {
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="NAITA Kampala Center"
+                  placeholder="NAITA Colombo Center"
                   required
                 />
               </div>
@@ -472,7 +472,7 @@ const Centers: React.FC = () => {
                   value={form.location}
                   onChange={e => setForm({ ...form, location: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="Kampala, Central Region"
+                  placeholder="Colombo, Sri Jayawardanapura Kotte"
                 />
               </div>
 
@@ -485,7 +485,7 @@ const Centers: React.FC = () => {
                   value={form.manager}
                   onChange={e => setForm({ ...form, manager: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="Sarah Nakato"
+                  placeholder="S.K Nalaka"
                 />
               </div>
 
@@ -498,7 +498,7 @@ const Centers: React.FC = () => {
                   value={form.phone}
                   onChange={e => setForm({ ...form, phone: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="+256 700 123 456"
+                  placeholder="+9411 700 1235"
                 />
               </div>
 

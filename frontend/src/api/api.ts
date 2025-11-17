@@ -112,6 +112,20 @@ export const deleteCenter = async (id: number): Promise<void> => {
   await api.delete(`/api/centers/${id}/delete/`);
 };
 
+/* GET /api/overview/ */
+
+export const fetchOverview = async () => {
+  const res = await api.get("/api/overview/");
+  return res.data;
+};
+
+/* GET /api/report/ */
+
+export const fetchReports = async (period: string, center: string) => {
+  const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
+  return res.data;
+};
+
 /* ========== AUTH API ========== */
 export const loginUser = async (email: string, password: string) => {
   const res = await api.post("/api/token/", { email, password });
