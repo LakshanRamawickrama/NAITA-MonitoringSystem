@@ -21,6 +21,7 @@ const getNavItems = () => {
         { path: '/dashboard/admin/centers', label: 'Centers' },
         { path: '/dashboard/admin/users', label: 'Users' },
         { path: '/dashboard/admin/approvals', label: 'Approvals' },
+        {path: '/dashboard/admin/courses', label: 'Courses' },
         { path: '/dashboard/admin/reports', label: 'Reports' }
       ];
     case 'district_manager':
