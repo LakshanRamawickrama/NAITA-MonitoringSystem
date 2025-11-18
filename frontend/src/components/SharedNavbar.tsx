@@ -29,7 +29,8 @@ const getNavItems = () => {
         { path: '/dashboard/manager', label: 'Overview' },
         { path: '/dashboard/manager/courses', label: 'Courses' },
         { path: '/dashboard/manager/students', label: 'Students' },
-        { path: '/dashboard/manager/instructors', label: 'Instructors' }
+        { path: '/dashboard/manager/instructors', label: 'Instructors' },
+        {path: '/dashboard/manager/approvals_dm', label: 'Approvals' }
       ];
     case 'training_officer':
       return [

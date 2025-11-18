@@ -1,4 +1,4 @@
-// src/api/api.ts
+// src/api/api.ts (updated with approvals APIs)
 import axios from "axios";
 
 const api = axios.create({
@@ -144,5 +144,53 @@ export const loginUser = async (email: string, password: string) => {
 
   return res.data;
 };
+
+
+/* ========== APPROVALS API ========== */
+export interface ApprovalType {
+  id: number;
+  type: string;
+  center: string;
+  requested_by: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
+  description: string;
+  date_requested: string;
+  priority: string;
+  status: string;
+}
+
+/* GET /api/approvals/ */
+export const fetchApprovals = async (): Promise<ApprovalType[]> => {
+  const res = await api.get("/api/approvals/");
+  return res.data;
+};
+
+/* POST /api/approvals/ */
+export const createApproval = async (data: {
+  type: string;
+  center: string;
+  description: string;
+  priority: string;
+}): Promise<ApprovalType> => {
+  const res = await api.post("/api/approvals/", data);
+  return res.data;
+};
+
+/* GET /api/approvals/my/ */
+export const fetchMyApprovals = async (): Promise<ApprovalType[]> => {
+  const res = await api.get("/api/approvals/my/");
+  return res.data;
+};
+
+/* PUT /api/approvals/:id/:action/ */  // action is 'approve' or 'reject'
+export const updateApprovalStatus = async (id: number, action: 'approve' | 'reject'): Promise<ApprovalType> => {
+  const res = await api.put(`/api/approvals/${id}/${action}/`);
+  return res.data;
+};
+
 
 export default api;

@@ -1,50 +1,35 @@
-// Approvals.tsx (fixed import for ApprovalType and unused 'value' parameter)
 import React, { useState, useEffect } from 'react';
 import DataTable from '../../components/DataTable';
-import { Search, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { fetchApprovals, updateApprovalStatus } from '../../api/api'; // Adjust path if needed
+import { Search, Clock, CheckCircle, XCircle, AlertCircle, Plus, X as CloseIcon, AlertCircle as ErrorIcon } from 'lucide-react';
+import { fetchMyApprovals, createApproval } from '../../api/api'; // Adjust path if needed
 import type { ApprovalType } from '../../api/api'; // Adjust path if needed
 
-const Approvals: React.FC = () => {
+const DistrictManagerApprovals: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [approvalsData, setApprovalsData] = useState<ApprovalType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    const loadApprovals = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchApprovals();
-        setApprovalsData(data);
-        setLoading(false);
-      } catch (err) {
-        setError('Error fetching approvals');
-        setLoading(false);
-      }
-    };
-    loadApprovals();
-  }, []);
-
-  const handleApprove = async (id: number) => {
+  const loadApprovals = async () => {
     try {
-      await updateApprovalStatus(id, 'approve');
-      const data = await fetchApprovals();
+      setLoading(true);
+      const data = await fetchMyApprovals();
       setApprovalsData(data);
+      setLoading(false);
     } catch (err) {
-      console.error('Error approving:', err);
+      setError('Error fetching approvals');
+      setLoading(false);
     }
   };
 
-  const handleReject = async (id: number) => {
-    try {
-      await updateApprovalStatus(id, 'reject');
-      const data = await fetchApprovals();
-      setApprovalsData(data);
-    } catch (err) {
-      console.error('Error rejecting:', err);
-    }
+  useEffect(() => {
+    loadApprovals();
+  }, []);
+
+  const handleSuccess = () => {
+    loadApprovals(); // Refresh the list after successful submission
   };
 
   const columns = [
@@ -108,35 +93,6 @@ const Approvals: React.FC = () => {
         </div>
       )
     },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_value: any, row: any) => (
-        <div className="flex space-x-2">
-          {row.status === 'Pending' && (
-            <>
-              <button
-                onClick={() => handleApprove(row.id)}
-                className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => handleReject(row.id)}
-                className="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors"
-              >
-                Reject
-              </button>
-            </>
-          )}
-          {row.status !== 'Pending' && (
-            <button className="bg-gray-100 text-gray-600 px-3 py-1 rounded text-xs cursor-not-allowed">
-              {row.status}
-            </button>
-          )}
-        </div>
-      )
-    }
   ];
 
   const filteredData = approvalsData.filter(approval =>
@@ -154,19 +110,174 @@ const Approvals: React.FC = () => {
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
+  const ApprovalRequestForm = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void; }) => {
+    const [formData, setFormData] = useState({
+      type: '',
+      center: localStorage.getItem("center_name") || '',
+      description: '',
+      priority: 'Medium',
+    });
+    const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [formSuccess, setFormSuccess] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+      setFormData({
+        ...formData,
+        [e.target.name]: e.target.value,
+      });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSubmitting(true);
+      setFormError(null);
+      setFormSuccess(false);
+
+      try {
+        await createApproval(formData);
+        setFormSuccess(true);
+        onSuccess();
+        setFormData({
+          type: '',
+          center: localStorage.getItem("center_name") || '',
+          description: '',
+          priority: 'Medium',
+        });
+        setTimeout(() => {
+          onClose();
+        }, 1500); // Close after showing success message
+      } catch (err) {
+        setFormError('Error submitting request');
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 max-w-2xl w-full relative">
+          <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+            <CloseIcon className="w-6 h-6" />
+          </button>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Submit Approval Request</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="type" className="block text-sm font-medium text-gray-700">Request Type</label>
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                  required
+                >
+                  <option value="">Select type</option>
+                  <option value="Equipment Request">Equipment Request</option>
+                  <option value="Staff Recruitment">Staff Recruitment</option>
+                  <option value="Course Addition">Course Addition</option>
+                  <option value="Infrastructure">Infrastructure</option>
+                  <option value="Training Materials">Training Materials</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="center" className="block text-sm font-medium text-gray-700">Center</label>
+                <input
+                  type="text"
+                  id="center"
+                  name="center"
+                  value={formData.center}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={4}
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="priority" className="block text-sm font-medium text-gray-700">Priority</label>
+                <select
+                  id="priority"
+                  name="priority"
+                  value={formData.priority}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                  required
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+            </div>
+
+            {formError && (
+              <div className="mt-4 flex items-center text-red-600">
+                <ErrorIcon className="w-5 h-5 mr-2" />
+                {formError}
+              </div>
+            )}
+
+            {formSuccess && (
+              <div className="mt-4 text-green-600">
+                Request submitted successfully!
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{submitting ? 'Submitting...' : 'Submit Request'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Approvals</h1>
-              <p className="text-gray-600 mt-2">Review and approve requests from training centers</p>
+              <h1 className="text-3xl font-bold text-gray-900">My Approval Requests</h1>
+              <p className="text-gray-600 mt-2">View status of your submitted requests</p>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
               <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
                 {pendingCount} Pending
               </span>
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Request</span>
+              </button>
             </div>
           </div>
         </div>
@@ -250,9 +361,16 @@ const Approvals: React.FC = () => {
           totalPages={Math.ceil(filteredData.length / 10)}
           onPageChange={setCurrentPage}
         />
+
+        {showModal && (
+          <ApprovalRequestForm
+            onClose={() => setShowModal(false)}
+            onSuccess={handleSuccess}
+          />
+        )}
       </div>
     </div>
   );
 };
 
-export default Approvals;
+export default DistrictManagerApprovals;

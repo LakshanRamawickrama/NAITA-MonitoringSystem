@@ -13,6 +13,7 @@ import CenterManagerOverview from "./DistrictManagerDashboard/Overview";
 import CenterManagerStudents from "./DistrictManagerDashboard/Students";
 import CenterManagerCourses from "./Courses";
 import CenterManagerInstructor from "./DistrictManagerDashboard/Instructor";
+import CenterManagerApprovals from "./DistrictManagerDashboard/DistrictManagerApprovals";
 
 import InstructorCourses from "./TrainingOfficerDashboard/InstructorCourses";
 import InstructorStudents from "./TrainingOfficerDashboard/InstructorStudents";
@@ -72,6 +73,7 @@ const Dashboard = () => {
         {role === "district_manager" && location.pathname === "/dashboard/manager/students" && <CenterManagerStudents />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/courses" && <CenterManagerCourses />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/instructors" && <CenterManagerInstructor />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager/approvals_dm" && <CenterManagerApprovals />}
 
         {/* === INSTRUCTOR === */}
         {role === "training_officer" && location.pathname === "/dashboard/instructor" && <InstructorCourses />}
