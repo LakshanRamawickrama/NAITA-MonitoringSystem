@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut, User, Bell } from 'lucide-react';
 
 interface NavbarProps {
-  userRole: 'admin' | 'district_manager' | 'training_officer' | 'data_entry';
+  userRole: 'admin' | 'district_manager' | 'training_officer' | 'data_entry' | 'instructor';
   userName: string;
 }
 
@@ -27,16 +27,16 @@ const getNavItems = () => {
     case 'district_manager':
       return [
         { path: '/dashboard/manager', label: 'Overview' },
+        {path: '/dashboard/manager/centers', label: 'Centers' },
         { path: '/dashboard/manager/courses', label: 'Courses' },
-        { path: '/dashboard/manager/students', label: 'Students' },
-        { path: '/dashboard/manager/instructors', label: 'Instructors' },
+        {path: '/dashboard/manager/users', label: 'Users' },
         {path: '/dashboard/manager/approvals_dm', label: 'Approvals' }
       ];
     case 'training_officer':
       return [
-        { path: '/dashboard/instructor', label: 'My Courses' },
-        { path: '/dashboard/instructor/students', label: 'Students' },
-        { path: '/dashboard/instructor/attendance', label: 'Attendance' }
+        { path: '/dashboard/training_officer', label: 'overview' },
+        {path: '/dashboard/training_officer/courses', label: 'Courses' },
+        {path: '/dashboard/training_officer/instructors', label: 'Instructors' }  
       ];
     case 'data_entry':
       return [
@@ -44,6 +44,14 @@ const getNavItems = () => {
         { path: '/dashboard/data-entry/courses', label: 'Courses' },
         { path: '/dashboard/data-entry/enrollments', label: 'Enrollments' }
       ];
+     case 'instructor':
+      return [
+        {path: '/dashboard/instructor', label: 'Overview' },
+        { path: '/dashboard/instructor/courses', label: 'My Courses' },
+        { path: '/dashboard/instructor/student', label: 'Students' },
+        { path: '/dashboard/instructor/attendance', label: 'Attendance' },
+
+      ]; 
     default:
       return [];
   }

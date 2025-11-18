@@ -1,4 +1,4 @@
-// src/api/api.ts (updated with approvals APIs)
+// src/api/api.ts
 import axios from "axios";
 
 const api = axios.create({
@@ -20,17 +20,19 @@ export interface UserType {
   first_name: string;
   last_name: string;
   role: string;
-  center: { id: number; name: string } | null;
+  center: { id: number; name: string; district: string | null } | null;
+  district: string | null;
   is_active: boolean;
   is_staff: boolean;
   last_login: string | null;
 }
 
-/* ========== CENTER API (FULL UI SUPPORT) ========== */
+/* ========== CENTER API ========== */
 export interface Center {
   id: number;
   name: string;
   location: string | null;
+  district: string | null;
   manager?: string | null;
   phone?: string | null;
   students?: number | null;
@@ -77,6 +79,7 @@ export const fetchCenters = async (): Promise<Center[]> => {
 export const createCenter = async (data: {
   name: string;
   location?: string | null;
+  district?: string | null;
   manager?: string | null;
   phone?: string | null;
   students?: number | null;
@@ -88,13 +91,13 @@ export const createCenter = async (data: {
   return res.data;
 };
 
-
 /* PATCH /api/centers/<id>/update/ */
 export const updateCenter = async (
   id: number,
   data: Partial<{
     name: string;
     location: string | null;
+    district: string | null;
     manager: string | null;
     phone: string | null;
     students: number | null;
@@ -113,14 +116,12 @@ export const deleteCenter = async (id: number): Promise<void> => {
 };
 
 /* GET /api/overview/ */
-
 export const fetchOverview = async () => {
   const res = await api.get("/api/overview/");
   return res.data;
 };
 
 /* GET /api/report/ */
-
 export const fetchReports = async (period: string, center: string) => {
   const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
   return res.data;
@@ -135,6 +136,7 @@ export const loginUser = async (email: string, password: string) => {
 
   const payload = JSON.parse(atob(res.data.access.split(".")[1]));
   localStorage.setItem("user_role", payload.role);
+  localStorage.setItem("user_district", payload.district || "");
   localStorage.setItem("center_id", payload.center_id || "");
   localStorage.setItem("center_name", payload.center_name || "");
 
@@ -144,7 +146,6 @@ export const loginUser = async (email: string, password: string) => {
 
   return res.data;
 };
-
 
 /* ========== APPROVALS API ========== */
 export interface ApprovalType {
@@ -186,11 +187,10 @@ export const fetchMyApprovals = async (): Promise<ApprovalType[]> => {
   return res.data;
 };
 
-/* PUT /api/approvals/:id/:action/ */  // action is 'approve' or 'reject'
+/* PUT /api/approvals/:id/:action/ */
 export const updateApprovalStatus = async (id: number, action: 'approve' | 'reject'): Promise<ApprovalType> => {
   const res = await api.put(`/api/approvals/${id}/${action}/`);
   return res.data;
 };
-
 
 export default api;

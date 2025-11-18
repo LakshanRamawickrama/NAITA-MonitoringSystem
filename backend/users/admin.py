@@ -4,19 +4,20 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'role', 'center', 'is_staff', 'is_active')
-    list_filter = ('role', 'center', 'is_staff', 'is_active')
+    list_display = ('username', 'email', 'role', 'district', 'center', 'is_staff', 'is_active')
+    list_filter = ('role', 'district', 'center', 'is_staff', 'is_active')
     fieldsets = (
         (None, {'fields': ('username', 'email', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name')}),
-        ('Permissions', {'fields': ('role', 'center', 'is_staff', 'is_active', 'groups', 'user_permissions')}),
+        ('Location Info', {'fields': ('district', 'center')}),
+        ('Permissions', {'fields': ('role', 'is_staff', 'is_active', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email', 'role', 'center', 'password1', 'password2', 'is_staff', 'is_active')}
+            'fields': ('username', 'email', 'role', 'district', 'center', 'password1', 'password2', 'is_staff', 'is_active')}
         ),
     )
-    search_fields = ('username', 'email')
+    search_fields = ('username', 'email', 'district')
     ordering = ('username',)

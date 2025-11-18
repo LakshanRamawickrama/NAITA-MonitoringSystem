@@ -9,6 +9,7 @@ class User(AbstractUser):
         ('district_manager', 'District Manager'),
         ('training_officer', 'Training Officer'),
         ('data_entry', 'Data Entry'),
+        ('instructor', 'Instructor'),
     )
 
     email = models.EmailField(unique=True)
@@ -20,9 +21,10 @@ class User(AbstractUser):
         blank=True,
         related_name='users'
     )
+    district = models.CharField(max_length=100, blank=True, null=True)
 
-    USERNAME_FIELD = 'email'           # Login with email
-    REQUIRED_FIELDS = ['username']     # Still need username
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
 
     def __str__(self):
         return self.email
