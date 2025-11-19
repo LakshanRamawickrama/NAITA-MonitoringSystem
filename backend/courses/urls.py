@@ -12,4 +12,9 @@ urlpatterns = [
     # Basic CRUD endpoints
     path('api/courses/', views.CourseViewSet.as_view({'get': 'list', 'post': 'create'}), name='courses-list'),
     path('api/courses/<int:pk>/', views.CourseViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='courses-detail'),
+    
+    #instructor reports & management
+    path('api/courses/<int:pk>/details/', views.course_details_view, name='course-details'),
+    path('api/courses/<int:pk>/reports/', views.course_reports_view, name='course-reports'),
+    path('api/courses/<int:pk>/update_content/', views.update_course_content, name='update-course-content'),
 ]

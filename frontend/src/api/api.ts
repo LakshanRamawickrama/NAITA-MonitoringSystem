@@ -475,4 +475,119 @@ export const refreshToken = async (): Promise<{ access: string }> => {
   return res.data;
 };
 
+// Add to api.ts
+/* ========== COURSE CONTENT API ========== */
+export interface CourseContentType {
+  id: number;
+  course: number;
+  title: string;
+  content_type: 'document' | 'video' | 'quiz' | 'assignment' | 'link';
+  file?: string | null;
+  external_url?: string | null;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseProgressType {
+  id: number;
+  course: number;
+  student: number;
+  student_details?: UserType;
+  content: number | null;
+  content_details?: CourseContentType;
+  completed: boolean;
+  progress_percentage: number;
+  last_accessed: string;
+  time_spent: number;
+}
+
+export interface CourseReportType {
+  id: number;
+  course: number;
+  course_details?: CourseType;
+  instructor: number;
+  instructor_details?: UserType;
+  report_type: string;
+  period_start: string;
+  period_end: string;
+  total_students: number;
+  active_students: number;
+  avg_progress: number;
+  completion_rate: number;
+  generated_at: string;
+}
+
+export interface CourseAnalyticsType {
+  total_students: number;
+  active_students: number;
+  avg_progress: number;
+  completion_rate: number;
+  contents_count: number;
+}
+
+// Course Content API
+export const fetchCourseContents = async (courseId: number): Promise<CourseContentType[]> => {
+  const res = await api.get(`/api/course-contents/?course=${courseId}`);
+  return res.data;
+};
+
+export const createCourseContent = async (data: Partial<CourseContentType>): Promise<CourseContentType> => {
+  const res = await api.post('/api/course-contents/', data);
+  return res.data;
+};
+
+export const updateCourseContent = async (id: number, data: Partial<CourseContentType>): Promise<CourseContentType> => {
+  const res = await api.patch(`/api/course-contents/${id}/`, data);
+  return res.data;
+};
+
+export const deleteCourseContent = async (id: number): Promise<void> => {
+  await api.delete(`/api/course-contents/${id}/`);
+};
+
+// Course Progress API
+export const fetchCourseProgress = async (courseId: number): Promise<CourseProgressType[]> => {
+  const res = await api.get(`/api/course-progress/?course=${courseId}`);
+  return res.data;
+};
+
+// Course Reports API
+export const fetchCourseReports = async (courseId: number): Promise<CourseReportType[]> => {
+  const res = await api.get(`/api/course-reports/?course=${courseId}`);
+  return res.data;
+};
+
+export const createCourseReport = async (data: Partial<CourseReportType>): Promise<CourseReportType> => {
+  const res = await api.post('/api/course-reports/', data);
+  return res.data;
+};
+
+// Analytics API
+export const fetchCourseAnalytics = async (courseId: number): Promise<CourseAnalyticsType> => {
+  const res = await api.get(`/api/courses/${courseId}/analytics/`);
+  return res.data;
+};
+
+export const fetchStudentProgress = async (courseId: number): Promise<CourseProgressType[]> => {
+  const res = await api.get(`/api/courses/${courseId}/student-progress/`);
+  return res.data;
+};
+
+/* ========== COURSE EXPORT API ========== */
+export const exportCourseReport = async (courseId: number, format: 'pdf' | 'excel' = 'pdf'): Promise<Blob> => {
+  const res = await api.get(`/api/courses/${courseId}/export/`, {
+    params: { format },
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+export const exportCourseAnalytics = async (courseId: number): Promise<Blob> => {
+  const res = await api.get(`/api/courses/${courseId}/export-analytics/`, {
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
 export default api;

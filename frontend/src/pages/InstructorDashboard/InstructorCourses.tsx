@@ -1,16 +1,429 @@
-// InstructorCourses.tsx - FIXED VERSION
-import React, { useState, useEffect } from 'react';
-import { Calendar, Users, Clock, BookOpen, BarChart3, Layers, Search, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+// InstructorCourses.tsx - UPDATED WITH CLIENT-SIDE EXPORT FUNCTIONALITY
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Calendar, Users, Clock, BookOpen, BarChart3, Layers, Search, 
+  CheckCircle, AlertCircle, RefreshCw, FileText, Download, 
+  Upload, Settings, X
+} from 'lucide-react';
 import { motion } from 'framer-motion';
-import { type CourseType, fetchMyCourses, fetchAvailableCourses, assignCourseToMe } from '../../api/api';
+import { 
+  type CourseType, 
+  fetchMyCourses, 
+  fetchAvailableCourses, 
+  assignCourseToMe,
+  fetchCourseAnalytics,
+  updateCourse
+} from '../../api/api';
 import toast from 'react-hot-toast';
 
+// Import export utilities
+import { exportToPDF, exportToExcel, exportToCSV } from '../../utils/exportUtils';
+
+// Manage Content Modal Component (keep this the same as before)
+interface ManageContentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  course: CourseType | null;
+  onUpdate: (courseId: number, data: Partial<CourseType>) => Promise<void>;
+  updating: boolean;
+}
+
+const ManageContentModal: React.FC<ManageContentModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  course, 
+  onUpdate,
+  updating 
+}) => {
+  const [formData, setFormData] = useState({
+    description: '',
+    schedule: '',
+    next_session: '',
+    students: '0',
+    progress: '0'
+  });
+
+  useEffect(() => {
+    if (course && isOpen) {
+      setFormData({
+        description: course.description || '',
+        schedule: course.schedule || '',
+        next_session: course.next_session || '',
+        students: course.students.toString(),
+        progress: course.progress.toString()
+      });
+    }
+  }, [course, isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!course) return;
+
+    try {
+      await onUpdate(course.id, {
+        description: formData.description,
+        schedule: formData.schedule,
+        next_session: formData.next_session,
+        students: parseInt(formData.students),
+        progress: parseInt(formData.progress)
+      });
+      onClose();
+    } catch (error) {
+      console.error('Error updating course:', error);
+    }
+  };
+
+  if (!isOpen || !course) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl p-6 relative max-h-screen overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Manage Course Content</h2>
+        <p className="text-gray-600 mb-6">{course.name} ({course.code})</p>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Course Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={4}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              placeholder="Update course description..."
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Schedule
+              </label>
+              <input
+                type="text"
+                value={formData.schedule}
+                onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="e.g., Mon-Wed-Fri 9:00-11:00"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Clock className="w-4 h-4 inline mr-1" />
+                Next Session
+              </label>
+              <input
+                type="text"
+                value={formData.next_session}
+                onChange={(e) => setFormData({ ...formData, next_session: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="e.g., December 15, 2024"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Users className="w-4 h-4 inline mr-1" />
+                Student Count
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.students}
+                onChange={(e) => setFormData({ ...formData, students: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <BarChart3 className="w-4 h-4 inline mr-1" />
+                Progress (%)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={formData.progress}
+                onChange={(e) => setFormData({ ...formData, progress: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Materials</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                type="button"
+                className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 transition-colors"
+              >
+                <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                <span className="text-sm text-gray-600">Upload Materials</span>
+              </button>
+              
+              <button
+                type="button"
+                className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 transition-colors"
+              >
+                <FileText className="w-8 h-8 text-gray-400 mb-2" />
+                <span className="text-sm text-gray-600">Add Assignment</span>
+              </button>
+              
+              <button
+                type="button"
+                className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 transition-colors"
+              >
+                <Settings className="w-8 h-8 text-gray-400 mb-2" />
+                <span className="text-sm text-gray-600">Course Settings</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              disabled={updating}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={updating}
+              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
+            >
+              {updating ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// View Reports Modal Component - UPDATED WITH CLIENT-SIDE EXPORT
+interface ViewReportsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  course: CourseType | null;
+  analytics: any;
+  loading: boolean;
+  onExport: (courseId: number, format: 'pdf' | 'excel' | 'csv', reportData: any) => Promise<void>;
+  exporting: boolean;
+}
+
+const ViewReportsModal: React.FC<ViewReportsModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  course, 
+  analytics,
+  loading,
+  onExport,
+  exporting
+}) => {
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'excel' | 'csv'>('pdf');
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  if (!isOpen || !course) return null;
+
+  // Mock data for demonstration - replace with actual analytics data
+  const mockReports = {
+    total_students: analytics?.total_students || course.students,
+    completion_rate: analytics?.completion_rate || Math.round(course.progress),
+    average_attendance: 85,
+    upcoming_deadlines: [
+      { task: 'Assignment 1', due_date: '2024-12-20', submissions: 15 },
+      { task: 'Quiz 2', due_date: '2024-12-25', submissions: 12 }
+    ],
+    student_performance: {
+      excellent: 8,
+      good: 12,
+      average: 5,
+      needs_improvement: 2
+    },
+    weekly_progress: [
+      { week: 'Week 1', progress: 20 },
+      { week: 'Week 2', progress: 45 },
+      { week: 'Week 3', progress: 65 },
+      { week: 'Week 4', progress: 80 },
+      { week: 'Week 5', progress: course.progress }
+    ]
+  };
+
+  const reportData = {
+    course,
+    analytics: mockReports,
+    generatedAt: new Date().toLocaleString()
+  };
+
+  const handleExport = async () => {
+    if (!course) return;
+    await onExport(course.id, exportFormat, reportData);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl p-6 relative max-h-screen overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Course Reports & Analytics</h2>
+            <p className="text-gray-600">{course.name} ({course.code})</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <select
+              value={exportFormat}
+              onChange={(e) => setExportFormat(e.target.value as 'pdf' | 'excel' | 'csv')}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="pdf">PDF</option>
+              <option value="excel">Excel</option>
+              <option value="csv">CSV</option>
+            </select>
+            <button 
+              onClick={handleExport}
+              disabled={exporting}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              {exporting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              <span>{exporting ? 'Exporting...' : 'Export Report'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div ref={reportRef}>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <RefreshCw className="w-8 h-8 animate-spin text-green-600" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Key Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{mockReports.total_students}</div>
+                  <div className="text-sm text-blue-800">Total Students</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">{mockReports.completion_rate}%</div>
+                  <div className="text-sm text-green-800">Completion Rate</div>
+                </div>
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-yellow-600">{mockReports.average_attendance}%</div>
+                  <div className="text-sm text-yellow-800">Avg Attendance</div>
+                </div>
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {mockReports.upcoming_deadlines?.length || 0}
+                  </div>
+                  <div className="text-sm text-purple-800">Upcoming Deadlines</div>
+                </div>
+              </div>
+
+              {/* Student Performance */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Performance</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {mockReports.student_performance && Object.entries(mockReports.student_performance).map(([key, value]) => (
+                    <div key={key} className="text-center">
+                      <div className="text-2xl font-bold text-gray-900">{value as number}</div>
+                      <div className="text-sm text-gray-600 capitalize">{key.replace('_', ' ')}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Progress Chart */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Progress</h3>
+                <div className="space-y-3">
+                  {mockReports.weekly_progress?.map((week: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{week.week}</span>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-green-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${week.progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 w-8">{week.progress}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upcoming Deadlines */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Deadlines</h3>
+                <div className="space-y-3">
+                  {mockReports.upcoming_deadlines?.map((deadline: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium text-gray-900">{deadline.task}</div>
+                        <div className="text-sm text-gray-600">Due: {deadline.due_date}</div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {deadline.submissions} submissions
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced InstructorCourses Component - UPDATED WITH CLIENT-SIDE EXPORT
 const InstructorCourses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [myCourses, setMyCourses] = useState<CourseType[]>([]);
   const [availableCourses, setAvailableCourses] = useState<CourseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<number | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Modal states
+  const [manageContentModal, setManageContentModal] = useState({ isOpen: false, course: null as CourseType | null });
+  const [viewReportsModal, setViewReportsModal] = useState({ isOpen: false, course: null as CourseType | null, analytics: null as any });
 
   useEffect(() => {
     loadCourses();
@@ -19,13 +432,10 @@ const InstructorCourses: React.FC = () => {
   const loadCourses = async () => {
     try {
       setLoading(true);
-      
-      // Use dedicated endpoints instead of filtering
       const [myCoursesData, availableCoursesData] = await Promise.all([
-        fetchMyCourses(),      // /api/courses/my/
-        fetchAvailableCourses() // /api/courses/available/
+        fetchMyCourses(),
+        fetchAvailableCourses()
       ]);
-      
       setMyCourses(myCoursesData);
       setAvailableCourses(availableCoursesData);
     } catch (error: any) {
@@ -35,6 +445,95 @@ const InstructorCourses: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAssign = async (id: number) => {
+    try {
+      setAssigning(id);
+      await assignCourseToMe(id);
+      toast.success('Course assigned successfully!');
+      await loadCourses();
+    } catch (error: any) {
+      console.error('Error assigning course:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to assign course';
+      toast.error(errorMessage);
+    } finally {
+      setAssigning(null);
+    }
+  };
+
+  const handleManageContent = (course: CourseType) => {
+    setManageContentModal({ isOpen: true, course });
+  };
+
+  const handleViewReports = async (course: CourseType) => {
+    setAnalyticsLoading(true);
+    setViewReportsModal({ isOpen: true, course, analytics: null });
+    
+    try {
+      const analytics = await fetchCourseAnalytics(course.id);
+      setViewReportsModal({ isOpen: true, course, analytics });
+    } catch (error: any) {
+      console.error('Error loading analytics:', error);
+      setViewReportsModal({ isOpen: true, course, analytics: null });
+      toast.error('Failed to load detailed analytics, showing basic course data');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  const handleUpdateContent = async (courseId: number, data: Partial<CourseType>) => {
+    setUpdating(true);
+    try {
+      await updateCourse(courseId, data);
+      toast.success('Course content updated successfully!');
+      await loadCourses();
+    } catch (error: any) {
+      console.error('Error updating course:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to update course';
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleExportReport = async (courseId: number, format: 'pdf' | 'excel' | 'csv', reportData: any) => {
+    setExporting(true);
+    try {
+      const course = myCourses.find(c => c.id === courseId) || availableCourses.find(c => c.id === courseId);
+      if (!course) {
+        throw new Error('Course not found');
+      }
+
+      const filename = `course-report-${course.code}-${new Date().toISOString().split('T')[0]}`;
+
+      switch (format) {
+        case 'pdf':
+          await exportToPDF(reportData, filename);
+          break;
+        case 'excel':
+          await exportToExcel(reportData, filename);
+          break;
+        case 'csv':
+          await exportToCSV(reportData, filename);
+          break;
+        default:
+          throw new Error('Unsupported export format');
+      }
+
+      toast.success(`Report exported successfully as ${format.toUpperCase()}!`);
+    } catch (error: any) {
+      console.error('Error exporting report:', error);
+      toast.error(error.message || 'Failed to export report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    await loadCourses();
+    toast.success('Courses refreshed!');
   };
 
   const filteredMyCourses = myCourses.filter(
@@ -50,27 +549,6 @@ const InstructorCourses: React.FC = () => {
       course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-
-  const handleAssign = async (id: number) => {
-    try {
-      setAssigning(id);
-      await assignCourseToMe(id);
-      toast.success('Course assigned successfully!');
-      // Reload courses after assignment
-      await loadCourses();
-    } catch (error: any) {
-      console.error('Error assigning course:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to assign course';
-      toast.error(errorMessage);
-    } finally {
-      setAssigning(null);
-    }
-  };
-
-  const handleRefresh = async () => {
-    await loadCourses();
-    toast.success('Courses refreshed!');
-  };
 
   if (loading) {
     return (
@@ -186,11 +664,17 @@ const InstructorCourses: React.FC = () => {
 
                 {/* Action Buttons */}
                 <div className="flex space-x-3">
-                  <button className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-green-700 transition-colors">
+                  <button 
+                    onClick={() => handleManageContent(course)}
+                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-green-700 transition-colors"
+                  >
                     <BookOpen className="w-4 h-4" />
                     <span>Manage Content</span>
                   </button>
-                  <button className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-gray-100 transition-colors">
+                  <button 
+                    onClick={() => handleViewReports(course)}
+                    className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-gray-100 transition-colors"
+                  >
                     <BarChart3 className="w-4 h-4" />
                     <span>View Reports</span>
                   </button>
@@ -308,6 +792,26 @@ const InstructorCourses: React.FC = () => {
             <div className="text-sm text-gray-600">Total Students Enrolled</div>
           </div>
         </div>
+
+        {/* Manage Content Modal */}
+        <ManageContentModal
+          isOpen={manageContentModal.isOpen}
+          onClose={() => setManageContentModal({ isOpen: false, course: null })}
+          course={manageContentModal.course}
+          onUpdate={handleUpdateContent}
+          updating={updating}
+        />
+
+        {/* View Reports Modal */}
+        <ViewReportsModal
+          isOpen={viewReportsModal.isOpen}
+          onClose={() => setViewReportsModal({ isOpen: false, course: null, analytics: null })}
+          course={viewReportsModal.course}
+          analytics={viewReportsModal.analytics}
+          loading={analyticsLoading}
+          onExport={handleExportReport}
+          exporting={exporting}
+        />
       </div>
     </div>
   );

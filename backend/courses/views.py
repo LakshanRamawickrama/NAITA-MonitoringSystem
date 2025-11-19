@@ -215,3 +215,103 @@ class CourseApprovalViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Automatically set the requested_by user when creating approval"""
         serializer.save(requested_by=self.request.user)
+        
+# ==================== instructor report & manage veiws ====================
+
+# Add these to courses/views.py
+
+@api_view(['GET'])
+@permission_classes([IsInstructor])
+def course_details_view(request, pk):
+    """Get detailed course information for management"""
+    try:
+        course = Course.objects.get(id=pk)
+        
+        # Check if instructor owns the course
+        if request.user.role == 'instructor' and course.instructor != request.user:
+            return Response(
+                {'error': 'You can only view your own courses'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = CourseSerializer(course)
+        return Response(serializer.data)
+    except Course.DoesNotExist:
+        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET'])
+@permission_classes([IsInstructor])
+def course_reports_view(request, pk):
+    """Get course reports and analytics"""
+    try:
+        course = Course.objects.get(id=pk)
+        
+        # Check if instructor owns the course
+        if request.user.role == 'instructor' and course.instructor != request.user:
+            return Response(
+                {'error': 'You can only view reports for your own courses'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Mock report data - replace with actual analytics
+        report_data = {
+            'course_id': course.id,
+            'course_name': course.name,
+            'total_students': course.students,
+            'completion_rate': course.progress,
+            'average_attendance': 85,  # Mock data
+            'student_performance': {
+                'excellent': 15,
+                'good': 25,
+                'average': 40,
+                'needs_improvement': 20
+            },
+            'weekly_progress': [
+                {'week': 'Week 1', 'progress': 20},
+                {'week': 'Week 2', 'progress': 45},
+                {'week': 'Week 3', 'progress': 65},
+                {'week': 'Week 4', 'progress': 85},
+                {'week': 'Week 5', 'progress': 95},
+            ],
+            'upcoming_deadlines': [
+                {'task': 'Assignment 1', 'due_date': '2024-12-01', 'submissions': 45},
+                {'task': 'Project Submission', 'due_date': '2024-12-15', 'submissions': 12},
+            ]
+        }
+        
+        return Response(report_data)
+    except Course.DoesNotExist:
+        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([IsInstructor])
+def update_course_content(request, pk):
+    """Update course content and materials"""
+    try:
+        course = Course.objects.get(id=pk)
+        
+        # Check if instructor owns the course
+        if course.instructor != request.user:
+            return Response(
+                {'error': 'You can only update your own courses'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Update course fields
+        if 'description' in request.data:
+            course.description = request.data['description']
+        if 'schedule' in request.data:
+            course.schedule = request.data['schedule']
+        if 'next_session' in request.data:
+            course.next_session = request.data['next_session']
+        if 'students' in request.data:
+            course.students = request.data['students']
+        if 'progress' in request.data:
+            course.progress = request.data['progress']
+        
+        course.save()
+        
+        serializer = CourseSerializer(course)
+        return Response(serializer.data)
+    except Course.DoesNotExist:
+        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
