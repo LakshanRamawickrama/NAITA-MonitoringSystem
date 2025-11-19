@@ -1,6 +1,6 @@
 // src/pages/HeadOfficeDashboard/Users.tsx
 import React, { useState, useEffect, useMemo } from "react";
-import DataTable from "../components/DataTable";
+import DataTable from "../../components/DataTable";
 import {
   Search, Plus, Mail, Shield, X, Loader2,
   Edit, Trash2, Key, AlertCircle, MapPin
@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import {
   fetchUsers, createUser, fetchCenters,
   updateUser, deleteUser, changePassword
-} from "../api/api";
+} from "../../api/api";
 
 interface Center {
   id: number;

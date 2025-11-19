@@ -1,10 +1,112 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, BookOpen, Users, TrendingUp, Award } from 'lucide-react';
 
-const InstructorOverview: React.FC = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('week');
+// Interfaces
+interface InstructorStats {
+  weeklyHours: number;
+  totalStudents: number;
+  completedCourses: number;
+  upcomingClasses: number;
+  performance: number;
+  attendanceRate: number;
+}
 
-  const statsData = {
+interface UpcomingClass {
+  id: string;
+  course: string;
+  date: string;
+  time: string;
+  students: number;
+}
+
+interface RecentActivity {
+  id: string;
+  action: string;
+  course: string;
+  time: string;
+}
+
+interface StatsCardProps {
+  title: string;
+  value: string | number;
+  icon: React.ComponentType<any>;
+  color: 'green' | 'blue' | 'purple' | 'orange' | 'yellow' | 'red';
+}
+
+interface ClassCardProps {
+  classItem: UpcomingClass;
+  onViewDetails: (classId: string) => void;
+}
+
+interface ActivityCardProps {
+  activity: RecentActivity;
+}
+
+// Stats Card Component
+const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon: Icon, color }) => {
+  const colorClasses = {
+    green: 'text-green-600',
+    blue: 'text-blue-600',
+    purple: 'text-purple-600',
+    orange: 'text-orange-600',
+    yellow: 'text-yellow-600',
+    red: 'text-red-600'
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-2xl font-bold text-gray-900">{value}</div>
+          <div className="text-sm text-gray-600">{title}</div>
+        </div>
+        <Icon className={`w-8 h-8 ${colorClasses[color]}`} />
+      </div>
+    </div>
+  );
+};
+
+// Class Card Component
+const ClassCard: React.FC<ClassCardProps> = ({ classItem, onViewDetails }) => {
+  return (
+    <div className="border-b border-gray-100 last:border-b-0 py-4 last:pb-0 first:pt-0">
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="font-semibold text-gray-900">{classItem.course}</h3>
+          <p className="text-sm text-gray-600">{classItem.date} • {classItem.time}</p>
+          <p className="text-sm text-gray-500">{classItem.students} students enrolled</p>
+        </div>
+        <button 
+          onClick={() => onViewDetails(classItem.id)}
+          className="text-green-600 hover:text-green-800 text-sm font-medium"
+        >
+          View Details
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Activity Card Component
+const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
+  return (
+    <div className="border-b border-gray-100 last:border-b-0 py-4 last:pb-0 first:pt-0">
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="font-semibold text-gray-900">{activity.action}</h3>
+          <p className="text-sm text-gray-600">{activity.course}</p>
+        </div>
+        <span className="text-sm text-gray-500">{activity.time}</span>
+      </div>
+    </div>
+  );
+};
+
+const InstructorOverview: React.FC = () => {
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('week');
+
+  // Stats data with proper typing
+  const statsData: InstructorStats = {
     weeklyHours: 32,
     totalStudents: 45,
     completedCourses: 12,
@@ -13,7 +115,8 @@ const InstructorOverview: React.FC = () => {
     attendanceRate: 95
   };
 
-  const upcomingClasses = [
+  // Upcoming classes data
+  const upcomingClasses: UpcomingClass[] = [
     {
       id: '1',
       course: 'Web Development Fundamentals',
@@ -37,7 +140,8 @@ const InstructorOverview: React.FC = () => {
     }
   ];
 
-  const recentActivity = [
+  // Recent activity data
+  const recentActivity: RecentActivity[] = [
     {
       id: '1',
       action: 'Graded assignments',
@@ -58,6 +162,23 @@ const InstructorOverview: React.FC = () => {
     }
   ];
 
+  // Period options
+  const periodOptions = [
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'quarter', label: 'This Quarter' }
+  ];
+
+  // Event handlers
+  const handleViewClassDetails = (classId: string): void => {
+    console.log('Viewing details for class:', classId);
+    // Implement navigation or modal opening logic here
+  };
+
+  const handlePeriodChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
+    setSelectedPeriod(event.target.value);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -71,76 +192,55 @@ const InstructorOverview: React.FC = () => {
         <div className="mb-6 flex justify-end">
           <select
             value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
+            onChange={handlePeriodChange}
             className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
           >
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="quarter">This Quarter</option>
+            {periodOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-900">{statsData.weeklyHours}h</div>
-                <div className="text-sm text-gray-600">Teaching Hours</div>
-              </div>
-              <Clock className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-900">{statsData.totalStudents}</div>
-                <div className="text-sm text-gray-600">Total Students</div>
-              </div>
-              <Users className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-900">{statsData.completedCourses}</div>
-                <div className="text-sm text-gray-600">Completed Courses</div>
-              </div>
-              <BookOpen className="w-8 h-8 text-purple-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-900">{statsData.upcomingClasses}</div>
-                <div className="text-sm text-gray-600">Upcoming Classes</div>
-              </div>
-              <Calendar className="w-8 h-8 text-orange-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-900">{statsData.performance}/5.0</div>
-                <div className="text-sm text-gray-600">Performance Rating</div>
-              </div>
-              <TrendingUp className="w-8 h-8 text-yellow-600" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-gray-900">{statsData.attendanceRate}%</div>
-                <div className="text-sm text-gray-600">Attendance Rate</div>
-              </div>
-              <Award className="w-8 h-8 text-red-600" />
-            </div>
-          </div>
+          <StatsCard
+            title="Teaching Hours"
+            value={`${statsData.weeklyHours}h`}
+            icon={Clock}
+            color="green"
+          />
+          <StatsCard
+            title="Total Students"
+            value={statsData.totalStudents}
+            icon={Users}
+            color="blue"
+          />
+          <StatsCard
+            title="Completed Courses"
+            value={statsData.completedCourses}
+            icon={BookOpen}
+            color="purple"
+          />
+          <StatsCard
+            title="Upcoming Classes"
+            value={statsData.upcomingClasses}
+            icon={Calendar}
+            color="orange"
+          />
+          <StatsCard
+            title="Performance Rating"
+            value={`${statsData.performance}/5.0`}
+            icon={TrendingUp}
+            color="yellow"
+          />
+          <StatsCard
+            title="Attendance Rate"
+            value={`${statsData.attendanceRate}%`}
+            icon={Award}
+            color="red"
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -151,18 +251,11 @@ const InstructorOverview: React.FC = () => {
             </div>
             <div className="p-6">
               {upcomingClasses.map((classItem) => (
-                <div key={classItem.id} className="border-b border-gray-100 last:border-b-0 py-4 last:pb-0 first:pt-0">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{classItem.course}</h3>
-                      <p className="text-sm text-gray-600">{classItem.date} • {classItem.time}</p>
-                      <p className="text-sm text-gray-500">{classItem.students} students enrolled</p>
-                    </div>
-                    <button className="text-green-600 hover:text-green-800 text-sm font-medium">
-                      View Details
-                    </button>
-                  </div>
-                </div>
+                <ClassCard
+                  key={classItem.id}
+                  classItem={classItem}
+                  onViewDetails={handleViewClassDetails}
+                />
               ))}
             </div>
           </div>
@@ -174,15 +267,10 @@ const InstructorOverview: React.FC = () => {
             </div>
             <div className="p-6">
               {recentActivity.map((activity) => (
-                <div key={activity.id} className="border-b border-gray-100 last:border-b-0 py-4 last:pb-0 first:pt-0">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{activity.action}</h3>
-                      <p className="text-sm text-gray-600">{activity.course}</p>
-                    </div>
-                    <span className="text-sm text-gray-500">{activity.time}</span>
-                  </div>
-                </div>
+                <ActivityCard
+                  key={activity.id}
+                  activity={activity}
+                />
               ))}
             </div>
           </div>

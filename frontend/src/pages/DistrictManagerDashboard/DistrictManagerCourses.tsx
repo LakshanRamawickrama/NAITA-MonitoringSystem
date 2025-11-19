@@ -1,12 +1,20 @@
-// ManagerCourses.tsx
+// DistrictManagerCourses.tsx
 import React, { useState } from 'react';
-import SharedNavbar from '../../components/SharedNavbar';
-import { Search, Plus, Filter, Eye, Edit, Trash2, BookOpen } from 'lucide-react';
+import { Search, Filter, Eye, Edit, Trash2, BookOpen, Check, X } from 'lucide-react';
 
-const ManagerCourses: React.FC = () => {
+interface Course {
+  id: number;
+  name: string;
+  code: string;
+  duration: string;
+  instructor: string;
+  students: number;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Active' | 'Inactive';
+}
+
+const DistrictManagerCourses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-
-  const coursesData = [
+  const [courses, setCourses] = useState<Course[]>([
     {
       id: 1,
       name: 'Web Development',
@@ -14,7 +22,7 @@ const ManagerCourses: React.FC = () => {
       duration: '6 months',
       instructor: 'John Smith',
       students: 25,
-      status: 'Active',
+      status: 'Pending',
     },
     {
       id: 2,
@@ -34,31 +42,37 @@ const ManagerCourses: React.FC = () => {
       students: 20,
       status: 'Inactive',
     },
-  ];
+  ]);
 
-  const filteredCourses = coursesData.filter(
+  const filteredCourses = courses.filter(
     (course) =>
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleApprove = (id: number) => {
+    setCourses(courses.map(course => 
+      course.id === id ? { ...course, status: 'Approved' } : course
+    ));
+  };
+
+  const handleReject = (id: number) => {
+    setCourses(courses.map(course => 
+      course.id === id ? { ...course, status: 'Rejected' } : course
+    ));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <SharedNavbar userRole="center_manager" userName="Sarah Nakato" />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Course Management</h1>
-              <p className="text-gray-600 mt-2">Manage and monitor all your center’s courses</p>
+              <h1 className="text-3xl font-bold text-gray-900">Course Approvals</h1>
+              <p className="text-gray-600 mt-2">Review and approve courses in your district</p>
             </div>
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
-              <Plus className="w-4 h-4" />
-              <span>Add Course</span>
-            </button>
           </div>
         </div>
 
@@ -137,8 +151,10 @@ const ManagerCourses: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          course.status === 'Active'
+                          course.status === 'Approved' || course.status === 'Active'
                             ? 'bg-green-100 text-green-800'
+                            : course.status === 'Pending'
+                            ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}
                       >
@@ -149,6 +165,16 @@ const ManagerCourses: React.FC = () => {
                       <button className="text-blue-600 hover:text-blue-900">
                         <Eye className="w-4 h-4" />
                       </button>
+                      {course.status === 'Pending' && (
+                        <>
+                          <button onClick={() => handleApprove(course.id)} className="text-green-600 hover:text-green-900">
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleReject(course.id)} className="text-red-600 hover:text-red-900">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                       <button className="text-green-600 hover:text-green-900">
                         <Edit className="w-4 h-4" />
                       </button>
@@ -166,15 +192,17 @@ const ManagerCourses: React.FC = () => {
         {/* Stats Summary */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-green-600">12</div>
+            <div className="text-2xl font-bold text-green-600">{courses.length}</div>
             <div className="text-sm text-gray-600">Total Courses</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-yellow-500">8</div>
-            <div className="text-sm text-gray-600">Active Courses</div>
+            <div className="text-2xl font-bold text-yellow-500">
+              {courses.filter(c => c.status === 'Pending').length}
+            </div>
+            <div className="text-sm text-gray-600">Pending Approvals</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-sky-500">120</div>
+            <div className="text-2xl font-bold text-sky-500">{courses.reduce((acc, c) => acc + c.students, 0)}</div>
             <div className="text-sm text-gray-600">Total Enrolled Students</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
@@ -187,4 +215,4 @@ const ManagerCourses: React.FC = () => {
   );
 };
 
-export default ManagerCourses;
+export default DistrictManagerCourses;

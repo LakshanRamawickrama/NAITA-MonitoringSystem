@@ -1,6 +1,6 @@
 // src/pages/HeadOfficeDashboard/Centers.tsx
 import React, { useState, useEffect, useMemo } from "react";
-import DataTable from "../components/DataTable";
+import DataTable from "../../components/DataTable";
 import {
   Search,
   Plus,
@@ -20,7 +20,7 @@ import {
   updateCenter,
   deleteCenter,
   type Center,
-} from "../api/api";
+} from "../../api/api";
 
 const Centers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");

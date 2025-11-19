@@ -1,32 +1,33 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import SharedNavbar from "../components/SharedNavbar";
+import SharedNavbar from "../../components/SharedNavbar";
 
 // === Import ALL your pages ===
 import Centers from "./Centers";
 import Users from "./Users";
-import Courses from "./Courses";
-
-import HeadOfficeOverview from "./HeadOfficeDashboard/Overview";
-import Approvals from "./HeadOfficeDashboard/Approvals";
-import Reports from "./HeadOfficeDashboard/Reports";
-
-import CenterManagerOverview from "./DistrictManagerDashboard/Overview";
-import CenterManagerApprovals from "./DistrictManagerDashboard/DistrictManagerApprovals";
-
-import TrainingOfficerInstructor from "./TrainingOfficerDashboard/Instructor";
-import TrainingOfficeOverview from "./TrainingOfficerDashboard/TrainingOfficerOverview";
 
 
+import HeadOfficeOverview from "../HeadOfficeDashboard/HeadOfficeOverview";
+import HeadOfficeCourses from "../HeadOfficeDashboard/HeadOfficeCourses";
+import HeadOfficeApprovals from "../HeadOfficeDashboard/HeadOfficeApprovals";
+import HeadOfficeReports from "../HeadOfficeDashboard/HeadOfficeReports";
 
-import DataEntryStudents from "./DataEntryDashboard/DataEntryStudents";
-import DataEntryCourses from "./DataEntryDashboard/DataEntryCourses";
-import DataEntryEnrollments from "./DataEntryDashboard/DataEntryEnrollments";
+import DistrictManagerOverview from "../DistrictManagerDashboard/DistrictManagerOverview";
+import DistrictManagerCourses from "../DistrictManagerDashboard/DistrictManagerCourses";
+import DistrictManagerApprovals from "../DistrictManagerDashboard/DistrictManagerApprovals";
 
-import InstructorOverview from "./InstructorDashboard/InstructorOverview";
-import InstructorCourses from "./InstructorDashboard/InstructorCourses";
-import InstructorStudents from "./InstructorDashboard/InstructorStudents";
-import InstructorAttendance from "./InstructorDashboard/InstructorAttendance";
+import TrainingOfficerInstructor from "../TrainingOfficerDashboard/TrainingOfficerInstructor";
+import TrainingOfficerCourses from "../TrainingOfficerDashboard/TrainingOfficerCourses";
+import TrainingOfficeOverview from "../TrainingOfficerDashboard/TrainingOfficerOverview";
+
+import DataEntryStudents from "../DataEntryDashboard/DataEntryStudents";
+import DataEntryCourses from "../DataEntryDashboard/DataEntryCourses";
+import DataEntryEnrollments from "../DataEntryDashboard/DataEntryEnrollments";
+
+import InstructorOverview from "../InstructorDashboard/InstructorOverview";
+import InstructorCourses from "../InstructorDashboard/InstructorCourses";
+import InstructorStudents from "../InstructorDashboard/InstructorStudents";
+import InstructorAttendance from "../InstructorDashboard/InstructorAttendance";
 
 
 const Dashboard = () => {
@@ -71,21 +72,21 @@ const Dashboard = () => {
         {role === "admin" && location.pathname === "/dashboard/admin" && <HeadOfficeOverview />}
         {role === "admin" && location.pathname === "/dashboard/admin/centers" && <Centers />}
         {role === "admin" && location.pathname === "/dashboard/admin/users" && <Users />}
-        {role === "admin" && location.pathname === "/dashboard/admin/approvals" && <Approvals />}
-        {role === "admin" && location.pathname === "/dashboard/admin/courses" && <Courses />}
-        {role === "admin" && location.pathname === "/dashboard/admin/reports" && <Reports />}
+        {role === "admin" && location.pathname === "/dashboard/admin/approvals" && <HeadOfficeApprovals />}
+        {role === "admin" && location.pathname === "/dashboard/admin/courses" && <HeadOfficeCourses />}
+        {role === "admin" && location.pathname === "/dashboard/admin/reports" && <HeadOfficeReports />}
 
         {/* === CENTER MANAGER === */}
-        {role === "district_manager" && location.pathname === "/dashboard/manager" && <CenterManagerOverview />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager" && <DistrictManagerOverview />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/centers" && <Centers />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/users" && <Users />}
-        {role === "district_manager" && location.pathname === "/dashboard/manager/courses" && <Courses />}
-        {role === "district_manager" && location.pathname === "/dashboard/manager/approvals_dm" && <CenterManagerApprovals />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager/courses" && <DistrictManagerCourses />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager/approvals_dm" && <DistrictManagerApprovals />}
 
         {/* === TRAINING OFFICER === */}
         {role === "training_officer" && location.pathname === "/dashboard/training_officer/instructors" && <TrainingOfficerInstructor />}
         {role === "training_officer" && location.pathname === "/dashboard/training_officer" && <TrainingOfficeOverview />}
-        {role === "training_officer" && location.pathname === "/dashboard/training_officer/courses" && <Courses />}
+        {role === "training_officer" && location.pathname === "/dashboard/training_officer/courses" && <TrainingOfficerCourses />}
 
 
         {/* === DATA ENTRY === */}
