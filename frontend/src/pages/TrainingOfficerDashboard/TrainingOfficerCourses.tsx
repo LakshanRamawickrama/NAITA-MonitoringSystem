@@ -1,4 +1,4 @@
-// TrainingOfficerCourses.tsx - Complete updated version
+// TrainingOfficerCourses.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Filter, Eye, Edit, Trash2, BookOpen, X, MapPin, Loader2, Users, User, AlertCircle } from 'lucide-react';
 import { type CourseType, fetchCourses, createCourse, deleteCourse, fetchInstructors, fetchUsers } from '../../api/api';
@@ -96,9 +96,17 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
 
     try {
       const courseToSave = {
-        ...formData,
-        students: parseInt(formData.students) || 0,
+        name: formData.name,
+        code: formData.code,
+        category: formData.category,
+        duration: formData.duration,
+        description: formData.description,
+        district: formData.district,
         instructor: formData.instructor ? parseInt(formData.instructor) : null,
+        students: parseInt(formData.students) || 0,
+        progress: 0,
+        status: 'Pending' as const,
+        priority: 'Medium' as const,
       };
       await onSave(courseToSave);
       setFormData({ 
@@ -474,16 +482,28 @@ const TrainingOfficerCourses: React.FC = () => {
     setSubmitting(true);
     try {
       const courseToCreate = {
-        ...courseData,
+        name: courseData.name || '',
+        code: courseData.code || '',
+        category: courseData.category || '',
+        duration: courseData.duration || '',
+        description: courseData.description || '',
+        district: courseData.district || userDistrict || '',
+        instructor: courseData.instructor || null,
+        students: courseData.students || 0,
         progress: 0,
         status: 'Pending' as const,
+        priority: 'Medium' as const,
       };
+      
       await createCourse(courseToCreate);
       await loadCourses();
       toast.success('Course created successfully!');
     } catch (error: any) {
       console.error('Error creating course:', error);
-      const errorMessage = error.response?.data?.name?.[0] || error.response?.data?.detail || 'Failed to create course';
+      const errorMessage = error.response?.data?.name?.[0] || 
+                          error.response?.data?.code?.[0] || 
+                          error.response?.data?.detail || 
+                          'Failed to create course';
       toast.error(errorMessage);
       throw error;
     } finally {

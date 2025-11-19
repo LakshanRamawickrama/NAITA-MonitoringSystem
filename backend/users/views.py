@@ -63,6 +63,16 @@ class IsAdminOrDistrictManagerOrTrainingOfficer(permissions.BasePermission):
             return obj.district == request.user.district
         
         return False
+    
+class IsInstructor(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == "instructor"
+
+class IsInstructorOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        return request.user.role in ["instructor", "admin"]
 
 # ==================== JWT: Login with Email + Role in Token ====================
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):

@@ -1,18 +1,15 @@
-# courses/urls.py
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+# courses/urls.py - MINIMAL VERSION
+from django.urls import path
 from . import views
 
-router = DefaultRouter()
-router.register(r'courses', views.CourseViewSet, basename='courses')
-router.register(r'course-approvals', views.CourseApprovalViewSet, basename='course-approvals')
-
 urlpatterns = [
-    path('api/', include(router.urls)),
+    # Only function-based views
+    path('api/courses/my/', views.my_courses_view, name='my-courses'),
+    path('api/courses/available/', views.available_courses_view, name='available-courses'),
+    path('api/courses/pending/', views.pending_courses_view, name='pending-courses'),
+    path('api/courses/<int:pk>/assign_to_me/', views.assign_to_me_view, name='assign-to-me'),
     
-    # Add the custom endpoints that are missing
-    path('api/courses/my/', views.CourseViewSet.as_view({'get': 'my_courses'}), name='my-courses'),
-    path('api/courses/available/', views.CourseViewSet.as_view({'get': 'available_courses'}), name='available-courses'),
-    path('api/courses/pending/', views.CourseViewSet.as_view({'get': 'pending_courses'}), name='pending-courses'),
-    path('api/course-approvals/my/', views.CourseApprovalViewSet.as_view({'get': 'my_approvals'}), name='my-course-approvals'),
+    # Basic CRUD endpoints
+    path('api/courses/', views.CourseViewSet.as_view({'get': 'list', 'post': 'create'}), name='courses-list'),
+    path('api/courses/<int:pk>/', views.CourseViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='courses-detail'),
 ]

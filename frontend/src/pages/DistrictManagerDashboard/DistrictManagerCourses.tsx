@@ -1,9 +1,10 @@
-// DistrictManagerCourses.tsx - Fixed imports
+// DistrictManagerCourses.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Eye, Edit, Trash2, BookOpen, Check, X } from 'lucide-react';
 import { 
-  type CourseType, 
+  type CourseType,
   fetchCourses, 
+  fetchPendingCourses, 
   updateCourse, 
   deleteCourse
 } from '../../api/api';
@@ -14,6 +15,9 @@ const DistrictManagerCourses: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
+  // Get user info
+  const userDistrict = localStorage.getItem("user_district") || "";
+
   useEffect(() => {
     loadCourses();
   }, []);
@@ -21,10 +25,21 @@ const DistrictManagerCourses: React.FC = () => {
   const loadCourses = async () => {
     try {
       setLoading(true);
-      const coursesData = await fetchCourses();
+      // Use pending courses endpoint for district managers
+      const coursesData = await fetchPendingCourses();
       setCourses(coursesData);
     } catch (error) {
       console.error('Error loading courses:', error);
+      // Fallback to regular fetch if pending endpoint fails
+      try {
+        const allCourses = await fetchCourses();
+        const pendingCourses = allCourses.filter(course => 
+          course.status === 'Pending' && course.district === userDistrict
+        );
+        setCourses(pendingCourses);
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }
@@ -123,6 +138,11 @@ const DistrictManagerCourses: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Course Approvals</h1>
               <p className="text-gray-600 mt-2">Review and approve courses in your district</p>
+              {userDistrict && (
+                <p className="text-sm text-green-600 mt-1">
+                  Managing courses in: <strong>{userDistrict}</strong> district
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -1,8 +1,8 @@
-// InstructorCourses.tsx - Updated version with working API calls
+// InstructorCourses.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Clock, BookOpen, BarChart3, Layers, Search, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { type CourseType, fetchCourses, assignCourseToMe } from '../../api/api';
+import { type CourseType, fetchMyCourses, fetchAvailableCourses, assignCourseToMe } from '../../api/api';
 import toast from 'react-hot-toast';
 
 const InstructorCourses: React.FC = () => {
@@ -20,16 +20,14 @@ const InstructorCourses: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch all courses with different status filters
-      const [activeCourses, approvedCourses] = await Promise.all([
-        // Courses assigned to current instructor (Active status)
-        fetchCourses({ status: 'Active' }),
-        // Available courses that are approved but not assigned
-        fetchCourses({ status: 'Approved' })
+      // Use dedicated endpoints instead of filtering
+      const [myCoursesData, availableCoursesData] = await Promise.all([
+        fetchMyCourses(),      // /api/courses/my/
+        fetchAvailableCourses() // /api/courses/available/
       ]);
       
-      setMyCourses(activeCourses);
-      setAvailableCourses(approvedCourses);
+      setMyCourses(myCoursesData);
+      setAvailableCourses(availableCoursesData);
     } catch (error: any) {
       console.error('Error loading courses:', error);
       const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to load courses';

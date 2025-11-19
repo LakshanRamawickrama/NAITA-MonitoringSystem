@@ -1,4 +1,4 @@
-// HeadOfficeCourses.tsx - Updated to use real API
+// HeadOfficeCourses.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, BookOpen } from 'lucide-react';
 import {type CourseType, fetchCourses } from '../../api/api';

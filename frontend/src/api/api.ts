@@ -1,4 +1,4 @@
-// src/api/api.ts
+// src/api/api.ts - COMPLETE FIXED VERSION
 import axios from "axios";
 
 const api = axios.create({
@@ -176,42 +176,35 @@ export const getCurrentUser = async (): Promise<UserType> => {
 };
 
 /* ========== USER MANAGEMENT API ========== */
-/* GET /api/users/ */
 export const fetchUsers = async (): Promise<UserType[]> => {
   const res = await api.get("/api/users/");
   return res.data;
 };
 
-/* POST /api/users/ */
 export const createUser = async (data: any): Promise<UserType> => {
   const res = await api.post("/api/users/", data);
   return res.data;
 };
 
-/* PATCH /api/users/:id/ */
 export const updateUser = async (id: number, data: any): Promise<UserType> => {
   const res = await api.patch(`/api/users/${id}/`, data);
   return res.data;
 };
 
-/* DELETE /api/users/:id/ */
 export const deleteUser = async (id: number): Promise<void> => {
   await api.delete(`/api/users/${id}/`);
 };
 
-/* POST /api/users/:id/change-password/ */
 export const changePassword = async (id: number, new_password: string): Promise<void> => {
   await api.post(`/api/users/${id}/change-password/`, { new_password });
 };
 
 /* ========== CENTER MANAGEMENT API ========== */
-/* GET /api/centers/ */
 export const fetchCenters = async (): Promise<Center[]> => {
   const res = await api.get("/api/centers/");
   return res.data;
 };
 
-/* POST /api/centers/create/ */
 export const createCenter = async (data: {
   name: string;
   location?: string | null;
@@ -227,7 +220,6 @@ export const createCenter = async (data: {
   return res.data;
 };
 
-/* PATCH /api/centers/<id>/update/ */
 export const updateCenter = async (
   id: number,
   data: Partial<{
@@ -246,13 +238,11 @@ export const updateCenter = async (
   return res.data;
 };
 
-/* DELETE /api/centers/<id>/delete/ */
 export const deleteCenter = async (id: number): Promise<void> => {
   await api.delete(`/api/centers/${id}/delete/`);
 };
 
-/* ========== COURSE MANAGEMENT API ========== */
-/* GET /api/courses/ */
+/* ========== COURSE MANAGEMENT API - FIXED ========== */
 export const fetchCourses = async (params?: {
   district?: string;
   status?: string;
@@ -262,49 +252,44 @@ export const fetchCourses = async (params?: {
   return res.data;
 };
 
-/* GET /api/courses/my/ */
+/* GET /api/courses/my/ - Instructor's assigned courses */
 export const fetchMyCourses = async (): Promise<CourseType[]> => {
   const res = await api.get("/api/courses/my/");
   return res.data;
 };
 
-/* GET /api/courses/available/ */
+/* GET /api/courses/available/ - Available courses for instructors */
 export const fetchAvailableCourses = async (): Promise<CourseType[]> => {
   const res = await api.get("/api/courses/available/");
   return res.data;
 };
 
-/* GET /api/courses/pending/ */
+/* GET /api/courses/pending/ - Pending approval courses */
 export const fetchPendingCourses = async (): Promise<CourseType[]> => {
   const res = await api.get("/api/courses/pending/");
   return res.data;
 };
 
-/* GET /api/courses/:id/ */
 export const fetchCourseById = async (id: number): Promise<CourseType> => {
   const res = await api.get(`/api/courses/${id}/`);
   return res.data;
 };
 
-/* GET /api/courses/categories/ */
 export const fetchCourseCategories = async (): Promise<string[]> => {
   const res = await api.get("/api/courses/categories/");
   return res.data;
 };
 
-/* POST /api/courses/ */
 export const createCourse = async (data: Partial<CourseType>): Promise<CourseType> => {
   const res = await api.post("/api/courses/", data);
   return res.data;
 };
 
-/* PATCH /api/courses/:id/ */
 export const updateCourse = async (id: number, data: Partial<CourseType>): Promise<CourseType> => {
   const res = await api.patch(`/api/courses/${id}/`, data);
   return res.data;
 };
 
-/* DELETE /api/courses/:id/ */
 export const deleteCourse = async (id: number): Promise<void> => {
   await api.delete(`/api/courses/${id}/`);
 };
@@ -315,7 +300,7 @@ export const assignInstructor = async (id: number, instructorId: number): Promis
   return res.data;
 };
 
-/* POST /api/courses/:id/assign_to_me/ */
+/* POST /api/courses/:id/assign_to_me/ - Instructor self-assign */
 export const assignCourseToMe = async (id: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/assign_to_me/`);
   return res.data;
@@ -327,38 +312,32 @@ export const submitCourseForApproval = async (id: number): Promise<CourseType> =
   return res.data;
 };
 
-/* POST /api/courses/:id/duplicate/ */
 export const duplicateCourse = async (id: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/duplicate/`);
   return res.data;
 };
 
-/* POST /api/courses/:id/archive/ */
 export const archiveCourse = async (id: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/archive/`);
   return res.data;
 };
 
-/* POST /api/courses/:id/restore/ */
 export const restoreCourse = async (id: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/restore/`);
   return res.data;
 };
 
 /* ========== COURSE APPROVAL API ========== */
-/* GET /api/course-approvals/ */
 export const fetchCourseApprovals = async (): Promise<CourseApprovalType[]> => {
   const res = await api.get("/api/course-approvals/");
   return res.data;
 };
 
-/* GET /api/course-approvals/my/ */
 export const fetchMyCourseApprovals = async (): Promise<CourseApprovalType[]> => {
   const res = await api.get("/api/course-approvals/my/");
   return res.data;
 };
 
-/* POST /api/course-approvals/ */
 export const createCourseApproval = async (data: {
   course: number;
   comments?: string;
@@ -367,62 +346,52 @@ export const createCourseApproval = async (data: {
   return res.data;
 };
 
-/* POST /api/course-approvals/:id/approve/ */
 export const approveCourse = async (id: number): Promise<CourseApprovalType> => {
   const res = await api.post(`/api/course-approvals/${id}/approve/`);
   return res.data;
 };
 
-/* POST /api/course-approvals/:id/reject/ */
 export const rejectCourse = async (id: number): Promise<CourseApprovalType> => {
   const res = await api.post(`/api/course-approvals/${id}/reject/`);
   return res.data;
 };
 
-/* POST /api/course-approvals/:id/request_changes/ */
 export const requestCourseChanges = async (id: number, comments: string): Promise<CourseApprovalType> => {
   const res = await api.post(`/api/course-approvals/${id}/request_changes/`, { comments });
   return res.data;
 };
 
 /* ========== COURSE ENROLLMENT API ========== */
-/* GET /api/courses/:id/enrollments/ */
 export const fetchCourseEnrollments = async (courseId: number): Promise<EnrollmentType[]> => {
   const res = await api.get(`/api/courses/${courseId}/enrollments/`);
   return res.data;
 };
 
-/* GET /api/enrollments/my/ */
 export const fetchMyEnrollments = async (): Promise<EnrollmentType[]> => {
   const res = await api.get("/api/enrollments/my/");
   return res.data;
 };
 
-/* POST /api/courses/:id/enroll/ */
 export const enrollInCourse = async (courseId: number): Promise<EnrollmentType> => {
   const res = await api.post(`/api/courses/${courseId}/enroll/`);
   return res.data;
 };
 
-/* POST /api/courses/:id/unenroll/ */
 export const unenrollFromCourse = async (courseId: number): Promise<void> => {
   await api.post(`/api/courses/${courseId}/unenroll/`);
 };
 
-/* POST /api/enrollments/:id/update_status/ */
 export const updateEnrollmentStatus = async (enrollmentId: number, status: string): Promise<EnrollmentType> => {
   const res = await api.post(`/api/enrollments/${enrollmentId}/update_status/`, { status });
   return res.data;
 };
 
 /* ========== GENERAL APPROVALS API ========== */
-/* GET /api/approvals/ */
 export const fetchApprovals = async (): Promise<ApprovalType[]> => {
   const res = await api.get("/api/approvals/");
   return res.data;
 };
 
-/* POST /api/approvals/ */
 export const createApproval = async (data: {
   type: string;
   center: string;
@@ -433,32 +402,27 @@ export const createApproval = async (data: {
   return res.data;
 };
 
-/* GET /api/approvals/my/ */
 export const fetchMyApprovals = async (): Promise<ApprovalType[]> => {
   const res = await api.get("/api/approvals/my/");
   return res.data;
 };
 
-/* PUT /api/approvals/:id/:action/ */
 export const updateApprovalStatus = async (id: number, action: 'approve' | 'reject'): Promise<ApprovalType> => {
   const res = await api.put(`/api/approvals/${id}/${action}/`);
   return res.data;
 };
 
 /* ========== DASHBOARD & REPORTS API ========== */
-/* GET /api/overview/ */
 export const fetchOverview = async () => {
   const res = await api.get("/api/overview/");
   return res.data;
 };
 
-/* GET /api/report/ */
 export const fetchReports = async (period: string, center: string) => {
   const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
   return res.data;
 };
 
-/* GET /api/dashboard/stats/ */
 export const fetchDashboardStats = async () => {
   const res = await api.get("/api/dashboard/stats/");
   return res.data;
@@ -492,13 +456,11 @@ export const getCenterName = (): string => {
 };
 
 /* ========== INSTRUCTOR API ========== */
-/* GET /api/instructors/ */
 export const fetchInstructors = async (): Promise<UserType[]> => {
   const res = await api.get("/api/instructors/");
   return res.data;
 };
 
-/* GET /api/users/ (with role filter) */
 export const fetchUsersByRole = async (role?: string): Promise<UserType[]> => {
   const params = role ? { role } : {};
   const res = await api.get("/api/users/", { params });
