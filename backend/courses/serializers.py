@@ -1,0 +1,37 @@
+from rest_framework import serializers
+from .models import Course, CourseApproval
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+
+class CourseSerializer(serializers.ModelSerializer):
+    instructor_details = UserSerializer(source='instructor', read_only=True)
+    
+    class Meta:
+        model = Course
+        fields = [
+            'id', 'name', 'code', 'description', 'category', 'duration',
+            'schedule', 'students', 'progress', 'next_session', 'instructor',
+            'instructor_details', 'district', 'status', 'priority',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+class CourseApprovalSerializer(serializers.ModelSerializer):
+    course_details = CourseSerializer(source='course', read_only=True)
+    requested_by_details = UserSerializer(source='requested_by', read_only=True)
+    approved_by_details = UserSerializer(source='approved_by', read_only=True)
+    
+    class Meta:
+        model = CourseApproval
+        fields = [
+            'id', 'course', 'course_details', 'requested_by', 'requested_by_details',
+            'approval_status', 'comments', 'approved_by', 'approved_by_details',
+            'approved_at', 'created_at'
+        ]
+        read_only_fields = ['created_at']

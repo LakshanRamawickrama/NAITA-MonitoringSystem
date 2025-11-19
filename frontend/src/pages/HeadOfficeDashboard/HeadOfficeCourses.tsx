@@ -1,72 +1,39 @@
-// HeadofficeCourses.tsx
-import React, { useState } from 'react';
+// HeadOfficeCourses.tsx - Updated to use real API
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, BookOpen } from 'lucide-react';
+import {type CourseType, fetchCourses } from '../../api/api';
 
-interface Course {
-  id: number;
-  name: string;
-  code: string;
-  duration: string;
-  instructor: string;
-  students: number;
-  status: string;
-  district: string;
-}
-
-const HeadofficeCourses: React.FC = () => {
+const HeadOfficeCourses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('All Districts');
+  const [courses, setCourses] = useState<CourseType[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const coursesData: Course[] = [
-    {
-      id: 1,
-      name: 'Web Development',
-      code: 'WD101',
-      duration: '6 months',
-      instructor: 'John Smith',
-      students: 25,
-      status: 'Active',
-      district: 'District A',
-    },
-    {
-      id: 2,
-      name: 'Mobile App Development',
-      code: 'MAD102',
-      duration: '4 months',
-      instructor: 'Sarah Johnson',
-      students: 18,
-      status: 'Active',
-      district: 'District A',
-    },
-    {
-      id: 3,
-      name: 'Electrical Installation',
-      code: 'EI103',
-      duration: '5 months',
-      instructor: 'Peter Wanyama',
-      students: 20,
-      status: 'Inactive',
-      district: 'District B',
-    },
-    {
-      id: 4,
-      name: 'Data Science Fundamentals',
-      code: 'DS104',
-      duration: '3 months',
-      instructor: 'Alice Brown',
-      students: 15,
-      status: 'Active',
-      district: 'District B',
-    },
-  ];
+  useEffect(() => {
+    loadCourses();
+  }, []);
 
-  const districts = ['All Districts', ...new Set(coursesData.map(course => course.district))];
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      const coursesData = await fetchCourses();
+      setCourses(coursesData);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  let filteredCourses = coursesData.filter(
+  const districts = ['All Districts', ...new Set(courses.map(course => course.district))];
+
+  let filteredCourses = courses.filter(
     (course) =>
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.instructor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.instructor_details && 
+        `${course.instructor_details.first_name} ${course.instructor_details.last_name}`
+          .toLowerCase().includes(searchTerm.toLowerCase())) ||
       course.district.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -74,13 +41,21 @@ const HeadofficeCourses: React.FC = () => {
     filteredCourses = filteredCourses.filter(course => course.district === selectedDistrict);
   }
 
-  const groupedCourses = filteredCourses.reduce((acc: { [key: string]: Course[] }, course) => {
+  const groupedCourses = filteredCourses.reduce((acc: { [key: string]: CourseType[] }, course) => {
     if (!acc[course.district]) {
       acc[course.district] = [];
     }
     acc[course.district].push(course);
     return acc;
   }, {});
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg">Loading courses...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -164,16 +139,22 @@ const HeadofficeCourses: React.FC = () => {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{course.name}</div>
+                            {course.category && (
+                              <div className="text-xs text-gray-500">{course.category}</div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {course.code}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {course.duration}
+                          {course.duration || 'Not specified'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {course.instructor}
+                          {course.instructor_details 
+                            ? `${course.instructor_details.first_name} ${course.instructor_details.last_name}`
+                            : 'Not assigned'
+                          }
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                           {course.students}
@@ -181,8 +162,10 @@ const HeadofficeCourses: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              course.status === 'Active'
+                              course.status === 'Active' || course.status === 'Approved'
                                 ? 'bg-green-100 text-green-800'
+                                : course.status === 'Pending'
+                                ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-red-100 text-red-800'
                             }`}
                           >
@@ -198,25 +181,42 @@ const HeadofficeCourses: React.FC = () => {
           </div>
         ))}
 
+        {/* Show message if no courses found */}
+        {Object.keys(groupedCourses).length === 0 && (
+          <div className="text-center py-12">
+            <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No courses found</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Try adjusting your search or filter criteria.
+            </p>
+          </div>
+        )}
+
         {/* Stats Summary */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-green-600">{filteredCourses.length}</div>
+            <div className="text-2xl font-bold text-green-600">{courses.length}</div>
             <div className="text-sm text-gray-600">Total Courses</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
             <div className="text-2xl font-bold text-yellow-500">
-              {filteredCourses.filter(c => c.status === 'Active').length}
+              {courses.filter(c => c.status === 'Active' || c.status === 'Approved').length}
             </div>
             <div className="text-sm text-gray-600">Active Courses</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-sky-500">{filteredCourses.reduce((acc, c) => acc + c.students, 0)}</div>
+            <div className="text-2xl font-bold text-sky-500">
+              {courses.reduce((acc, c) => acc + c.students, 0)}
+            </div>
             <div className="text-sm text-gray-600">Total Enrolled Students</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-lime-800">95%</div>
-            <div className="text-sm text-gray-600">Avg Course Completion</div>
+            <div className="text-2xl font-bold text-lime-800">
+              {courses.length > 0 
+                ? Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length)
+                : 0}%
+            </div>
+            <div className="text-sm text-gray-600">Avg Course Progress</div>
           </div>
         </div>
       </div>
@@ -224,4 +224,4 @@ const HeadofficeCourses: React.FC = () => {
   );
 };
 
-export default HeadofficeCourses;
+export default HeadOfficeCourses;

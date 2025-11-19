@@ -12,6 +12,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
 /* ========== USER API ========== */
 export interface UserType {
   id: number;
@@ -41,6 +55,127 @@ export interface Center {
   performance?: string | null;
 }
 
+/* ========== COURSE API ========== */
+export interface CourseType {
+  id: number;
+  name: string;
+  code: string;
+  description?: string | null;
+  category?: string | null;
+  duration?: string | null;
+  schedule?: string | null;
+  students: number;
+  progress: number;
+  next_session?: string | null;
+  instructor: number | null;
+  instructor_details?: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+  district: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Active' | 'Inactive';
+  priority: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseApprovalType {
+  id: number;
+  course: number;
+  course_details: CourseType;
+  requested_by: number;
+  requested_by_details: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
+  approval_status: string;
+  comments?: string | null;
+  approved_by?: number | null;
+  approved_by_details?: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  } | null;
+  approved_at?: string | null;
+  created_at: string;
+}
+
+/* ========== APPROVALS API ========== */
+export interface ApprovalType {
+  id: number;
+  type: string;
+  center: string;
+  requested_by: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
+  description: string;
+  date_requested: string;
+  priority: string;
+  status: string;
+}
+
+/* ========== ENROLLMENT API ========== */
+export interface EnrollmentType {
+  id: number;
+  course: number;
+  student: number;
+  enrolled_at: string;
+  status: string;
+  student_details?: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+}
+
+/* ========== AUTH API ========== */
+export const loginUser = async (email: string, password: string) => {
+  const res = await api.post("/api/token/", { email, password });
+
+  localStorage.setItem("access_token", res.data.access);
+  localStorage.setItem("refresh_token", res.data.refresh);
+
+  const payload = JSON.parse(atob(res.data.access.split(".")[1]));
+  localStorage.setItem("user_role", payload.role);
+  localStorage.setItem("user_district", payload.district || "");
+  localStorage.setItem("center_id", payload.center_id || "");
+  localStorage.setItem("center_name", payload.center_name || "");
+
+  const me = await api.get("/api/users/me/");
+  localStorage.setItem("user_first_name", me.data.first_name || "");
+  localStorage.setItem("user_last_name", me.data.last_name || "");
+
+  return res.data;
+};
+
+export const logoutUser = () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("user_role");
+  localStorage.removeItem("user_district");
+  localStorage.removeItem("center_id");
+  localStorage.removeItem("center_name");
+  localStorage.removeItem("user_first_name");
+  localStorage.removeItem("user_last_name");
+};
+
+export const getCurrentUser = async (): Promise<UserType> => {
+  const res = await api.get("/api/users/me/");
+  return res.data;
+};
+
+/* ========== USER MANAGEMENT API ========== */
 /* GET /api/users/ */
 export const fetchUsers = async (): Promise<UserType[]> => {
   const res = await api.get("/api/users/");
@@ -69,6 +204,7 @@ export const changePassword = async (id: number, new_password: string): Promise<
   await api.post(`/api/users/${id}/change-password/`, { new_password });
 };
 
+/* ========== CENTER MANAGEMENT API ========== */
 /* GET /api/centers/ */
 export const fetchCenters = async (): Promise<Center[]> => {
   const res = await api.get("/api/centers/");
@@ -115,55 +251,171 @@ export const deleteCenter = async (id: number): Promise<void> => {
   await api.delete(`/api/centers/${id}/delete/`);
 };
 
-/* GET /api/overview/ */
-export const fetchOverview = async () => {
-  const res = await api.get("/api/overview/");
+/* ========== COURSE MANAGEMENT API ========== */
+/* GET /api/courses/ */
+export const fetchCourses = async (params?: {
+  district?: string;
+  status?: string;
+  category?: string;
+}): Promise<CourseType[]> => {
+  const res = await api.get("/api/courses/", { params });
   return res.data;
 };
 
-/* GET /api/report/ */
-export const fetchReports = async (period: string, center: string) => {
-  const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
+/* GET /api/courses/my/ */
+export const fetchMyCourses = async (): Promise<CourseType[]> => {
+  const res = await api.get("/api/courses/my/");
   return res.data;
 };
 
-/* ========== AUTH API ========== */
-export const loginUser = async (email: string, password: string) => {
-  const res = await api.post("/api/token/", { email, password });
-
-  localStorage.setItem("access_token", res.data.access);
-  localStorage.setItem("refresh_token", res.data.refresh);
-
-  const payload = JSON.parse(atob(res.data.access.split(".")[1]));
-  localStorage.setItem("user_role", payload.role);
-  localStorage.setItem("user_district", payload.district || "");
-  localStorage.setItem("center_id", payload.center_id || "");
-  localStorage.setItem("center_name", payload.center_name || "");
-
-  const me = await api.get("/api/users/me/");
-  localStorage.setItem("user_first_name", me.data.first_name || "");
-  localStorage.setItem("user_last_name", me.data.last_name || "");
-
+/* GET /api/courses/available/ */
+export const fetchAvailableCourses = async (): Promise<CourseType[]> => {
+  const res = await api.get("/api/courses/available/");
   return res.data;
 };
 
-/* ========== APPROVALS API ========== */
-export interface ApprovalType {
-  id: number;
-  type: string;
-  center: string;
-  requested_by: {
-    id: number;
-    username: string;
-    first_name: string;
-    last_name: string;
-  };
-  description: string;
-  date_requested: string;
-  priority: string;
-  status: string;
-}
+/* GET /api/courses/pending/ */
+export const fetchPendingCourses = async (): Promise<CourseType[]> => {
+  const res = await api.get("/api/courses/pending/");
+  return res.data;
+};
 
+/* GET /api/courses/:id/ */
+export const fetchCourseById = async (id: number): Promise<CourseType> => {
+  const res = await api.get(`/api/courses/${id}/`);
+  return res.data;
+};
+
+/* GET /api/courses/categories/ */
+export const fetchCourseCategories = async (): Promise<string[]> => {
+  const res = await api.get("/api/courses/categories/");
+  return res.data;
+};
+
+/* POST /api/courses/ */
+export const createCourse = async (data: Partial<CourseType>): Promise<CourseType> => {
+  const res = await api.post("/api/courses/", data);
+  return res.data;
+};
+
+/* PATCH /api/courses/:id/ */
+export const updateCourse = async (id: number, data: Partial<CourseType>): Promise<CourseType> => {
+  const res = await api.patch(`/api/courses/${id}/`, data);
+  return res.data;
+};
+
+/* DELETE /api/courses/:id/ */
+export const deleteCourse = async (id: number): Promise<void> => {
+  await api.delete(`/api/courses/${id}/`);
+};
+
+/* POST /api/courses/:id/assign_instructor/ */
+export const assignInstructor = async (id: number, instructorId: number): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${id}/assign_instructor/`, { instructor_id: instructorId });
+  return res.data;
+};
+
+/* POST /api/courses/:id/assign_to_me/ */
+export const assignCourseToMe = async (id: number): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${id}/assign_to_me/`);
+  return res.data;
+};
+
+/* POST /api/courses/:id/submit_for_approval/ */
+export const submitCourseForApproval = async (id: number): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${id}/submit_for_approval/`);
+  return res.data;
+};
+
+/* POST /api/courses/:id/duplicate/ */
+export const duplicateCourse = async (id: number): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${id}/duplicate/`);
+  return res.data;
+};
+
+/* POST /api/courses/:id/archive/ */
+export const archiveCourse = async (id: number): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${id}/archive/`);
+  return res.data;
+};
+
+/* POST /api/courses/:id/restore/ */
+export const restoreCourse = async (id: number): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${id}/restore/`);
+  return res.data;
+};
+
+/* ========== COURSE APPROVAL API ========== */
+/* GET /api/course-approvals/ */
+export const fetchCourseApprovals = async (): Promise<CourseApprovalType[]> => {
+  const res = await api.get("/api/course-approvals/");
+  return res.data;
+};
+
+/* GET /api/course-approvals/my/ */
+export const fetchMyCourseApprovals = async (): Promise<CourseApprovalType[]> => {
+  const res = await api.get("/api/course-approvals/my/");
+  return res.data;
+};
+
+/* POST /api/course-approvals/ */
+export const createCourseApproval = async (data: {
+  course: number;
+  comments?: string;
+}): Promise<CourseApprovalType> => {
+  const res = await api.post("/api/course-approvals/", data);
+  return res.data;
+};
+
+/* POST /api/course-approvals/:id/approve/ */
+export const approveCourse = async (id: number): Promise<CourseApprovalType> => {
+  const res = await api.post(`/api/course-approvals/${id}/approve/`);
+  return res.data;
+};
+
+/* POST /api/course-approvals/:id/reject/ */
+export const rejectCourse = async (id: number): Promise<CourseApprovalType> => {
+  const res = await api.post(`/api/course-approvals/${id}/reject/`);
+  return res.data;
+};
+
+/* POST /api/course-approvals/:id/request_changes/ */
+export const requestCourseChanges = async (id: number, comments: string): Promise<CourseApprovalType> => {
+  const res = await api.post(`/api/course-approvals/${id}/request_changes/`, { comments });
+  return res.data;
+};
+
+/* ========== COURSE ENROLLMENT API ========== */
+/* GET /api/courses/:id/enrollments/ */
+export const fetchCourseEnrollments = async (courseId: number): Promise<EnrollmentType[]> => {
+  const res = await api.get(`/api/courses/${courseId}/enrollments/`);
+  return res.data;
+};
+
+/* GET /api/enrollments/my/ */
+export const fetchMyEnrollments = async (): Promise<EnrollmentType[]> => {
+  const res = await api.get("/api/enrollments/my/");
+  return res.data;
+};
+
+/* POST /api/courses/:id/enroll/ */
+export const enrollInCourse = async (courseId: number): Promise<EnrollmentType> => {
+  const res = await api.post(`/api/courses/${courseId}/enroll/`);
+  return res.data;
+};
+
+/* POST /api/courses/:id/unenroll/ */
+export const unenrollFromCourse = async (courseId: number): Promise<void> => {
+  await api.post(`/api/courses/${courseId}/unenroll/`);
+};
+
+/* POST /api/enrollments/:id/update_status/ */
+export const updateEnrollmentStatus = async (enrollmentId: number, status: string): Promise<EnrollmentType> => {
+  const res = await api.post(`/api/enrollments/${enrollmentId}/update_status/`, { status });
+  return res.data;
+};
+
+/* ========== GENERAL APPROVALS API ========== */
 /* GET /api/approvals/ */
 export const fetchApprovals = async (): Promise<ApprovalType[]> => {
   const res = await api.get("/api/approvals/");
@@ -190,6 +442,74 @@ export const fetchMyApprovals = async (): Promise<ApprovalType[]> => {
 /* PUT /api/approvals/:id/:action/ */
 export const updateApprovalStatus = async (id: number, action: 'approve' | 'reject'): Promise<ApprovalType> => {
   const res = await api.put(`/api/approvals/${id}/${action}/`);
+  return res.data;
+};
+
+/* ========== DASHBOARD & REPORTS API ========== */
+/* GET /api/overview/ */
+export const fetchOverview = async () => {
+  const res = await api.get("/api/overview/");
+  return res.data;
+};
+
+/* GET /api/report/ */
+export const fetchReports = async (period: string, center: string) => {
+  const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
+  return res.data;
+};
+
+/* GET /api/dashboard/stats/ */
+export const fetchDashboardStats = async () => {
+  const res = await api.get("/api/dashboard/stats/");
+  return res.data;
+};
+
+/* ========== UTILITY FUNCTIONS ========== */
+export const isAuthenticated = (): boolean => {
+  return !!localStorage.getItem("access_token");
+};
+
+export const getUserRole = (): string => {
+  return localStorage.getItem("user_role") || "";
+};
+
+export const getUserDistrict = (): string => {
+  return localStorage.getItem("user_district") || "";
+};
+
+export const getUserName = (): string => {
+  const firstName = localStorage.getItem("user_first_name") || "";
+  const lastName = localStorage.getItem("user_last_name") || "";
+  return `${firstName} ${lastName}`.trim();
+};
+
+export const getCenterId = (): string => {
+  return localStorage.getItem("center_id") || "";
+};
+
+export const getCenterName = (): string => {
+  return localStorage.getItem("center_name") || "";
+};
+
+/* ========== INSTRUCTOR API ========== */
+/* GET /api/instructors/ */
+export const fetchInstructors = async (): Promise<UserType[]> => {
+  const res = await api.get("/api/instructors/");
+  return res.data;
+};
+
+/* GET /api/users/ (with role filter) */
+export const fetchUsersByRole = async (role?: string): Promise<UserType[]> => {
+  const params = role ? { role } : {};
+  const res = await api.get("/api/users/", { params });
+  return res.data;
+};
+
+/* ========== REFRESH TOKEN ========== */
+export const refreshToken = async (): Promise<{ access: string }> => {
+  const refresh = localStorage.getItem("refresh_token");
+  const res = await api.post("/api/token/refresh/", { refresh });
+  localStorage.setItem("access_token", res.data.access);
   return res.data;
 };
 

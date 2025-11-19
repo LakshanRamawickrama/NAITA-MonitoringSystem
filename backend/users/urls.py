@@ -1,5 +1,6 @@
 # users/urls.py
 from django.urls import path
+from . import views
 from .views import (
     MyTokenObtainPairView,
     UserListCreateView,
@@ -7,7 +8,7 @@ from .views import (
     change_user_password,
     current_user,
     CenterListView,
-    OverviewView
+    OverviewView,
 )
 
 urlpatterns = [
@@ -25,4 +26,7 @@ urlpatterns = [
     
     #overview
     path("api/overview/", OverviewView.as_view(), name="overview"),
+    
+    # Add more user-related endpoints as needed
+     path('api/instructors/', views.InstructorListView.as_view(), name='instructor-list'),
 ]

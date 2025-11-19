@@ -45,6 +45,25 @@ class IsAdminOrDistrictManager(permissions.BasePermission):
         
         return False
 
+class IsAdminOrDistrictManagerOrTrainingOfficer(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        
+        if request.user.role in ["admin", "district_manager", "training_officer"]:
+            return True
+        
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == "admin":
+            return True
+        
+        if request.user.role in ["district_manager", "training_officer"]:
+            return obj.district == request.user.district
+        
+        return False
+
 # ==================== JWT: Login with Email + Role in Token ====================
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = 'email'
@@ -80,7 +99,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
 # LIST + CREATE
 class UserListCreateView(generics.ListCreateAPIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAdminOrDistrictManager]
+    permission_classes = [IsAdminOrDistrictManagerOrTrainingOfficer]  # Updated permission
     queryset = User.objects.select_related("center").all()
 
     def get_serializer_context(self):
@@ -90,9 +109,11 @@ class UserListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        user = self.request.user
         
-        if self.request.user.role == 'district_manager' and self.request.user.district:
-            queryset = queryset.filter(district=self.request.user.district)
+        # Filter by district for district managers and training officers
+        if user.role in ['district_manager', 'training_officer'] and user.district:
+            queryset = queryset.filter(district=user.district)
         
         return queryset
 
@@ -102,7 +123,7 @@ class UserListCreateView(generics.ListCreateAPIView):
 # GET + PATCH + DELETE
 class UserRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAdminOrDistrictManager]
+    permission_classes = [IsAdminOrDistrictManager]  # Keep original permission for detailed operations
     queryset = User.objects.select_related("center").all()
     serializer_class = UserCreateSerializer
     lookup_field = "id"
@@ -151,6 +172,22 @@ def change_user_password(request, id):
 def current_user(request):
     serializer = UserListSerializer(request.user)
     return Response(serializer.data)
+
+# INSTRUCTORS LIST (Special endpoint for training officers)
+class InstructorListView(generics.ListAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]  # Any authenticated user can view instructors
+    serializer_class = UserListSerializer
+    
+    def get_queryset(self):
+        queryset = User.objects.filter(role='instructor').select_related("center")
+        user = self.request.user
+        
+        # Filter by district for district managers and training officers
+        if user.role in ['district_manager', 'training_officer'] and user.district:
+            queryset = queryset.filter(district=user.district)
+        
+        return queryset
 
 # CENTERS
 class CenterListView(generics.ListAPIView):
