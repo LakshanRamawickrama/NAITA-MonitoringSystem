@@ -9,9 +9,12 @@ from django.db.models import Q
 import pandas as pd
 from django.http import HttpResponse
 import csv
+from django.utils import timezone
 
 from .models import Student, EducationalQualification
 from .serializers import StudentSerializer, StudentImportSerializer
+from centers.models import Center
+from courses.models import Course
 
 class StudentPermission:
     """
@@ -64,6 +67,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         'registration_no', 'full_name_english', 'full_name_sinhala',
         'name_with_initials', 'nic_id', 'district', 'email'
     ]
+    filterset_fields = ['district', 'center', 'course', 'enrollment_status', 'training_received']
     
     def get_queryset(self):
         queryset = Student.objects.all()
@@ -82,10 +86,12 @@ class StudentViewSet(viewsets.ModelViewSet):
                 Q(name_with_initials__icontains=search_term) |
                 Q(nic_id__icontains=search_term) |
                 Q(registration_no__icontains=search_term) |
-                Q(district__icontains=search_term)
+                Q(district__icontains=search_term) |
+                Q(center__name__icontains=search_term) |
+                Q(course__name__icontains=search_term)
             )
         
-        return queryset
+        return queryset.select_related('center', 'course')
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -95,6 +101,33 @@ class StudentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Auto-set the creator
         serializer.save(created_by=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get student statistics for dashboard"""
+        user = request.user
+        queryset = self.get_queryset()
+        
+        stats = {
+            'total_students': queryset.count(),
+            'trained_students': queryset.filter(training_received=True).count(),
+            'enrolled_students': queryset.filter(enrollment_status='Enrolled').count(),
+            'completed_students': queryset.filter(enrollment_status='Completed').count(),
+            'pending_students': queryset.filter(enrollment_status='Pending').count(),
+            'with_ol_results': queryset.filter(qualifications__type='OL').distinct().count(),
+            'with_al_results': queryset.filter(qualifications__type='AL').distinct().count(),
+            'recent_students': queryset.filter(created_at__gte=timezone.now() - timezone.timedelta(days=7)).count(),
+        }
+        
+        # Center distribution
+        center_stats = {}
+        for student in queryset.select_related('center'):
+            center_name = student.center.name if student.center else 'No Center'
+            center_stats[center_name] = center_stats.get(center_name, 0) + 1
+        
+        stats['center_distribution'] = center_stats
+        
+        return Response(stats)
     
     @action(detail=False, methods=['get'])
     def export(self, request):
@@ -113,6 +146,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                 'Village', 'Residence Type', 'Mobile No', 'Email', 'Training Received',
                 'Training Provider', 'Course/Vocation', 'Training Duration',
                 'Training Nature', 'Training Establishment', 'Placement Preference',
+                'Center', 'Course', 'Enrollment Date', 'Enrollment Status',
                 'Date of Application'
             ])
             
@@ -140,6 +174,10 @@ class StudentViewSet(viewsets.ModelViewSet):
                     student.training_nature,
                     student.training_establishment,
                     student.training_placement_preference,
+                    student.center.name if student.center else '',
+                    student.course.name if student.course else '',
+                    student.enrollment_date,
+                    student.enrollment_status,
                     student.date_of_application,
                 ])
             
@@ -172,6 +210,10 @@ class StudentViewSet(viewsets.ModelViewSet):
                     'Training Nature': student.training_nature,
                     'Training Establishment': student.training_establishment,
                     'Placement Preference': student.training_placement_preference,
+                    'Center': student.center.name if student.center else '',
+                    'Course': student.course.name if student.course else '',
+                    'Enrollment Date': student.enrollment_date,
+                    'Enrollment Status': student.enrollment_status,
                     'Date of Application': student.date_of_application,
                 })
             
@@ -217,6 +259,19 @@ class StudentViewSet(viewsets.ModelViewSet):
             
             for index, row in df.iterrows():
                 try:
+                    # Get center and course objects
+                    center_name = row.get('Center', '')
+                    course_name = row.get('Course', '')
+                    
+                    center = None
+                    course = None
+                    
+                    if center_name:
+                        center = Center.objects.filter(name=center_name, district=request.user.district).first()
+                    
+                    if course_name:
+                        course = Course.objects.filter(name=course_name, district=request.user.district).first()
+                    
                     student_data = {
                         'full_name_english': row.get('Full Name (English)', ''),
                         'full_name_sinhala': row.get('Full Name (Sinhala)', ''),
@@ -239,6 +294,10 @@ class StudentViewSet(viewsets.ModelViewSet):
                         'training_nature': row.get('Training Nature', 'Initial'),
                         'training_establishment': row.get('Training Establishment', ''),
                         'training_placement_preference': row.get('Placement Preference', '1st'),
+                        'center': center.id if center else None,
+                        'course': course.id if course else None,
+                        'enrollment_date': row.get('Enrollment Date', ''),
+                        'enrollment_status': row.get('Enrollment Status', 'Pending'),
                         'date_of_application': row.get('Date of Application', ''),
                     }
                     
@@ -267,3 +326,31 @@ class StudentViewSet(viewsets.ModelViewSet):
                 {'error': f'Error processing file: {str(e)}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+        # students/views.py - UPDATE THE STATS FUNCTION
+@action(detail=False, methods=['get'])
+def stats(self, request):
+    """Get student statistics for dashboard"""
+    user = request.user
+    queryset = self.get_queryset()
+    
+    stats = {
+        'total_students': queryset.count(),
+        'trained_students': queryset.filter(training_received=True).count(),
+        'enrolled_students': queryset.filter(enrollment_status='Enrolled').count(),
+        'completed_students': queryset.filter(enrollment_status='Completed').count(),
+        'pending_students': queryset.filter(enrollment_status='Pending').count(),
+        'with_ol_results': queryset.filter(qualifications__type='OL').distinct().count(),
+        'with_al_results': queryset.filter(qualifications__type='AL').distinct().count(),
+        'recent_students': queryset.filter(created_at__gte=timezone.now() - timezone.timedelta(days=7)).count(),
+    }
+    
+    # Center distribution - UPDATED related_name
+    center_stats = {}
+    for student in queryset.select_related('center'):
+        center_name = student.center.name if student.center else 'No Center'
+        center_stats[center_name] = center_stats.get(center_name, 0) + 1
+    
+    stats['center_distribution'] = center_stats
+    
+    return Response(stats)

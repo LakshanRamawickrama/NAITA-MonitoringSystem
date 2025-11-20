@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import DataTable from '../../components/DataTable';
 import { Search, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { fetchApprovals, updateApprovalStatus } from '../../api/api'; // Adjust path if needed
+import { fetchGeneralApprovals, updateApprovalStatus } from '../../api/api'; // Adjust path if needed
 import type { ApprovalType } from '../../api/api'; // Adjust path if needed
 
 const Approvals: React.FC = () => {
@@ -16,7 +16,7 @@ const Approvals: React.FC = () => {
     const loadApprovals = async () => {
       try {
         setLoading(true);
-        const data = await fetchApprovals();
+        const data = await fetchGeneralApprovals();
         setApprovalsData(data);
         setLoading(false);
       } catch (err) {
@@ -30,7 +30,7 @@ const Approvals: React.FC = () => {
   const handleApprove = async (id: number) => {
     try {
       await updateApprovalStatus(id, 'approve');
-      const data = await fetchApprovals();
+      const data = await fetchGeneralApprovals();
       setApprovalsData(data);
     } catch (err) {
       console.error('Error approving:', err);
@@ -40,7 +40,7 @@ const Approvals: React.FC = () => {
   const handleReject = async (id: number) => {
     try {
       await updateApprovalStatus(id, 'reject');
-      const data = await fetchApprovals();
+      const data = await fetchGeneralApprovals();
       setApprovalsData(data);
     } catch (err) {
       console.error('Error rejecting:', err);

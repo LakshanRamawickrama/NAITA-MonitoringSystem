@@ -1,3 +1,4 @@
+# courses/models.py
 from django.db import models
 from django.contrib.auth import get_user_model
 
@@ -35,6 +36,14 @@ class Course(models.Model):
         related_name='courses_teaching'
     )
     district = models.CharField(max_length=100)
+    # ADD CENTER FIELD
+    center = models.ForeignKey(
+        'centers.Center',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='courses_offered'
+    )
     status = models.CharField(max_length=20, choices=COURSE_STATUS_CHOICES, default='Pending')
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='Medium')
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1,4 +1,4 @@
-// src/pages/HeadOfficeDashboard/Centers.tsx
+// src/pages/HeadOfficeDashboard/Centers.tsx - UPDATED VERSION
 import React, { useState, useEffect, useMemo } from "react";
 import DataTable from "../../components/DataTable";
 import {
@@ -12,6 +12,9 @@ import {
   Edit,
   Trash2,
   AlertCircle,
+  GraduationCap,
+  Building2,
+  RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -26,6 +29,7 @@ const Centers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [districtFilter, setDistrictFilter] = useState("");
   const [performanceFilter, setPerformanceFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [centers, setCenters] = useState<Center[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +40,7 @@ const Centers: React.FC = () => {
   const [editingCenter, setEditingCenter] = useState<Center | null>(null);
   const [deletingCenter, setDeletingCenter] = useState<Center | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -43,8 +48,8 @@ const Centers: React.FC = () => {
     district: "",
     manager: "",
     phone: "",
-    students: "",
-    instructors: "",
+    student_count: "",  // CHANGED
+    instructor_count: "",  // CHANGED
     status: "Active",
     performance: "Average",
   });
@@ -63,36 +68,47 @@ const Centers: React.FC = () => {
     return Array.from(districtSet).sort();
   }, [centers]);
 
+  // Get unique performance ratings
+  const performanceOptions = ["All Performance", "Excellent", "Good", "Average", "Needs Improvement"];
+  const statusOptions = ["All Status", "Active", "Inactive"];
+
   /* ========== FETCH CENTERS ========== */
+  const loadCenters = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await fetchCenters();
+      setCenters(data);
+    } catch (e: any) {
+      const msg = e.response?.data?.detail || "Failed to load centers";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const data = await fetchCenters();
-        setCenters(data);
-      } catch (e: any) {
-        const msg = e.response?.data?.detail || "Failed to load centers";
-        setError(msg);
-        toast.error(msg);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    loadCenters();
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadCenters();
+  };
 
   /* ========== OPEN EDIT MODAL ========== */
   const openEditModal = (center: Center) => {
     setEditingCenter(center);
     setForm({
-      name: center.name,
+      name: center.name || "",
       location: center.location || "",
       district: center.district || "",
       manager: center.manager || "",
       phone: center.phone || "",
-      students: center.students?.toString() || "",
-      instructors: center.instructors?.toString() || "",
+      student_count: center.student_count?.toString() || "0",  // CHANGED
+      instructor_count: center.instructor_count?.toString() || "0",  // CHANGED
       status: center.status || "Active",
       performance: center.performance || "Average",
     });
@@ -118,16 +134,19 @@ const Centers: React.FC = () => {
         district: form.district.trim() || null,
         manager: form.manager.trim() || null,
         phone: form.phone.trim() || null,
-        students: form.students ? Number(form.students) : null,
-        instructors: form.instructors ? Number(form.instructors) : null,
+        student_count: form.student_count ? Number(form.student_count) : 0,  // CHANGED
+        instructor_count: form.instructor_count ? Number(form.instructor_count) : 0,  // CHANGED
         status: form.status,
         performance: form.performance || null,
       });
       setCenters(prev => [...prev, created]);
       closeAddModal();
-      toast.success("Center added");
+      toast.success("Center added successfully");
     } catch (err: any) {
-      toast.error(err.response?.data?.name?.[0] || "Failed to add center");
+      const errorMsg = err.response?.data?.name?.[0] || 
+                      err.response?.data?.detail || 
+                      "Failed to add center";
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -146,16 +165,17 @@ const Centers: React.FC = () => {
         district: form.district.trim() || null,
         manager: form.manager.trim() || null,
         phone: form.phone.trim() || null,
-        students: form.students ? Number(form.students) : null,
-        instructors: form.instructors ? Number(form.instructors) : null,
+        student_count: form.student_count ? Number(form.student_count) : 0,  // CHANGED
+        instructor_count: form.instructor_count ? Number(form.instructor_count) : 0,  // CHANGED
         status: form.status,
         performance: form.performance || null,
       });
       setCenters(prev => prev.map(c => (c.id === updated.id ? updated : c)));
       setShowEditModal(false);
-      toast.success("Center updated");
+      toast.success("Center updated successfully");
     } catch (err: any) {
-      toast.error("Failed to update center");
+      const errorMsg = err.response?.data?.detail || "Failed to update center";
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -169,9 +189,10 @@ const Centers: React.FC = () => {
       await deleteCenter(deletingCenter.id);
       setCenters(prev => prev.filter(c => c.id !== deletingCenter.id));
       setShowDeleteModal(false);
-      toast.success("Center deleted");
+      toast.success("Center deleted successfully");
     } catch (err: any) {
-      toast.error("Failed to delete center");
+      const errorMsg = err.response?.data?.detail || "Failed to delete center";
+      toast.error(errorMsg);
     }
   };
 
@@ -183,8 +204,8 @@ const Centers: React.FC = () => {
       district: "",
       manager: "",
       phone: "",
-      students: "",
-      instructors: "",
+      student_count: "",  // CHANGED
+      instructor_count: "",  // CHANGED
       status: "Active",
       performance: "Average",
     });
@@ -196,15 +217,17 @@ const Centers: React.FC = () => {
       .filter(c => {
         const s = searchTerm.toLowerCase();
         return (
-          c.name.toLowerCase().includes(s) ||
+          c.name?.toLowerCase().includes(s) ||
           (c.location && c.location.toLowerCase().includes(s)) ||
           (c.manager && c.manager.toLowerCase().includes(s)) ||
-          (c.district && c.district.toLowerCase().includes(s))
+          (c.district && c.district.toLowerCase().includes(s)) ||
+          (c.phone && c.phone.toLowerCase().includes(s))
         );
       })
       .filter(c => (districtFilter ? c.district === districtFilter : true))
-      .filter(c => (performanceFilter ? c.performance === performanceFilter : true));
-  }, [centers, searchTerm, districtFilter, performanceFilter]);
+      .filter(c => (performanceFilter ? c.performance === performanceFilter : true))
+      .filter(c => (statusFilter ? c.status === statusFilter : true));
+  }, [centers, searchTerm, districtFilter, performanceFilter, statusFilter]);
 
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -219,11 +242,16 @@ const Centers: React.FC = () => {
       key: "name",
       label: "Center Name",
       render: (value: string, row: Center) => (
-        <div>
-          <div className="font-medium text-gray-900">{value}</div>
-          <div className="text-sm text-gray-500 flex items-center">
-            <MapPin className="w-3 h-3 mr-1" />
-            {row.location || "—"}
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-green-700" />
+          </div>
+          <div>
+            <div className="font-medium text-gray-900">{value || "Unnamed Center"}</div>
+            <div className="text-sm text-gray-500 flex items-center">
+              <MapPin className="w-3 h-3 mr-1" />
+              {row.location || "No location"}
+            </div>
           </div>
         </div>
       ),
@@ -233,8 +261,8 @@ const Centers: React.FC = () => {
       label: "District",
       render: (value: string | null) => (
         <div className="flex items-center">
-          <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-          <span className="font-medium">{value || "—"}</span>
+          <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+          <span className="font-medium text-gray-700">{value || "—"}</span>
         </div>
       ),
     },
@@ -243,29 +271,32 @@ const Centers: React.FC = () => {
       label: "Manager",
       render: (value: string | null | undefined, row: Center) => (
         <div>
-          <div className="font-medium text-gray-900">{value || "—"}</div>
+          <div className="font-medium text-gray-900">{value || "Not assigned"}</div>
           <div className="text-sm text-gray-500 flex items-center">
             <Phone className="w-3 h-3 mr-1" />
-            {row.phone || "—"}
+            {row.phone || "No phone"}
           </div>
         </div>
       ),
     },
     {
-      key: "students",
+      key: "student_count",  // CHANGED
       label: "Students",
       render: (value: number | null | undefined) => (
         <div className="flex items-center">
-          <Users className="w-4 h-4 mr-1 text-gray-400" />
-          <span className="font-medium">{value ?? 0}</span>
+          <Users className="w-4 h-4 mr-2 text-gray-400" />
+          <span className="font-medium text-gray-700">{value ?? 0}</span>
         </div>
       ),
     },
     {
-      key: "instructors",
+      key: "instructor_count",  // CHANGED
       label: "Instructors",
       render: (value: number | null | undefined) => (
-        <span className="font-medium">{value ?? 0}</span>
+        <div className="flex items-center">
+          <GraduationCap className="w-4 h-4 mr-2 text-gray-400" />
+          <span className="font-medium text-gray-700">{value ?? 0}</span>
+        </div>
       ),
     },
     {
@@ -273,14 +304,14 @@ const Centers: React.FC = () => {
       label: "Performance",
       render: (value: string | null | undefined) => {
         const badge = {
-          Excellent: "bg-green-100 text-green-800",
-          Good: "bg-yellow-100 text-yellow-800",
-          Average: "bg-blue-100 text-blue-800",
-          "Needs Improvement": "bg-red-100 text-red-800",
-        }[value || ""] || "bg-gray-100 text-gray-800";
+          Excellent: "bg-green-100 text-green-800 border border-green-200",
+          Good: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+          Average: "bg-blue-100 text-blue-800 border border-blue-200",
+          "Needs Improvement": "bg-red-100 text-red-800 border border-red-200",
+        }[value || ""] || "bg-gray-100 text-gray-800 border border-gray-200";
         return (
-          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${badge}`}>
-            {value || "—"}
+          <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${badge}`}>
+            {value || "Not rated"}
           </span>
         );
       },
@@ -289,8 +320,10 @@ const Centers: React.FC = () => {
       key: "status",
       label: "Status",
       render: (value: string | undefined) => (
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          value === "Active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+        <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+          value === "Active" 
+            ? "bg-green-100 text-green-800 border border-green-200" 
+            : "bg-red-100 text-red-800 border border-red-200"
         }`}>
           {value || "—"}
         </span>
@@ -303,15 +336,15 @@ const Centers: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => openEditModal(row)}
-            className="text-blue-600 hover:text-blue-800 p-1"
-            title="Edit"
+            className="text-blue-600 hover:text-blue-800 p-1 transition-colors"
+            title="Edit Center"
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
             onClick={() => openDeleteModal(row)}
-            className="text-red-600 hover:text-red-800 p-1"
-            title="Delete"
+            className="text-red-600 hover:text-red-800 p-1 transition-colors"
+            title="Delete Center"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -321,42 +354,63 @@ const Centers: React.FC = () => {
   ];
 
   /* ========== SUMMARY STATS ========== */
-  const totalCenters = centers.length;
-  const totalStudents = centers.reduce((s, c) => s + (c.students ?? 0), 0);
-  const totalInstructors = centers.reduce((s, c) => s + (c.instructors ?? 0), 0);
-  const avgPerformance =
-    centers.filter(c => c.performance).length > 0
-      ? Math.round(
-          centers.reduce((s, c) => {
-            const scores: Record<string, number> = {
-              Excellent: 100,
-              Good: 80,
-              Average: 60,
-              "Needs Improvement": 40,
-            };
-            return s + (scores[c.performance!] || 0);
-          }, 0) / centers.filter(c => c.performance).length
-        )
+  const stats = useMemo(() => {
+    const totalCenters = centers.length;
+    const totalStudents = centers.reduce((s, c) => s + (c.student_count ?? 0), 0);  // CHANGED
+    const totalInstructors = centers.reduce((s, c) => s + (c.instructor_count ?? 0), 0);  // CHANGED
+    const activeCenters = centers.filter(c => c.status === "Active").length;
+    
+    // Calculate average performance score
+    const performanceScores = centers
+      .filter(c => c.performance)
+      .map(c => {
+        const scores: Record<string, number> = {
+          Excellent: 100,
+          Good: 80,
+          Average: 60,
+          "Needs Improvement": 40,
+        };
+        return scores[c.performance!] || 0;
+      });
+    
+    const avgPerformance = performanceScores.length > 0
+      ? Math.round(performanceScores.reduce((a, b) => a + b, 0) / performanceScores.length)
       : 0;
 
+    return {
+      totalCenters,
+      totalStudents,
+      totalInstructors,
+      activeCenters,
+      avgPerformance,
+    };
+  }, [centers]);
+
   /* ========== RENDER ========== */
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-3">
-          <Loader2 className="w-6 h-6 animate-spin text-green-600" />
-          <span className="text-gray-600">Loading centers...</span>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-green-600 mx-auto mb-4" />
+          <div className="text-gray-600">Loading training centers...</div>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && centers.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg max-w-md">
-          <p className="font-semibold">Error</p>
-          <p className="text-sm mt-1">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Centers</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={loadCenters}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -374,42 +428,54 @@ const Centers: React.FC = () => {
                 Manage all NAITA training centers across Sri Lanka
               </p>
               {isDistrictManager && userDistrict && (
-                <p className="text-sm text-green-600 mt-1">
-                  Managing centers in: <strong>{userDistrict}</strong> district
+                <p className="text-sm text-green-600 mt-1 flex items-center">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  Managing centers in: <strong className="ml-1">{userDistrict}</strong> district
                 </p>
               )}
             </div>
-            {(isAdmin || isDistrictManager) && (
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => {
-                  setShowAddModal(true);
-                  // Auto-fill district for district managers
-                  if (isDistrictManager && userDistrict) {
-                    setForm(prev => ({ ...prev, district: userDistrict }));
-                  }
-                }}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
-                <Plus className="w-4 h-4" />
-                <span>Add Center</span>
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
               </button>
-            )}
+              {(isAdmin || isDistrictManager) && (
+                <button
+                  onClick={() => {
+                    setShowAddModal(true);
+                    // Auto-fill district for district managers
+                    if (isDistrictManager && userDistrict) {
+                      setForm(prev => ({ ...prev, district: userDistrict }));
+                    }
+                  }}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Center</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div className="mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Search centers, locations, districts, or managers..."
+                placeholder="Search centers..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
+            
             <select
               value={districtFilter}
               onChange={e => setDistrictFilter(e.target.value)}
@@ -417,53 +483,131 @@ const Centers: React.FC = () => {
             >
               <option value="">All Districts</option>
               {districts.map(district => (
-               <option key={district} value={district || ""}>{district}</option>
+                <option key={district} value={district || ""}>{district}</option>
               ))}
             </select>
+
             <select
               value={performanceFilter}
               onChange={e => setPerformanceFilter(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
-              <option value="">All Performance</option>
-              <option value="Excellent">Excellent</option>
-              <option value="Good">Good</option>
-              <option value="Average">Average</option>
-              <option value="Needs Improvement">Needs Improvement</option>
+              {performanceOptions.map(option => (
+                <option key={option} value={option === "All Performance" ? "" : option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              {statusOptions.map(option => (
+                <option key={option} value={option === "All Status" ? "" : option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
+        {/* Results Summary */}
+        <div className="mb-4 flex justify-between items-center">
+          <div className="text-sm text-gray-600">
+            Showing {filtered.length} of {centers.length} centers
+            {searchTerm && ` for "${searchTerm}"`}
+          </div>
+          {filtered.length === 0 && centers.length > 0 && (
+            <div className="text-sm text-orange-600 bg-orange-50 px-3 py-1 rounded-full">
+              No centers match your filters
+            </div>
+          )}
+        </div>
+
         {/* Table */}
-        <DataTable
-          columns={columns}
-          data={paginated}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          {filtered.length > 0 ? (
+            <DataTable
+              columns={columns}
+              data={paginated}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : (
+            <div className="text-center py-12">
+              <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                {centers.length === 0 
+                  ? "No training centers found" 
+                  : "No centers match your search"
+                }
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {centers.length === 0 
+                  ? "Get started by adding your first training center."
+                  : "Try adjusting your search or filter criteria."
+                }
+              </p>
+              {centers.length === 0 && (isAdmin || isDistrictManager) && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => {
+                      setShowAddModal(true);
+                      if (isDistrictManager && userDistrict) {
+                        setForm(prev => ({ ...prev, district: userDistrict }));
+                      }
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Center
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Summary Stats */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-green-600">{totalCenters}</div>
-            <div className="text-sm text-gray-600">Total Centers</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-yellow-500">
-              {totalStudents.toLocaleString()}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{stats.totalCenters}</div>
+                <div className="text-sm text-gray-600">Total Centers</div>
+              </div>
+              <Building2 className="w-8 h-8 text-blue-500" />
             </div>
-            <div className="text-sm text-gray-600">Total Students</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-sky-400">
-              {totalInstructors.toLocaleString()}
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">{stats.activeCenters}</div>
+                <div className="text-sm text-gray-600">Active Centers</div>
+              </div>
+              <Building2 className="w-8 h-8 text-green-500" />
             </div>
-            <div className="text-sm text-gray-600">Total Instructors</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-lime-800">{avgPerformance}%</div>
-            <div className="text-sm text-gray-600">Avg Performance</div>
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-sky-500">{stats.totalStudents.toLocaleString()}</div>
+                <div className="text-sm text-gray-600">Total Students</div>
+              </div>
+              <Users className="w-8 h-8 text-sky-500" />
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-lime-700">{stats.avgPerformance}%</div>
+                <div className="text-sm text-gray-600">Avg Performance</div>
+              </div>
+              <GraduationCap className="w-8 h-8 text-lime-500" />
+            </div>
           </div>
         </div>
       </div>
@@ -476,20 +620,26 @@ const Centers: React.FC = () => {
               onClick={() => {
                 showAddModal ? closeAddModal() : setShowEditModal(false);
               }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              {showAddModal ? "Add New Center" : "Edit Center"}
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {showAddModal ? "Add New Training Center" : "Edit Training Center"}
             </h2>
+            <p className="text-gray-600 mb-6">
+              {showAddModal 
+                ? "Register a new NAITA training center in the system" 
+                : `Update details for ${editingCenter?.name}`
+              }
+            </p>
 
             <form
               onSubmit={showAddModal ? handleAddCenter : handleEditCenter}
               className="grid grid-cols-1 md:grid-cols-2 gap-5"
             >
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Center Name <span className="text-red-500">*</span>
                 </label>
@@ -497,34 +647,34 @@ const Centers: React.FC = () => {
                   type="text"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="NAITA Colombo Center"
                   required
                 />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
+                  Location Address
                 </label>
                 <input
                   type="text"
                   value={form.location}
                   onChange={e => setForm({ ...form, location: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="Colombo, Sri Jayawardanapura Kotte"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="123 Main Street, Colombo 05"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  District {isDistrictManager && <span className="text-green-600">(Auto-filled)</span>}
+                  District {isDistrictManager && <span className="text-green-600 text-xs">(Auto-filled)</span>}
                 </label>
                 <input
                   type="text"
                   value={form.district}
                   onChange={e => setForm({ ...form, district: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-50"
                   placeholder="Colombo District"
                   disabled={isDistrictManager}
                 />
@@ -532,64 +682,66 @@ const Centers: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Manager
+                  Center Manager
                 </label>
                 <input
                   type="text"
                   value={form.manager}
                   onChange={e => setForm({ ...form, manager: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="S.K Nalaka"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
+                  Contact Phone
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   value={form.phone}
                   onChange={e => setForm({ ...form, phone: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="+9411 700 1235"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Students
+                  Number of Students
                 </label>
                 <input
                   type="number"
-                  value={form.students}
-                  onChange={e => setForm({ ...form, students: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  min="0"
+                  value={form.student_count}  // CHANGED
+                  onChange={e => setForm({ ...form, student_count: e.target.value })}  // CHANGED
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="450"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Instructors
+                  Number of Instructors
                 </label>
                 <input
                   type="number"
-                  value={form.instructors}
-                  onChange={e => setForm({ ...form, instructors: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  min="0"
+                  value={form.instructor_count}  // CHANGED
+                  onChange={e => setForm({ ...form, instructor_count: e.target.value })}  // CHANGED
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="25"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
+                  Center Status
                 </label>
                 <select
                   value={form.status}
                   onChange={e => setForm({ ...form, status: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
@@ -598,12 +750,12 @@ const Centers: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Performance
+                  Performance Rating
                 </label>
                 <select
                   value={form.performance}
                   onChange={e => setForm({ ...form, performance: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
                   <option value="Excellent">Excellent</option>
                   <option value="Good">Good</option>
@@ -612,13 +764,13 @@ const Centers: React.FC = () => {
                 </select>
               </div>
 
-              <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
+              <div className="md:col-span-2 flex justify-end space-x-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => {
                     showAddModal ? closeAddModal() : setShowEditModal(false);
                   }}
-                  className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                  className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
                   disabled={submitting}
                 >
                   Cancel
@@ -626,7 +778,7 @@ const Centers: React.FC = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
+                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2 transition-colors"
                 >
                   {submitting ? (
                     <>
@@ -651,21 +803,28 @@ const Centers: React.FC = () => {
               <AlertCircle className="w-6 h-6" />
               <h3 className="text-lg font-semibold">Delete Center?</h3>
             </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete <strong>{deletingCenter.name}</strong>? This action cannot be undone.
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete <strong className="text-gray-900">{deletingCenter.name}</strong>? This action cannot be undone.
             </p>
+            {deletingCenter.student_count && deletingCenter.student_count > 0 && (  // CHANGED
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
+                <p className="text-orange-800 text-sm">
+                  ⚠️ This center has {deletingCenter.student_count} enrolled students. Deleting it may affect student records.  // CHANGED
+                </p>
+              </div>
+            )}
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteCenter}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm"
+                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-sm transition-colors"
               >
-                Delete
+                Delete Center
               </button>
             </div>
           </div>

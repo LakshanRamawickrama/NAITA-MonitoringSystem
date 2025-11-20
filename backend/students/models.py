@@ -23,6 +23,13 @@ class Student(models.Model):
         ('2nd', '2nd Preference'),
         ('3rd', '3rd Preference'),
     ]
+    
+    ENROLLMENT_STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Enrolled', 'Enrolled'),
+        ('Completed', 'Completed'),
+        ('Dropped', 'Dropped'),
+    ]
 
     # Personal Information
     registration_no = models.CharField(max_length=20, unique=True, blank=True)
@@ -58,6 +65,30 @@ class Student(models.Model):
     training_placement_preference = models.CharField(max_length=3, choices=PLACEMENT_PREFERENCE_CHOICES, default='1st')
     date_of_application = models.DateField(auto_now_add=True)
     
+    # Center and Course Information - FIXED related_name
+    center = models.ForeignKey(
+        'centers.Center', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='enrolled_students'  # CHANGED FROM 'students'
+    )
+    
+    course = models.ForeignKey(
+        'courses.Course',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='enrolled_students'
+    )
+    
+    enrollment_date = models.DateField(null=True, blank=True)
+    enrollment_status = models.CharField(
+        max_length=20,
+        choices=ENROLLMENT_STATUS_CHOICES,
+        default='Pending'
+    )
+    
     # System fields
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -70,6 +101,8 @@ class Student(models.Model):
             models.Index(fields=['nic_id']),
             models.Index(fields=['district']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['center']),
+            models.Index(fields=['course']),
         ]
     
     def save(self, *args, **kwargs):

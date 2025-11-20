@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Download, FileText, BarChart3, PieChart, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 import toast from 'react-hot-toast';
-import { fetchReports, fetchCenters } from '../../api/api';
+import { fetchAllReports, fetchCenters } from '../../api/api';
 import type { Center } from '../../api/api';
 
 const Reports: React.FC = () => {
@@ -30,7 +30,7 @@ const Reports: React.FC = () => {
     const loadReports = async () => {
       try {
         setLoading(true);
-        const data = await fetchReports(selectedPeriod, selectedCenter);
+        const data = await fetchAllReports();
         setReportData(data);
       } catch (e: any) {
         const msg = e.response?.data?.detail || 'Failed to load reports data';

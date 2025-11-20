@@ -1,9 +1,9 @@
-// InstructorCourses.tsx - UPDATED WITH CLIENT-SIDE EXPORT FUNCTIONALITY
+// InstructorCourses.tsx - UPDATED VERSION
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Calendar, Users, Clock, BookOpen, BarChart3, Layers, Search, 
   CheckCircle, AlertCircle, RefreshCw, FileText, Download, 
-  Upload, Settings, X
+  Upload, Settings, X, Building
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 // Import export utilities
 import { exportToPDF, exportToExcel, exportToCSV } from '../../utils/exportUtils';
 
-// Manage Content Modal Component (keep this the same as before)
+// Manage Content Modal Component
 interface ManageContentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -222,7 +222,7 @@ const ManageContentModal: React.FC<ManageContentModalProps> = ({
   );
 };
 
-// View Reports Modal Component - UPDATED WITH CLIENT-SIDE EXPORT
+// View Reports Modal Component
 interface ViewReportsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -410,7 +410,7 @@ const ViewReportsModal: React.FC<ViewReportsModalProps> = ({
   );
 };
 
-// Enhanced InstructorCourses Component - UPDATED WITH CLIENT-SIDE EXPORT
+// Enhanced InstructorCourses Component
 const InstructorCourses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [myCourses, setMyCourses] = useState<CourseType[]>([]);
@@ -540,14 +540,16 @@ const InstructorCourses: React.FC = () => {
     (course) =>
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase()))
+      (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (course.center_details && course.center_details.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const filteredAvailableCourses = availableCourses.filter(
     (course) =>
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase()))
+      (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (course.center_details && course.center_details.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (loading) {
@@ -587,7 +589,7 @@ const InstructorCourses: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search courses or categories..."
+              placeholder="Search courses, categories, or centers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -620,6 +622,12 @@ const InstructorCourses: React.FC = () => {
                       <div className="flex items-center text-sm text-gray-500 mt-1">
                         <Layers className="w-4 h-4 mr-1 text-green-500" />
                         {course.category}
+                      </div>
+                    )}
+                    {course.center_details && (
+                      <div className="flex items-center text-xs text-gray-400 mt-1">
+                        <Building className="w-3 h-3 mr-1" />
+                        {course.center_details.name}
                       </div>
                     )}
                   </div>
@@ -713,6 +721,12 @@ const InstructorCourses: React.FC = () => {
                       <div className="flex items-center text-sm text-gray-500 mt-1">
                         <Layers className="w-4 h-4 mr-1 text-green-500" />
                         {course.category}
+                      </div>
+                    )}
+                    {course.center_details && (
+                      <div className="flex items-center text-xs text-gray-400 mt-1">
+                        <Building className="w-3 h-3 mr-1" />
+                        {course.center_details.name}
                       </div>
                     )}
                     <div className="flex items-center text-xs text-gray-400 mt-1">

@@ -1,8 +1,8 @@
-// TrainingOfficerCourses.tsx - FIXED VERSION
+// TrainingOfficerCourses.tsx - COMPLETE WORKING VERSION
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, Eye, Edit, Trash2, BookOpen, X, MapPin, Loader2, Users, User, AlertCircle } from 'lucide-react';
-import { type CourseType, fetchCourses, createCourse, deleteCourse, fetchInstructors, fetchUsers } from '../../api/api';
-import { fetchCenters } from '../../api/api';
+import { Search, Plus, Filter, Eye, Edit, Trash2, BookOpen, X, MapPin, Loader2, Users, User, AlertCircle, Building, Calendar, Clock } from 'lucide-react';
+import { type CourseType, fetchCourses, createCourse, updateCourse, deleteCourse, fetchInstructors, fetchUsers } from '../../api/api';
+import { fetchCenters, type Center } from '../../api/api';
 import toast from 'react-hot-toast';
 
 // Mock instructors data as fallback
@@ -48,12 +48,14 @@ const mockInstructors = [
   },
 ];
 
+// Add Course Modal Component
 interface AddCourseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (courseData: Partial<CourseType>) => Promise<void>;
   districts: string[];
   instructors: any[];
+  centers: Center[];
   submitting: boolean;
   userDistrict?: string;
   instructorsError?: boolean;
@@ -65,6 +67,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
   onSave, 
   districts, 
   instructors,
+  centers,
   submitting,
   userDistrict,
   instructorsError 
@@ -76,21 +79,26 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
     duration: '',
     description: '',
     district: userDistrict || '',
+    center: '',
     instructor: '',
     students: '0'
   });
 
-  // Filter instructors by selected district
+  // Filter instructors and centers by selected district
   const filteredInstructors = instructors.filter(instructor => 
     instructor.district === formData.district
+  );
+  
+  const filteredCenters = centers.filter(center => 
+    center.district === formData.district
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.name.trim() || !formData.code.trim() || !formData.district.trim()) {
-      toast.error('Please fill in all required fields (Name, Code, and District)');
+    if (!formData.name.trim() || !formData.code.trim() || !formData.district.trim() || !formData.center.trim()) {
+      toast.error('Please fill in all required fields (Name, Code, District, and Center)');
       return;
     }
 
@@ -102,6 +110,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
         duration: formData.duration,
         description: formData.description,
         district: formData.district,
+        center: parseInt(formData.center),
         instructor: formData.instructor ? parseInt(formData.instructor) : null,
         students: parseInt(formData.students) || 0,
         progress: 0,
@@ -116,6 +125,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
         duration: '', 
         description: '', 
         district: userDistrict || '',
+        center: '',
         instructor: '',
         students: '0'
       });
@@ -131,7 +141,8 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
       setFormData(prev => ({ 
         ...prev, 
         district: userDistrict || prev.district,
-        instructor: '' // Reset instructor when district changes
+        center: '',
+        instructor: ''
       }));
     } else {
       setFormData({ 
@@ -141,18 +152,20 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
         duration: '', 
         description: '', 
         district: userDistrict || '',
+        center: '',
         instructor: '',
         students: '0'
       });
     }
   }, [isOpen, userDistrict]);
 
-  // Reset instructor selection when district changes
+  // Reset instructor and center selection when district changes
   useEffect(() => {
     if (isOpen) {
       setFormData(prev => ({
         ...prev,
-        instructor: '' // Clear instructor when district changes
+        center: '',
+        instructor: ''
       }));
     }
   }, [formData.district, isOpen]);
@@ -253,6 +266,48 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="0"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Building className="w-4 h-4 inline mr-1" />
+              Center <span className="text-red-500">*</span>
+              {formData.district && (
+                <span className="text-xs text-gray-500 ml-1">
+                  (in {formData.district})
+                </span>
+              )}
+            </label>
+            <div className="relative">
+              <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <select
+                required
+                value={formData.center}
+                onChange={(e) => setFormData({ ...formData, center: e.target.value })}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                disabled={!formData.district}
+              >
+                <option value="">
+                  {formData.district ? 'Select Center' : 'Select district first'}
+                </option>
+                {filteredCenters.map((center) => (
+                  <option key={center.id} value={center.id}>
+                    {center.name}
+                    {center.location && ` - ${center.location}`}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+            {formData.district && filteredCenters.length === 0 && (
+              <p className="text-sm text-yellow-600 mt-1">
+                No centers found in {formData.district} district
+              </p>
+            )}
           </div>
 
           <div>
@@ -379,18 +434,503 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
   );
 };
 
+// Edit Course Modal Component
+interface EditCourseModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdate: (courseId: number, courseData: Partial<CourseType>) => Promise<void>;
+  course: CourseType | null;
+  districts: string[];
+  instructors: any[];
+  centers: Center[];
+  updating: boolean;
+  userDistrict?: string;
+  instructorsError?: boolean;
+}
+
+const EditCourseModal: React.FC<EditCourseModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onUpdate, 
+  course,
+  districts, 
+  instructors,
+  centers,
+  updating,
+  userDistrict,
+  instructorsError 
+}) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    category: '',
+    duration: '',
+    description: '',
+    district: '',
+    center: '',
+    instructor: '',
+    students: '0',
+    schedule: '',
+    next_session: ''
+  });
+
+  // Filter instructors and centers by selected district
+  const filteredInstructors = instructors.filter(instructor => 
+    instructor.district === formData.district
+  );
+  
+  const filteredCenters = centers.filter(center => 
+    center.district === formData.district
+  );
+
+  useEffect(() => {
+    if (course && isOpen) {
+      setFormData({
+        name: course.name || '',
+        code: course.code || '',
+        category: course.category || '',
+        duration: course.duration || '',
+        description: course.description || '',
+        district: course.district || userDistrict || '',
+        center: course.center?.toString() || '',
+        instructor: course.instructor?.toString() || '',
+        students: course.students?.toString() || '0',
+        schedule: course.schedule || '',
+        next_session: course.next_session || ''
+      });
+    }
+  }, [course, isOpen, userDistrict]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!course) return;
+
+    // Validate required fields
+    if (!formData.name.trim() || !formData.code.trim() || !formData.district.trim() || !formData.center.trim()) {
+      toast.error('Please fill in all required fields (Name, Code, District, and Center)');
+      return;
+    }
+
+    try {
+      const courseToUpdate = {
+        name: formData.name,
+        code: formData.code,
+        category: formData.category,
+        duration: formData.duration,
+        description: formData.description,
+        district: formData.district,
+        center: parseInt(formData.center),
+        instructor: formData.instructor ? parseInt(formData.instructor) : null,
+        students: parseInt(formData.students) || 0,
+        schedule: formData.schedule,
+        next_session: formData.next_session
+      };
+      await onUpdate(course.id, courseToUpdate);
+      onClose();
+    } catch (error) {
+      console.error('Error updating course:', error);
+    }
+  };
+
+  if (!isOpen || !course) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-screen overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Course</h2>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Course Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Course Code <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">Select Category</option>
+              <option value="Web Development">Web Development</option>
+              <option value="Mobile Development">Mobile Development</option>
+              <option value="Data Science">Data Science</option>
+              <option value="Programming">Programming</option>
+              <option value="Engineering">Engineering</option>
+              <option value="Design">Design</option>
+              <option value="Business">Business</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Duration
+            </label>
+            <select
+              value={formData.duration}
+              onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">Select Duration</option>
+              <option value="3 months">3 months</option>
+              <option value="4 months">4 months</option>
+              <option value="5 months">5 months</option>
+              <option value="6 months">6 months</option>
+              <option value="1 year">1 year</option>
+              <option value="2 years">2 years</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Users className="w-4 h-4 inline mr-1" />
+              Student Count
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={formData.students}
+              onChange={(e) => setFormData({ ...formData, students: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Calendar className="w-4 h-4 inline mr-1" />
+              Schedule
+            </label>
+            <input
+              type="text"
+              value={formData.schedule}
+              onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="e.g., Mon-Wed-Fri 9:00-11:00"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Clock className="w-4 h-4 inline mr-1" />
+              Next Session
+            </label>
+            <input
+              type="text"
+              value={formData.next_session}
+              onChange={(e) => setFormData({ ...formData, next_session: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="e.g., December 15, 2024"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Building className="w-4 h-4 inline mr-1" />
+              Center <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <select
+                required
+                value={formData.center}
+                onChange={(e) => setFormData({ ...formData, center: e.target.value })}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+              >
+                <option value="">Select Center</option>
+                {filteredCenters.map((center) => (
+                  <option key={center.id} value={center.id}>
+                    {center.name}
+                    {center.location && ` - ${center.location}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <User className="w-4 h-4 inline mr-1" />
+              Instructor
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <select
+                value={formData.instructor}
+                onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                disabled={instructorsError}
+              >
+                <option value="">Select Instructor</option>
+                {filteredInstructors.map((instructor) => (
+                  <option key={instructor.id} value={instructor.id}>
+                    {instructor.first_name} {instructor.last_name} 
+                    {instructor.email && ` (${instructor.email})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              District <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <select
+                required
+                value={formData.district}
+                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+              >
+                <option value="">Select District</option>
+                {districts.map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={4}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              disabled={updating}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={updating}
+              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
+            >
+              {updating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <span>Update Course</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// View Course Details Modal Component
+interface ViewCourseModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  course: CourseType | null;
+}
+
+const ViewCourseModal: React.FC<ViewCourseModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  course 
+}) => {
+  if (!isOpen || !course) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-screen overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Course Details</h2>
+
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Basic Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Course Name</label>
+                  <p className="mt-1 text-sm text-gray-900">{course.name}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Course Code</label>
+                  <p className="mt-1 text-sm text-gray-900 font-mono">{course.code}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Category</label>
+                  <p className="mt-1 text-sm text-gray-900">{course.category || 'Not specified'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Duration</label>
+                  <p className="mt-1 text-sm text-gray-900">{course.duration || 'Not specified'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Location & Instructor</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">District</label>
+                  <p className="mt-1 text-sm text-gray-900 flex items-center">
+                    <MapPin className="w-4 h-4 mr-1 text-gray-400" />
+                    {course.district}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Center</label>
+                  <p className="mt-1 text-sm text-gray-900 flex items-center">
+                    <Building className="w-4 h-4 mr-1 text-gray-400" />
+                    {course.center_details?.name || 'Not assigned'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Instructor</label>
+                  <p className="mt-1 text-sm text-gray-900 flex items-center">
+                    <User className="w-4 h-4 mr-1 text-gray-400" />
+                    {course.instructor_details 
+                      ? `${course.instructor_details.first_name} ${course.instructor_details.last_name}`
+                      : 'Not assigned'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Students</label>
+                  <p className="mt-1 text-sm text-gray-900 flex items-center">
+                    <Users className="w-4 h-4 mr-1 text-gray-400" />
+                    {course.students} enrolled
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {course.schedule && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Schedule</label>
+              <p className="mt-1 text-sm text-gray-900 flex items-center">
+                <Calendar className="w-4 h-4 mr-1 text-gray-400" />
+                {course.schedule}
+              </p>
+            </div>
+          )}
+
+          {course.next_session && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Next Session</label>
+              <p className="mt-1 text-sm text-gray-900 flex items-center">
+                <Clock className="w-4 h-4 mr-1 text-gray-400" />
+                {course.next_session}
+              </p>
+            </div>
+          )}
+
+          {course.description && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <p className="mt-1 text-sm text-gray-900">{course.description}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <span className={`inline-flex mt-1 px-2 py-1 text-xs font-semibold rounded-full ${
+                course.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                course.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                course.status === 'Active' ? 'bg-blue-100 text-blue-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {course.status}
+              </span>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Priority</label>
+              <span className={`inline-flex mt-1 px-2 py-1 text-xs font-semibold rounded-full ${
+                course.priority === 'High' ? 'bg-red-100 text-red-800' :
+                course.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {course.priority}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Training Officer Courses Component
 const TrainingOfficerCourses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
   const [instructors, setInstructors] = useState<any[]>([]);
+  const [centers, setCenters] = useState<Center[]>([]);
   const [loading, setLoading] = useState(true);
   const [centersLoading, setCentersLoading] = useState(true);
   const [instructorsLoading, setInstructorsLoading] = useState(true);
   const [instructorsError, setInstructorsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Modal states
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<CourseType | null>(null);
 
   // Get user info
   const userRole = localStorage.getItem("user_role") || "";
@@ -420,6 +960,7 @@ const TrainingOfficerCourses: React.FC = () => {
     try {
       setCentersLoading(true);
       const centersData = await fetchCenters();
+      setCenters(centersData);
       
       // Extract unique districts from centers
       const uniqueDistricts = Array.from(
@@ -428,7 +969,6 @@ const TrainingOfficerCourses: React.FC = () => {
       setDistricts(uniqueDistricts.sort());
     } catch (error) {
       console.error('Error loading centers:', error);
-      // If centers fail to load, provide some default districts
       const defaultDistricts = ['Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Galle', 'Matara'];
       setDistricts(defaultDistricts);
       toast.error('Failed to load districts from centers, using default districts');
@@ -442,29 +982,20 @@ const TrainingOfficerCourses: React.FC = () => {
       setInstructorsLoading(true);
       setInstructorsError(false);
       
-      // Try the dedicated instructors endpoint first
       try {
-        console.log('Fetching instructors from dedicated endpoint...');
         const instructorsData = await fetchInstructors();
-        console.log('Instructors loaded:', instructorsData);
         setInstructors(instructorsData);
       } catch (error) {
         console.error('Error loading from instructors endpoint, trying users endpoint:', error);
-        // Fallback to users endpoint
         try {
-          console.log('Trying users endpoint as fallback...');
           const usersData = await fetchUsers();
-          // Filter only instructors who have districts
           const instructorsData = usersData.filter(user => 
             user.role === 'instructor' && user.district
           );
-          console.log('Instructors from users endpoint:', instructorsData);
           setInstructors(instructorsData);
         } catch (fallbackError) {
           console.error('Error loading instructors from users endpoint:', fallbackError);
           setInstructorsError(true);
-          // Use mock data as final fallback
-          console.log('Using mock instructor data as fallback');
           setInstructors(mockInstructors);
           toast.error('Using demo instructor data. Real instructors unavailable.');
         }
@@ -481,21 +1012,7 @@ const TrainingOfficerCourses: React.FC = () => {
   const handleAddCourse = async (courseData: Partial<CourseType>) => {
     setSubmitting(true);
     try {
-      const courseToCreate = {
-        name: courseData.name || '',
-        code: courseData.code || '',
-        category: courseData.category || '',
-        duration: courseData.duration || '',
-        description: courseData.description || '',
-        district: courseData.district || userDistrict || '',
-        instructor: courseData.instructor || null,
-        students: courseData.students || 0,
-        progress: 0,
-        status: 'Pending' as const,
-        priority: 'Medium' as const,
-      };
-      
-      await createCourse(courseToCreate);
+      await createCourse(courseData);
       await loadCourses();
       toast.success('Course created successfully!');
     } catch (error: any) {
@@ -511,20 +1028,50 @@ const TrainingOfficerCourses: React.FC = () => {
     }
   };
 
+  const handleUpdateCourse = async (courseId: number, courseData: Partial<CourseType>) => {
+    setUpdating(true);
+    try {
+      await updateCourse(courseId, courseData);
+      await loadCourses();
+      toast.success('Course updated successfully!');
+    } catch (error: any) {
+      console.error('Error updating course:', error);
+      const errorMessage = error.response?.data?.name?.[0] || 
+                          error.response?.data?.code?.[0] || 
+                          error.response?.data?.detail || 
+                          'Failed to update course';
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this course?')) {
+    if (window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       try {
         setActionLoading(id);
         await deleteCourse(id);
         await loadCourses();
         toast.success('Course deleted successfully!');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting course:', error);
-        toast.error('Failed to delete course');
+        const errorMessage = error.response?.data?.detail || 'Failed to delete course';
+        toast.error(errorMessage);
       } finally {
         setActionLoading(null);
       }
     }
+  };
+
+  const handleViewCourse = (course: CourseType) => {
+    setSelectedCourse(course);
+    setIsViewModalOpen(true);
+  };
+
+  const handleEditCourse = (course: CourseType) => {
+    setSelectedCourse(course);
+    setIsEditModalOpen(true);
   };
 
   const filteredCourses = courses.filter(
@@ -563,7 +1110,7 @@ const TrainingOfficerCourses: React.FC = () => {
               )}
             </div>
             <button 
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => setIsAddModalOpen(true)}
               disabled={centersLoading || instructorsLoading}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -609,6 +1156,9 @@ const TrainingOfficerCourses: React.FC = () => {
                     Duration
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Center
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Instructor
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -647,6 +1197,12 @@ const TrainingOfficerCourses: React.FC = () => {
                       {course.duration || 'Not specified'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {course.center_details 
+                        ? course.center_details.name
+                        : 'Not assigned'
+                      }
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {course.instructor_details 
                         ? `${course.instructor_details.first_name} ${course.instructor_details.last_name}`
                         : 'Not assigned'
@@ -674,16 +1230,25 @@ const TrainingOfficerCourses: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900" title="View Details">
+                      <button 
+                        onClick={() => handleViewCourse(course)}
+                        className="text-blue-600 hover:text-blue-900" 
+                        title="View Details"
+                      >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button className="text-green-600 hover:text-green-900" title="Edit Course">
+                      <button 
+                        onClick={() => handleEditCourse(course)}
+                        className="text-green-600 hover:text-green-900" 
+                        title="Edit Course"
+                        disabled={course.status !== 'Pending'}
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => handleDelete(course.id)} 
                         className="text-red-600 hover:text-red-900"
-                        disabled={actionLoading === course.id}
+                        disabled={actionLoading === course.id || course.status !== 'Pending'}
                         title="Delete Course"
                       >
                         {actionLoading === course.id ? (
@@ -739,14 +1304,36 @@ const TrainingOfficerCourses: React.FC = () => {
 
         {/* Add Course Modal */}
         <AddCourseModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
           onSave={handleAddCourse}
           districts={districts}
           instructors={instructors}
+          centers={centers}
           submitting={submitting}
           userDistrict={userDistrict}
           instructorsError={instructorsError}
+        />
+
+        {/* Edit Course Modal */}
+        <EditCourseModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdate={handleUpdateCourse}
+          course={selectedCourse}
+          districts={districts}
+          instructors={instructors}
+          centers={centers}
+          updating={updating}
+          userDistrict={userDistrict}
+          instructorsError={instructorsError}
+        />
+
+        {/* View Course Modal */}
+        <ViewCourseModal
+          isOpen={isViewModalOpen}
+          onClose={() => setIsViewModalOpen(false)}
+          course={selectedCourse}
         />
       </div>
     </div>

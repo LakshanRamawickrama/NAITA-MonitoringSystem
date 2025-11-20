@@ -1,4 +1,4 @@
-# courses/views.py - COMPLETE WORKING VERSION
+# courses/views.py - COMPLETE WORKING VERSION (FIXED)
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -8,6 +8,7 @@ from .models import Course, CourseApproval
 from .serializers import CourseSerializer, CourseApprovalSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import PermissionDenied
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -110,13 +111,33 @@ def assign_to_me_view(request, pk):
     serializer = CourseSerializer(course)
     return Response(serializer.data)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def courses_for_student(request):
+    """Get courses available for student enrollment (only from user's district)"""
+    center_id = request.GET.get('center')
+    user = request.user
+    
+    queryset = Course.objects.filter(status__in=['Active', 'Approved'])
+    
+    # Filter by center if provided
+    if center_id:
+        queryset = queryset.filter(center_id=center_id)
+    
+    # Filter by user's district for non-admin users
+    if user.role != 'admin' and user.district:
+        queryset = queryset.filter(district=user.district)
+    
+    serializer = CourseSerializer(queryset, many=True)
+    return Response(serializer.data)
+
 # ==================== COURSE VIEWSET ====================
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['district', 'status', 'category', 'instructor']
+    filterset_fields = ['district', 'status', 'category', 'instructor', 'center']
     
     def get_queryset(self):
         user = self.request.user
@@ -168,6 +189,10 @@ class CourseViewSet(viewsets.ModelViewSet):
         if user.role == 'training_officer' and instance.status != 'Pending':
             raise PermissionDenied("Training officers can only edit pending courses")
         
+        # District managers can only update courses in their district
+        if user.role == 'district_manager' and instance.district != user.district:
+            raise PermissionDenied("Can only update courses in your district")
+        
         serializer.save()
     
     def destroy(self, request, *args, **kwargs):
@@ -216,9 +241,7 @@ class CourseApprovalViewSet(viewsets.ModelViewSet):
         """Automatically set the requested_by user when creating approval"""
         serializer.save(requested_by=self.request.user)
         
-# ==================== instructor report & manage veiws ====================
-
-# Add these to courses/views.py
+# ==================== INSTRUCTOR REPORT & MANAGE VIEWS ====================
 
 @api_view(['GET'])
 @permission_classes([IsInstructor])

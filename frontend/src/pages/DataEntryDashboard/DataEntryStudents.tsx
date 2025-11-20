@@ -1,25 +1,34 @@
-// StudentDataEntry.tsx - Complete version with backend integration (Import/Export removed)
+// DataEntryStudents.tsx - COMPLETE UPDATED VERSION
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye, MapPin } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye, MapPin, BookOpen, Building } from 'lucide-react';
 import { 
   type StudentType, 
   type EducationalQualificationType,
+  type Center,
+  type CourseType,
   fetchStudents, 
   createStudent, 
   updateStudent, 
   deleteStudent,
+  fetchCentersForStudent,
+  fetchCoursesForStudent,
   getUserDistrict,
-  getUserRole
+  getUserRole,
+  getCenterId
 } from '../../api/api';
 
 const StudentDataEntry: React.FC = () => {
   const [students, setStudents] = useState<StudentType[]>([]);
+  const [centers, setCenters] = useState<Center[]>([]);
+  const [courses, setCourses] = useState<CourseType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
   const [editingStudent, setEditingStudent] = useState<StudentType | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingCenters, setLoadingCenters] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
   const [userDistrict, setUserDistrict] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
   
@@ -47,6 +56,10 @@ const StudentDataEntry: React.FC = () => {
     training_nature: 'Initial',
     training_establishment: '',
     training_placement_preference: '1st',
+    center: null,
+    course: null,
+    enrollment_date: new Date().toISOString().split('T')[0],
+    enrollment_status: 'Pending',
     registration_no: '',
     date_of_application: new Date().toISOString().split('T')[0],
   });
@@ -58,7 +71,7 @@ const StudentDataEntry: React.FC = () => {
   const [newAlGrade, setNewAlGrade] = useState('');
   const [newAlYear, setNewAlYear] = useState('');
 
-  // Load user info and students
+  // Load user info and data
   useEffect(() => {
     const loadUserInfo = () => {
       setUserDistrict(getUserDistrict());
@@ -75,6 +88,7 @@ const StudentDataEntry: React.FC = () => {
 
     loadUserInfo();
     loadStudents();
+    loadCenters();
   }, []);
 
   // Fetch students from backend
@@ -88,6 +102,32 @@ const StudentDataEntry: React.FC = () => {
       alert('Error loading students. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load centers for dropdown
+  const loadCenters = async () => {
+    try {
+      setLoadingCenters(true);
+      const data = await fetchCentersForStudent();
+      setCenters(data);
+    } catch (error) {
+      console.error('Error fetching centers:', error);
+    } finally {
+      setLoadingCenters(false);
+    }
+  };
+
+  // Load courses based on selected center
+  const loadCourses = async (centerId: number) => {
+    try {
+      setLoadingCourses(true);
+      const data = await fetchCoursesForStudent(centerId);
+      setCourses(data);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    } finally {
+      setLoadingCourses(false);
     }
   };
 
@@ -175,10 +215,15 @@ const StudentDataEntry: React.FC = () => {
       training_nature: 'Initial',
       training_establishment: '',
       training_placement_preference: '1st',
+      center: null,
+      course: null,
+      enrollment_date: new Date().toISOString().split('T')[0],
+      enrollment_status: 'Pending',
       registration_no: '',
       date_of_application: new Date().toISOString().split('T')[0],
     });
     setEditingStudent(null);
+    setCourses([]);
   };
 
   const addOlResult = () => {
@@ -233,11 +278,105 @@ const StudentDataEntry: React.FC = () => {
     }));
   };
 
-  const filteredStudents = students; // Already filtered by backend
+  const filteredStudents = students;
 
   const recentStudents = [...students]
     .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
     .slice(0, 3);
+
+  // Center and Course Selection Component
+  const CenterAndCourseSection = () => (
+    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
+      <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+        <Building className="w-5 h-5 mr-2 text-green-600" />
+        Center & Course Assignment
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Training Center
+          </label>
+          <select
+            value={formData.center || ''}
+            onChange={(e) => {
+              const centerId = e.target.value ? parseInt(e.target.value) : null;
+              setFormData({ 
+                ...formData, 
+                center: centerId,
+                course: null // Reset course when center changes
+              });
+              if (centerId) {
+                loadCourses(centerId);
+              } else {
+                setCourses([]);
+              }
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
+          >
+            <option value="">Select Center</option>
+            {centers.map(center => (
+              <option key={center.id} value={center.id}>
+                {center.name} - {center.district}
+              </option>
+            ))}
+          </select>
+          {loadingCenters && <p className="text-xs text-gray-500 mt-1">Loading centers...</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Course
+          </label>
+          <select
+            value={formData.course || ''}
+            onChange={(e) => setFormData({ 
+              ...formData, 
+              course: e.target.value ? parseInt(e.target.value) : null 
+            })}
+            disabled={!formData.center || loadingCourses}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 hover:border-green-400 transition"
+          >
+            <option value="">Select Course</option>
+            {courses.map(course => (
+              <option key={course.id} value={course.id}>
+                {course.name} - {course.code}
+              </option>
+            ))}
+          </select>
+          {loadingCourses && <p className="text-xs text-gray-500 mt-1">Loading courses...</p>}
+          {!formData.center && <p className="text-xs text-gray-500 mt-1">Please select a center first</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Enrollment Date
+          </label>
+          <input
+            type="date"
+            value={formData.enrollment_date || ''}
+            onChange={(e) => setFormData({ ...formData, enrollment_date: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Enrollment Status
+          </label>
+          <select
+            value={formData.enrollment_status || 'Pending'}
+            onChange={(e) => setFormData({ ...formData, enrollment_status: e.target.value as any })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
+          >
+            <option value="Pending">Pending</option>
+            <option value="Enrolled">Enrolled</option>
+            <option value="Completed">Completed</option>
+            <option value="Dropped">Dropped</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -258,7 +397,7 @@ const StudentDataEntry: React.FC = () => {
           <div className="flex space-x-3">
             <button 
               onClick={() => setShowForm(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition transform hover:scale-105"
             >
               <Plus className="w-5 h-5" />
               <span>Add Student</span>
@@ -280,7 +419,7 @@ const StudentDataEntry: React.FC = () => {
                       setShowForm(false);
                       resetForm();
                     }}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 transition"
                   >
                     <X className="w-6 h-6" />
                   </button>
@@ -288,7 +427,7 @@ const StudentDataEntry: React.FC = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Personal Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Personal Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -300,7 +439,7 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.full_name_english || ''}
                           onChange={(e) => setFormData({ ...formData, full_name_english: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -312,7 +451,7 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.full_name_sinhala || ''}
                           onChange={(e) => setFormData({ ...formData, full_name_sinhala: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -324,7 +463,7 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.name_with_initials || ''}
                           onChange={(e) => setFormData({ ...formData, name_with_initials: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -334,7 +473,7 @@ const StudentDataEntry: React.FC = () => {
                         <select
                           value={formData.gender || 'Male'}
                           onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         >
                           <option value="Male">Male</option>
                           <option value="Female">Female</option>
@@ -350,7 +489,7 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.date_of_birth || ''}
                           onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -362,14 +501,14 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.nic_id || ''}
                           onChange={(e) => setFormData({ ...formData, nic_id: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Address Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Address Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="md:col-span-2">
@@ -380,7 +519,7 @@ const StudentDataEntry: React.FC = () => {
                           type="text"
                           value={formData.address_line || ''}
                           onChange={(e) => setFormData({ ...formData, address_line: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -396,7 +535,7 @@ const StudentDataEntry: React.FC = () => {
                             }
                           }}
                           readOnly={userRole === 'data_entry'}
-                          className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                          className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition ${
                             userRole === 'data_entry' ? 'bg-gray-100 cursor-not-allowed' : ''
                           }`}
                         />
@@ -414,7 +553,7 @@ const StudentDataEntry: React.FC = () => {
                           type="text"
                           value={formData.divisional_secretariat || ''}
                           onChange={(e) => setFormData({ ...formData, divisional_secretariat: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -425,7 +564,7 @@ const StudentDataEntry: React.FC = () => {
                           type="text"
                           value={formData.grama_niladhari_division || ''}
                           onChange={(e) => setFormData({ ...formData, grama_niladhari_division: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -436,7 +575,7 @@ const StudentDataEntry: React.FC = () => {
                           type="text"
                           value={formData.village || ''}
                           onChange={(e) => setFormData({ ...formData, village: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -447,14 +586,14 @@ const StudentDataEntry: React.FC = () => {
                           type="text"
                           value={formData.residence_type || ''}
                           onChange={(e) => setFormData({ ...formData, residence_type: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Contact Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Contact Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -466,7 +605,7 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.mobile_no || ''}
                           onChange={(e) => setFormData({ ...formData, mobile_no: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                       <div>
@@ -477,14 +616,17 @@ const StudentDataEntry: React.FC = () => {
                           type="email"
                           value={formData.email || ''}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                     </div>
                   </div>
 
+                  {/* Center and Course Section */}
+                  <CenterAndCourseSection />
+
                   {/* Application Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Application Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -496,7 +638,7 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.registration_no || ''}
                           onChange={(e) => setFormData({ ...formData, registration_no: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                           placeholder="Auto-generated if left empty"
                         />
                         <p className="text-xs text-gray-500 mt-1">
@@ -512,14 +654,14 @@ const StudentDataEntry: React.FC = () => {
                           required
                           value={formData.date_of_application || ''}
                           onChange={(e) => setFormData({ ...formData, date_of_application: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Educational Qualifications */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Educational Qualifications</h3>
                     
                     {/* O/L Results */}
@@ -531,14 +673,14 @@ const StudentDataEntry: React.FC = () => {
                           placeholder="Subject"
                           value={newOlSubject}
                           onChange={(e) => setNewOlSubject(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-md"
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         <input
                           type="text"
                           placeholder="Grade"
                           value={newOlGrade}
                           onChange={(e) => setNewOlGrade(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-md"
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         <div className="flex space-x-2">
                           <input
@@ -546,12 +688,12 @@ const StudentDataEntry: React.FC = () => {
                             placeholder="Year"
                             value={newOlYear}
                             onChange={(e) => setNewOlYear(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                           <button
                             type="button"
                             onClick={addOlResult}
-                            className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700"
+                            className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 transition"
                           >
                             Add
                           </button>
@@ -559,12 +701,12 @@ const StudentDataEntry: React.FC = () => {
                       </div>
                       <div className="space-y-2">
                         {(formData.ol_results || []).map((result, index) => (
-                          <div key={index} className="flex justify-between items-center bg-white p-2 rounded border">
+                          <div key={index} className="flex justify-between items-center bg-white p-2 rounded border hover:bg-green-50 transition">
                             <span>{result.subject} - {result.grade} ({result.year})</span>
                             <button
                               type="button"
                               onClick={() => removeOlResult(index)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 transition"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -582,14 +724,14 @@ const StudentDataEntry: React.FC = () => {
                           placeholder="Subject"
                           value={newAlSubject}
                           onChange={(e) => setNewAlSubject(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-md"
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         <input
                           type="text"
                           placeholder="Grade"
                           value={newAlGrade}
                           onChange={(e) => setNewAlGrade(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-md"
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
                         <div className="flex space-x-2">
                           <input
@@ -597,12 +739,12 @@ const StudentDataEntry: React.FC = () => {
                             placeholder="Year"
                             value={newAlYear}
                             onChange={(e) => setNewAlYear(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                           <button
                             type="button"
                             onClick={addAlResult}
-                            className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700"
+                            className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 transition"
                           >
                             Add
                           </button>
@@ -610,12 +752,12 @@ const StudentDataEntry: React.FC = () => {
                       </div>
                       <div className="space-y-2">
                         {(formData.al_results || []).map((result, index) => (
-                          <div key={index} className="flex justify-between items-center bg-white p-2 rounded border">
+                          <div key={index} className="flex justify-between items-center bg-white p-2 rounded border hover:bg-green-50 transition">
                             <span>{result.subject} - {result.grade} ({result.year})</span>
                             <button
                               type="button"
                               onClick={() => removeAlResult(index)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 transition"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -626,7 +768,7 @@ const StudentDataEntry: React.FC = () => {
                   </div>
 
                   {/* Training Details */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Training Details</h3>
                     <div className="space-y-4">
                       <div className="flex items-center">
@@ -651,7 +793,7 @@ const StudentDataEntry: React.FC = () => {
                               type="text"
                               value={formData.training_provider || ''}
                               onChange={(e) => setFormData({ ...formData, training_provider: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                             />
                           </div>
                           <div>
@@ -662,7 +804,7 @@ const StudentDataEntry: React.FC = () => {
                               type="text"
                               value={formData.course_vocation_name || ''}
                               onChange={(e) => setFormData({ ...formData, course_vocation_name: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                             />
                           </div>
                           <div>
@@ -673,7 +815,7 @@ const StudentDataEntry: React.FC = () => {
                               type="text"
                               value={formData.training_duration || ''}
                               onChange={(e) => setFormData({ ...formData, training_duration: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                             />
                           </div>
                           <div>
@@ -683,7 +825,7 @@ const StudentDataEntry: React.FC = () => {
                             <select
                               value={formData.training_nature || 'Initial'}
                               onChange={(e) => setFormData({ ...formData, training_nature: e.target.value as any })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                             >
                               <option value="Initial">Initial</option>
                               <option value="Further">Further</option>
@@ -698,7 +840,7 @@ const StudentDataEntry: React.FC = () => {
                               type="text"
                               value={formData.training_establishment || ''}
                               onChange={(e) => setFormData({ ...formData, training_establishment: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                             />
                           </div>
                           <div>
@@ -708,7 +850,7 @@ const StudentDataEntry: React.FC = () => {
                             <select
                               value={formData.training_placement_preference || '1st'}
                               onChange={(e) => setFormData({ ...formData, training_placement_preference: e.target.value as any })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:border-green-400 transition"
                             >
                               <option value="1st">1st Preference</option>
                               <option value="2nd">2nd Preference</option>
@@ -734,7 +876,7 @@ const StudentDataEntry: React.FC = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center space-x-2 disabled:opacity-50"
+                      className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center space-x-2 disabled:opacity-50 transform hover:scale-105"
                     >
                       <Save className="w-4 h-4" />
                       <span>{loading ? 'Saving...' : (editingStudent ? 'Update' : 'Save')}</span>
@@ -755,7 +897,7 @@ const StudentDataEntry: React.FC = () => {
                   <h2 className="text-xl font-bold text-gray-900">Student Details</h2>
                   <button
                     onClick={() => setShowDetails(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 transition"
                   >
                     <X className="w-6 h-6" />
                   </button>
@@ -763,7 +905,7 @@ const StudentDataEntry: React.FC = () => {
 
                 <div className="space-y-6">
                   {/* Application Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Application Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -778,7 +920,7 @@ const StudentDataEntry: React.FC = () => {
                   </div>
 
                   {/* Personal Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Personal Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -808,8 +950,48 @@ const StudentDataEntry: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Center & Course Information */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+                      <Building className="w-5 h-5 mr-2 text-green-600" />
+                      Center & Course Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Training Center</label>
+                        <p className="text-gray-900">
+                          {selectedStudent.center_name || 'Not assigned'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                        <p className="text-gray-900">
+                          {selectedStudent.course_name || 'Not assigned'}
+                          {selectedStudent.course_code && ` (${selectedStudent.course_code})`}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Date</label>
+                        <p className="text-gray-900">
+                          {selectedStudent.enrollment_date || 'Not set'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Status</label>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          selectedStudent.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800' :
+                          selectedStudent.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800' :
+                          selectedStudent.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {selectedStudent.enrollment_status || 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Address Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Address Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="md:col-span-2">
@@ -840,7 +1022,7 @@ const StudentDataEntry: React.FC = () => {
                   </div>
 
                   {/* Contact Information */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Contact Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -855,7 +1037,7 @@ const StudentDataEntry: React.FC = () => {
                   </div>
 
                   {/* Educational Qualifications */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Educational Qualifications</h3>
                     
                     {/* O/L Results */}
@@ -890,7 +1072,7 @@ const StudentDataEntry: React.FC = () => {
                   </div>
 
                   {/* Training Details */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Training Details</h3>
                     <div className="space-y-4">
                       <div className="flex items-center">
@@ -939,19 +1121,19 @@ const StudentDataEntry: React.FC = () => {
         )}
 
         {/* Search and Filter */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200 hover:shadow-lg transition">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search students by name, NIC, initials, district, or registration no..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="Search students by name, NIC, initials, district, center, course, or registration no..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent hover:border-green-400 transition"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+            <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
               <Filter className="w-5 h-5" />
               <span>Filter</span>
             </button>
@@ -968,7 +1150,7 @@ const StudentDataEntry: React.FC = () => {
             {recentStudents.map((student) => (
               <div
                 key={student.id}
-                className="bg-white shadow-sm rounded-lg p-4 flex items-center justify-between hover:shadow-md transition cursor-pointer"
+                className="bg-white shadow-sm rounded-lg p-4 flex items-center justify-between hover:shadow-md transition cursor-pointer transform hover:scale-105"
                 onClick={() => handleViewDetails(student)}
               >
                 <div className="flex items-center space-x-3">
@@ -981,24 +1163,39 @@ const StudentDataEntry: React.FC = () => {
                     <p className="text-xs text-gray-400">{student.nic_id}</p>
                   </div>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  student.training_received ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {student.training_received ? 'Trained' : 'Not Trained'}
-                </span>
+                <div className="text-right">
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    student.training_received ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {student.training_received ? 'Trained' : 'Not Trained'}
+                  </span>
+                  {student.enrollment_status && (
+                    <span className={`block text-xs px-2 py-1 rounded-full mt-1 ${
+                      student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800' :
+                      student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800' :
+                      student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {student.enrollment_status}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Students Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Registration & Student Info
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Center & Course
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Contact Details
@@ -1033,6 +1230,25 @@ const StudentDataEntry: React.FC = () => {
                           <div className="text-xs text-gray-400">Gender: {student.gender} | DOB: {student.date_of_birth}</div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {student.center_name || 'No Center'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {student.course_name || 'No Course'}
+                        {student.course_code && ` (${student.course_code})`}
+                      </div>
+                      {student.enrollment_status && (
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
+                          student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800' :
+                          student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800' :
+                          student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {student.enrollment_status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">{student.mobile_no}</div>
@@ -1081,21 +1297,21 @@ const StudentDataEntry: React.FC = () => {
                       <div className="flex space-x-2">
                         <button 
                           onClick={() => handleViewDetails(student)}
-                          className="text-blue-600 hover:text-blue-900 transition"
+                          className="text-blue-600 hover:text-blue-900 transition transform hover:scale-110"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => handleEdit(student)}
-                          className="text-green-600 hover:text-green-900 transition"
+                          className="text-green-600 hover:text-green-900 transition transform hover:scale-110"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => student.id && handleDelete(student.id)}
-                          className="text-red-600 hover:text-red-900 transition"
+                          className="text-red-600 hover:text-red-900 transition transform hover:scale-110"
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1106,7 +1322,7 @@ const StudentDataEntry: React.FC = () => {
                 ))}
                 {filteredStudents.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center text-gray-500 py-6">
+                    <td colSpan={7} className="text-center text-gray-500 py-6">
                       {loading ? 'Loading...' : 'No student records found.'}
                     </td>
                   </tr>

@@ -1,6 +1,8 @@
+# courses/serializers.py
 from rest_framework import serializers
 from .models import Course, CourseApproval
 from django.contrib.auth import get_user_model
+from centers.serializers import CenterSerializer  # ADD IMPORT
 
 User = get_user_model()
 
@@ -11,13 +13,14 @@ class UserSerializer(serializers.ModelSerializer):
 
 class CourseSerializer(serializers.ModelSerializer):
     instructor_details = UserSerializer(source='instructor', read_only=True)
+    center_details = CenterSerializer(source='center', read_only=True)  # ADD THIS
     
     class Meta:
         model = Course
         fields = [
             'id', 'name', 'code', 'description', 'category', 'duration',
             'schedule', 'students', 'progress', 'next_session', 'instructor',
-            'instructor_details', 'district', 'status', 'priority',
+            'instructor_details', 'district', 'center', 'center_details', 'status', 'priority',  # ADD CENTER FIELDS
             'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']

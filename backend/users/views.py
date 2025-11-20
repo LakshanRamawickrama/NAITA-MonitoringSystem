@@ -1,4 +1,4 @@
-# users/views.py
+# users/views.py - UPDATED (OverviewView removed)
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -11,10 +11,6 @@ from .serializers import UserListSerializer, UserCreateSerializer
 from centers.serializers import CenterSerializer
 from centers.models import Center
 from rest_framework import serializers
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.db.models import Sum, Count, Value
-from django.db.models.functions import Coalesce
 
 User = get_user_model()
 
@@ -214,61 +210,3 @@ class CenterListView(generics.ListAPIView):
             queryset = queryset.filter(district=user.district)
         
         return queryset
-
-# ==================== OVERVIEW VIEWS ====================
-class OverviewView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAdmin]
-
-    def get(self, request):
-        total_centers = Center.objects.count()
-        active_students = Center.objects.aggregate(
-            total_students=Coalesce(Sum('students'), Value(0))
-        )['total_students']
-        total_instructors = User.objects.filter(role='instructor').count()
-        completion_rate = 87
-
-        enrollment_data = [
-            {'month': 'Jan', 'students': 1200},
-            {'month': 'Feb', 'students': 1350},
-        ]
-
-        performance_counts = Center.objects.values('performance').annotate(value=Count('id')).order_by()
-        colors = {
-            'Excellent': '#16a34a',
-            'Good': '#eab308',
-            'Average': '#38bdf8',
-            'Needs Improvement': '#365314',
-            None: '#9ca3af'
-        }
-        center_performance_data = [
-            {
-                'name': item['performance'] or 'Unknown',
-                'value': item['value'],
-                'color': colors.get(item['performance'], '#9ca3af')
-            }
-            for item in performance_counts
-        ]
-
-        recent_activities = [
-            {'id': 1, 'activity': 'New center registered in Matara', 'time': '2 hours ago', 'type': 'success'},
-        ]
-
-        trends = {
-            'centers': {'value': 5, 'isPositive': True},
-            'students': {'value': 12, 'isPositive': True},
-            'instructors': {'value': 8, 'isPositive': True},
-            'completion': {'value': 3, 'isPositive': True},
-        }
-
-        data = {
-            'total_centers': total_centers,
-            'active_students': active_students,
-            'total_instructors': total_instructors,
-            'completion_rate': completion_rate,
-            'enrollment_data': enrollment_data,
-            'center_performance_data': center_performance_data,
-            'recent_activities': recent_activities,
-            'trends': trends,
-        }
-        return Response(data)

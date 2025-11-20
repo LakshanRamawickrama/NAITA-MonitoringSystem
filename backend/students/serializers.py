@@ -1,6 +1,8 @@
 # students/serializers.py
 from rest_framework import serializers
 from .models import Student, EducationalQualification
+from centers.models import Center
+from courses.models import Course
 
 class EducationalQualificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,6 +12,9 @@ class EducationalQualificationSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     ol_results = EducationalQualificationSerializer(many=True, required=False, write_only=True)
     al_results = EducationalQualificationSerializer(many=True, required=False, write_only=True)
+    center_name = serializers.CharField(source='center.name', read_only=True)
+    course_name = serializers.CharField(source='course.name', read_only=True)
+    course_code = serializers.CharField(source='course.code', read_only=True)
     
     class Meta:
         model = Student
@@ -22,6 +27,8 @@ class StudentSerializer(serializers.ModelSerializer):
             'training_received', 'training_provider', 'course_vocation_name',
             'training_duration', 'training_nature', 'training_establishment',
             'training_placement_preference', 'date_of_application',
+            'center', 'center_name', 'course', 'course_name', 'course_code',
+            'enrollment_date', 'enrollment_status',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['registration_no', 'created_at', 'updated_at']
@@ -49,6 +56,24 @@ class StudentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "district": f"You can only add students from your assigned district ({user_district})."
                 })
+            
+            # Auto-assign center based on user's center if available
+            if request.user.center and not data.get('center'):
+                data['center'] = request.user.center
+        
+        # Validate center and course district matching
+        center = data.get('center')
+        course = data.get('course')
+        
+        if center and center.district != data.get('district'):
+            raise serializers.ValidationError({
+                "center": "Selected center must be in the same district as the student."
+            })
+            
+        if course and course.district != data.get('district'):
+            raise serializers.ValidationError({
+                "course": "Selected course must be in the same district as the student."
+            })
         
         return data
     

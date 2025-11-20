@@ -6,8 +6,8 @@ class Center(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     district = models.CharField(max_length=100, blank=True, null=True)
     manager = models.CharField(max_length=255, blank=True, null=True)
-    students = models.PositiveIntegerField(default=0, blank=True, null=True)
-    instructors = models.PositiveIntegerField(default=0, blank=True, null=True)
+    student_count = models.PositiveIntegerField(default=0, blank=True, null=True)  # CHANGED FROM 'students'
+    instructor_count = models.PositiveIntegerField(default=0, blank=True, null=True)  # CHANGED FROM 'instructors'
     phone = models.CharField(max_length=20, blank=True, null=True)
     status = models.CharField(max_length=20, default="Active")
     performance = models.CharField(max_length=20, blank=True, null=True)
