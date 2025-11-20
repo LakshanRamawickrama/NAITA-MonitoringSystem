@@ -21,8 +21,8 @@ import TrainingOfficerCourses from "../TrainingOfficerDashboard/TrainingOfficerC
 import TrainingOfficeOverview from "../TrainingOfficerDashboard/TrainingOfficerOverview";
 
 import DataEntryStudents from "../DataEntryDashboard/DataEntryStudents";
-import DataEntryCourses from "../DataEntryDashboard/DataEntryCourses";
-import DataEntryEnrollments from "../DataEntryDashboard/DataEntryEnrollments";
+import DataEntryOverview from "../DataEntryDashboard/DataEntryOverview";
+
 
 import InstructorOverview from "../InstructorDashboard/InstructorOverview";
 import InstructorCourses from "../InstructorDashboard/InstructorCourses";
@@ -91,8 +91,8 @@ const Dashboard = () => {
 
         {/* === DATA ENTRY === */}
         {role === "data_entry" && location.pathname === "/dashboard/data-entry" && <DataEntryStudents />}
-        {role === "data_entry" && location.pathname === "/dashboard/data-entry/courses" && <DataEntryCourses />}
-        {role === "data_entry" && location.pathname === "/dashboard/data-entry/enrollments" && <DataEntryEnrollments />}
+        {role === "data_entry" && location.pathname === "/dashboard/data-entry/overview" && <DataEntryOverview />}
+        
 
         {/* === INSTRUCTOR === */}
         {role === "instructor" && location.pathname === "/dashboard/instructor" && <InstructorOverview />}

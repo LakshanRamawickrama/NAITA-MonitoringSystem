@@ -40,9 +40,9 @@ const getNavItems = () => {
       ];
     case 'data_entry':
       return [
-        { path: '/dashboard/data-entry', label: 'Students' },
-        { path: '/dashboard/data-entry/courses', label: 'Courses' },
-        { path: '/dashboard/data-entry/enrollments', label: 'Enrollments' }
+        { path: '/dashboard/data-entry/overview', label: 'Overview' },
+        { path: '/dashboard/data-entry', label: 'Students' }
+        
       ];
      case 'instructor':
       return [

@@ -1,6 +1,6 @@
-// StudentDataEntry.tsx - Complete version with backend integration
+// StudentDataEntry.tsx - Complete version with backend integration (Import/Export removed)
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Upload, Edit, Trash2, User, Clock, Save, X, Eye, MapPin } from 'lucide-react';
+import { Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye, MapPin } from 'lucide-react';
 import { 
   type StudentType, 
   type EducationalQualificationType,
@@ -8,8 +8,6 @@ import {
   createStudent, 
   updateStudent, 
   deleteStudent,
-  exportStudents,
-  importStudents,
   getUserDistrict,
   getUserRole
 } from '../../api/api';
@@ -22,7 +20,6 @@ const StudentDataEntry: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
   const [editingStudent, setEditingStudent] = useState<StudentType | null>(null);
   const [loading, setLoading] = useState(false);
-  const [importLoading, setImportLoading] = useState(false);
   const [userDistrict, setUserDistrict] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
   
@@ -236,52 +233,6 @@ const StudentDataEntry: React.FC = () => {
     }));
   };
 
-  const handleExport = async (format: 'csv' | 'excel' = 'csv') => {
-    try {
-      const blob = await exportStudents(format);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `students.${format === 'excel' ? 'xlsx' : format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error exporting students:', error);
-      alert('Error exporting students. Please try again.');
-    }
-  };
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setImportLoading(true);
-      const result = await importStudents(file);
-      
-      if (result.errors.length > 0) {
-        alert(`Imported ${result.imported} students with ${result.errors.length} errors. Check console for details.`);
-        console.error('Import errors:', result.errors);
-      } else {
-        alert(`Successfully imported ${result.imported} students`);
-      }
-      
-      // Reload students
-      loadStudents();
-      
-      // Reset file input
-      event.target.value = '';
-    } catch (error: any) {
-      console.error('Error importing students:', error);
-      alert(error.response?.data?.detail || 'Error importing students. Please try again.');
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
   const filteredStudents = students; // Already filtered by backend
 
   const recentStudents = [...students]
@@ -305,24 +256,6 @@ const StudentDataEntry: React.FC = () => {
             )}
           </div>
           <div className="flex space-x-3">
-            <button 
-              onClick={() => handleExport('csv')}
-              className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export</span>
-            </button>
-            <label className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition cursor-pointer">
-              <Upload className="w-4 h-4" />
-              <span>{importLoading ? 'Importing...' : 'Import'}</span>
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleImport}
-                className="hidden"
-                disabled={importLoading}
-              />
-            </label>
             <button 
               onClick={() => setShowForm(true)}
               className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition"
