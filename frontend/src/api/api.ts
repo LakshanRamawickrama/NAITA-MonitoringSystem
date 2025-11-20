@@ -590,4 +590,103 @@ export const exportCourseAnalytics = async (courseId: number): Promise<Blob> => 
   return res.data;
 };
 
+
+// Add to your existing api.ts file
+/* ========== STUDENT API ========== */
+export interface EducationalQualificationType {
+  id?: number;
+  subject: string;
+  grade: string;
+  year: number;
+  type: 'OL' | 'AL';
+}
+
+export interface StudentType {
+  id?: number;
+  // Personal Information
+  full_name_english: string;
+  full_name_sinhala: string;
+  name_with_initials: string;
+  gender: 'Male' | 'Female' | 'Other';
+  date_of_birth: string;
+  nic_id: string;
+  
+  // Address Information
+  address_line: string;
+  district: string;
+  divisional_secretariat: string;
+  grama_niladhari_division: string;
+  village: string;
+  residence_type: string;
+  
+  // Contact Information
+  mobile_no: string;
+  email: string;
+  
+  // Educational Qualifications
+  ol_results: EducationalQualificationType[];
+  al_results: EducationalQualificationType[];
+  
+  // Training Details
+  training_received: boolean;
+  training_provider: string;
+  course_vocation_name: string;
+  training_duration: string;
+  training_nature: 'Initial' | 'Further' | 'Re-training';
+  training_establishment: string;
+  training_placement_preference: '1st' | '2nd' | '3rd';
+  registration_no: string;
+  date_of_application: string;
+  
+  // System fields
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Student API Functions
+export const fetchStudents = async (search?: string): Promise<StudentType[]> => {
+  const params = search ? { search } : {};
+  const res = await api.get("/api/students/", { params });
+  return res.data;
+};
+
+export const fetchStudentById = async (id: number): Promise<StudentType> => {
+  const res = await api.get(`/api/students/${id}/`);
+  return res.data;
+};
+
+export const createStudent = async (data: Partial<StudentType>): Promise<StudentType> => {
+  const res = await api.post("/api/students/", data);
+  return res.data;
+};
+
+export const updateStudent = async (id: number, data: Partial<StudentType>): Promise<StudentType> => {
+  const res = await api.patch(`/api/students/${id}/`, data);
+  return res.data;
+};
+
+export const deleteStudent = async (id: number): Promise<void> => {
+  await api.delete(`/api/students/${id}/`);
+};
+
+export const exportStudents = async (format: 'csv' | 'excel' = 'csv'): Promise<Blob> => {
+  const res = await api.get("/api/students/export/", {
+    params: { format },
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+export const importStudents = async (file: File): Promise<{ message: string; imported: number; errors: string[] }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const res = await api.post("/api/students/import/", formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return res.data;
+};
+
 export default api;

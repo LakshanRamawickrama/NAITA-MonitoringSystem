@@ -1,67 +1,32 @@
-// StudentDataEntry.tsx
+// StudentDataEntry.tsx - Complete version with backend integration
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, Upload, Edit, Trash2, User, Clock, Save, X, Eye } from 'lucide-react';
-
-// Interface matching your Django backend student model
-interface EducationalQualification {
-  id?: number;
-  subject: string;
-  grade: string;
-  year: number;
-  type: 'OL' | 'AL';
-}
-
-interface Student {
-  id?: number;
-  // Personal Information
-  full_name_english: string;
-  full_name_sinhala: string;
-  name_with_initials: string;
-  gender: 'Male' | 'Female' | 'Other';
-  date_of_birth: string;
-  nic_id: string;
-  
-  // Address Information
-  address_line: string;
-  district: string;
-  divisional_secretariat: string;
-  grama_niladhari_division: string;
-  village: string;
-  residence_type: string;
-  
-  // Contact Information
-  mobile_no: string;
-  email: string;
-  
-  // Educational Qualifications
-  ol_results: EducationalQualification[];
-  al_results: EducationalQualification[];
-  
-  // Training Details
-  training_received: boolean;
-  training_provider: string;
-  course_vocation_name: string;
-  training_duration: string;
-  training_nature: 'Initial' | 'Further' | 'Re-training';
-  training_establishment: string;
-  training_placement_preference: '1st' | '2nd' | '3rd';
-  registration_no: string;
-  date_of_application: string;
-  
-  // System fields
-  created_at?: string;
-  updated_at?: string;
-}
+import { Plus, Search, Filter, Download, Upload, Edit, Trash2, User, Clock, Save, X, Eye, MapPin } from 'lucide-react';
+import { 
+  type StudentType, 
+  type EducationalQualificationType,
+  fetchStudents, 
+  createStudent, 
+  updateStudent, 
+  deleteStudent,
+  exportStudents,
+  importStudents,
+  getUserDistrict,
+  getUserRole
+} from '../../api/api';
 
 const StudentDataEntry: React.FC = () => {
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentType | null>(null);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<Student>({
+  const [importLoading, setImportLoading] = useState(false);
+  const [userDistrict, setUserDistrict] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('');
+  
+  const [formData, setFormData] = useState<Partial<StudentType>>({
     full_name_english: '',
     full_name_sinhala: '',
     name_with_initials: '',
@@ -86,7 +51,7 @@ const StudentDataEntry: React.FC = () => {
     training_establishment: '',
     training_placement_preference: '1st',
     registration_no: '',
-    date_of_application: new Date().toISOString().split('T')[0], // Default to today
+    date_of_application: new Date().toISOString().split('T')[0],
   });
 
   const [newOlSubject, setNewOlSubject] = useState('');
@@ -96,131 +61,66 @@ const StudentDataEntry: React.FC = () => {
   const [newAlGrade, setNewAlGrade] = useState('');
   const [newAlYear, setNewAlYear] = useState('');
 
-  // Mock data - replace with actual API calls
-  const mockStudents: Student[] = [
-    {
-      id: 1,
-      full_name_english: 'Kamal Perera',
-      full_name_sinhala: 'කමල් පෙරේරා',
-      name_with_initials: 'K. Perera',
-      gender: 'Male',
-      date_of_birth: '1995-05-15',
-      nic_id: '951234567V',
-      address_line: '123 Main Street',
-      district: 'Colombo',
-      divisional_secretariat: 'Colombo',
-      grama_niladhari_division: 'Colombo 01',
-      village: 'Colombo',
-      residence_type: 'Urban',
-      mobile_no: '0771234567',
-      email: 'kamal@email.com',
-      ol_results: [
-        { subject: 'Mathematics', grade: 'A', year: 2010, type: 'OL' },
-        { subject: 'Science', grade: 'B', year: 2010, type: 'OL' },
-      ],
-      al_results: [
-        { subject: 'Combined Mathematics', grade: 'C', year: 2013, type: 'AL' },
-        { subject: 'Physics', grade: 'S', year: 2013, type: 'AL' },
-      ],
-      training_received: true,
-      training_provider: 'NAITA',
-      course_vocation_name: 'Web Development',
-      training_duration: '6 months',
-      training_nature: 'Initial',
-      training_establishment: 'Colombo Technical Center',
-      training_placement_preference: '1st',
-      registration_no: 'REG001',
-      date_of_application: '2024-01-15',
-      created_at: '2024-01-15T10:00:00Z',
-    },
-    {
-      id: 2,
-      full_name_english: 'Nimali Silva',
-      full_name_sinhala: 'නිමලි සිල්වා',
-      name_with_initials: 'N. Silva',
-      gender: 'Female',
-      date_of_birth: '1998-08-20',
-      nic_id: '982345678V',
-      address_line: '456 Garden Road',
-      district: 'Gampaha',
-      divisional_secretariat: 'Gampaha',
-      grama_niladhari_division: 'Gampaha Town',
-      village: 'Gampaha',
-      residence_type: 'Suburban',
-      mobile_no: '0762345678',
-      email: 'nimali@email.com',
-      ol_results: [
-        { subject: 'Mathematics', grade: 'B', year: 2014, type: 'OL' },
-        { subject: 'English', grade: 'A', year: 2014, type: 'OL' },
-      ],
-      al_results: [
-        { subject: 'Commerce', grade: 'B', year: 2017, type: 'AL' },
-        { subject: 'Accounting', grade: 'C', year: 2017, type: 'AL' },
-      ],
-      training_received: false,
-      training_provider: '',
-      course_vocation_name: '',
-      training_duration: '',
-      training_nature: 'Initial',
-      training_establishment: '',
-      training_placement_preference: '1st',
-      registration_no: 'REG002',
-      date_of_application: '2024-02-01',
-      created_at: '2024-02-01T09:30:00Z',
-    },
-  ];
+  // Load user info and students
+  useEffect(() => {
+    const loadUserInfo = () => {
+      setUserDistrict(getUserDistrict());
+      setUserRole(getUserRole());
+      
+      // Auto-set district for data entry officers in form
+      if (getUserRole() === 'data_entry' && getUserDistrict()) {
+        setFormData(prev => ({
+          ...prev,
+          district: getUserDistrict()
+        }));
+      }
+    };
+
+    loadUserInfo();
+    loadStudents();
+  }, []);
 
   // Fetch students from backend
-  const fetchStudents = async () => {
+  const loadStudents = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/students/');
-      // const data = await response.json();
-      // setStudents(data);
-      
-      // Using mock data for now
-      setStudents(mockStudents);
+      const data = await fetchStudents(searchTerm);
+      setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);
+      alert('Error loading students. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    loadStudents();
+  }, [searchTerm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      if (editingStudent) {
+      if (editingStudent && editingStudent.id) {
         // Update existing student
-        const updatedStudents = students.map(student =>
-          student.id === editingStudent.id ? { ...formData, id: editingStudent.id } : student
-        );
-        setStudents(updatedStudents);
+        const updatedStudent = await updateStudent(editingStudent.id, formData);
+        setStudents(students.map(student => 
+          student.id === editingStudent.id ? updatedStudent : student
+        ));
       } else {
-        // Add new student - generate registration number if not provided
-        const registrationNo = formData.registration_no || `REG${String(students.length + 1).padStart(3, '0')}`;
-        const newStudent = {
-          ...formData,
-          registration_no: registrationNo,
-          id: Math.max(...students.map(s => s.id || 0)) + 1,
-          created_at: new Date().toISOString(),
-        };
+        // Add new student
+        const newStudent = await createStudent(formData);
         setStudents([...students, newStudent]);
       }
 
       resetForm();
       setShowForm(false);
       setEditingStudent(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving student:', error);
+      alert(error.response?.data?.detail || 'Error saving student. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -230,22 +130,25 @@ const StudentDataEntry: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this student?')) return;
 
     try {
-      // TODO: Replace with actual API call
-      // await fetch(`/api/students/${id}/`, { method: 'DELETE' });
-      
+      await deleteStudent(id);
       setStudents(students.filter(student => student.id !== id));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting student:', error);
+      alert(error.response?.data?.detail || 'Error deleting student. Please try again.');
     }
   };
 
-  const handleEdit = (student: Student) => {
-    setFormData(student);
+  const handleEdit = (student: StudentType) => {
+    setFormData({
+      ...student,
+      ol_results: student.ol_results || [],
+      al_results: student.al_results || [],
+    });
     setEditingStudent(student);
     setShowForm(true);
   };
 
-  const handleViewDetails = (student: Student) => {
+  const handleViewDetails = (student: StudentType) => {
     setSelectedStudent(student);
     setShowDetails(true);
   };
@@ -259,7 +162,7 @@ const StudentDataEntry: React.FC = () => {
       date_of_birth: '',
       nic_id: '',
       address_line: '',
-      district: '',
+      district: userRole === 'data_entry' ? getUserDistrict() : '',
       divisional_secretariat: '',
       grama_niladhari_division: '',
       village: '',
@@ -283,17 +186,16 @@ const StudentDataEntry: React.FC = () => {
 
   const addOlResult = () => {
     if (newOlSubject && newOlGrade && newOlYear) {
+      const newResult: EducationalQualificationType = {
+        subject: newOlSubject,
+        grade: newOlGrade,
+        year: parseInt(newOlYear),
+        type: 'OL'
+      };
+      
       setFormData(prev => ({
         ...prev,
-        ol_results: [
-          ...prev.ol_results,
-          {
-            subject: newOlSubject,
-            grade: newOlGrade,
-            year: parseInt(newOlYear),
-            type: 'OL'
-          }
-        ]
+        ol_results: [...(prev.ol_results || []), newResult]
       }));
       setNewOlSubject('');
       setNewOlGrade('');
@@ -303,17 +205,16 @@ const StudentDataEntry: React.FC = () => {
 
   const addAlResult = () => {
     if (newAlSubject && newAlGrade && newAlYear) {
+      const newResult: EducationalQualificationType = {
+        subject: newAlSubject,
+        grade: newAlGrade,
+        year: parseInt(newAlYear),
+        type: 'AL'
+      };
+      
       setFormData(prev => ({
         ...prev,
-        al_results: [
-          ...prev.al_results,
-          {
-            subject: newAlSubject,
-            grade: newAlGrade,
-            year: parseInt(newAlYear),
-            type: 'AL'
-          }
-        ]
+        al_results: [...(prev.al_results || []), newResult]
       }));
       setNewAlSubject('');
       setNewAlGrade('');
@@ -324,25 +225,64 @@ const StudentDataEntry: React.FC = () => {
   const removeOlResult = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      ol_results: prev.ol_results.filter((_, i) => i !== index)
+      ol_results: (prev.ol_results || []).filter((_, i) => i !== index)
     }));
   };
 
   const removeAlResult = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      al_results: prev.al_results.filter((_, i) => i !== index)
+      al_results: (prev.al_results || []).filter((_, i) => i !== index)
     }));
   };
 
-  const filteredStudents = students.filter(
-    (student) =>
-      student.full_name_english.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.nic_id.includes(searchTerm) ||
-      student.name_with_initials.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.district.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.registration_no.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleExport = async (format: 'csv' | 'excel' = 'csv') => {
+    try {
+      const blob = await exportStudents(format);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `students.${format === 'excel' ? 'xlsx' : format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exporting students:', error);
+      alert('Error exporting students. Please try again.');
+    }
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportLoading(true);
+      const result = await importStudents(file);
+      
+      if (result.errors.length > 0) {
+        alert(`Imported ${result.imported} students with ${result.errors.length} errors. Check console for details.`);
+        console.error('Import errors:', result.errors);
+      } else {
+        alert(`Successfully imported ${result.imported} students`);
+      }
+      
+      // Reload students
+      loadStudents();
+      
+      // Reset file input
+      event.target.value = '';
+    } catch (error: any) {
+      console.error('Error importing students:', error);
+      alert(error.response?.data?.detail || 'Error importing students. Please try again.');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const filteredStudents = students; // Already filtered by backend
 
   const recentStudents = [...students]
     .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
@@ -352,21 +292,37 @@ const StudentDataEntry: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        {/* Header with District Info */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Student Data Entry</h1>
             <p className="text-gray-600">Manage student records and information</p>
+            {userDistrict && (
+              <div className="flex items-center mt-1 text-sm text-green-600">
+                <MapPin className="w-4 h-4 mr-1" />
+                <span>District: {userDistrict}</span>
+              </div>
+            )}
           </div>
           <div className="flex space-x-3">
-            <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition">
+            <button 
+              onClick={() => handleExport('csv')}
+              className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition"
+            >
               <Download className="w-4 h-4" />
               <span>Export</span>
             </button>
-            <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition">
+            <label className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 transition cursor-pointer">
               <Upload className="w-4 h-4" />
-              <span>Import</span>
-            </button>
+              <span>{importLoading ? 'Importing...' : 'Import'}</span>
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleImport}
+                className="hidden"
+                disabled={importLoading}
+              />
+            </label>
             <button 
               onClick={() => setShowForm(true)}
               className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition"
@@ -409,7 +365,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="text"
                           required
-                          value={formData.full_name_english}
+                          value={formData.full_name_english || ''}
                           onChange={(e) => setFormData({ ...formData, full_name_english: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -421,7 +377,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="text"
                           required
-                          value={formData.full_name_sinhala}
+                          value={formData.full_name_sinhala || ''}
                           onChange={(e) => setFormData({ ...formData, full_name_sinhala: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -433,7 +389,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="text"
                           required
-                          value={formData.name_with_initials}
+                          value={formData.name_with_initials || ''}
                           onChange={(e) => setFormData({ ...formData, name_with_initials: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -443,7 +399,7 @@ const StudentDataEntry: React.FC = () => {
                           Gender *
                         </label>
                         <select
-                          value={formData.gender}
+                          value={formData.gender || 'Male'}
                           onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         >
@@ -459,7 +415,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="date"
                           required
-                          value={formData.date_of_birth}
+                          value={formData.date_of_birth || ''}
                           onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -471,7 +427,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="text"
                           required
-                          value={formData.nic_id}
+                          value={formData.nic_id || ''}
                           onChange={(e) => setFormData({ ...formData, nic_id: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -489,21 +445,33 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                         <input
                           type="text"
-                          value={formData.address_line}
+                          value={formData.address_line || ''}
                           onChange={(e) => setFormData({ ...formData, address_line: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          District
+                          District {userRole === 'data_entry' && '(Auto-set)'}
                         </label>
                         <input
                           type="text"
-                          value={formData.district}
-                          onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                          value={formData.district || ''}
+                          onChange={(e) => {
+                            if (userRole !== 'data_entry') {
+                              setFormData({ ...formData, district: e.target.value })
+                            }
+                          }}
+                          readOnly={userRole === 'data_entry'}
+                          className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                            userRole === 'data_entry' ? 'bg-gray-100 cursor-not-allowed' : ''
+                          }`}
                         />
+                        {userRole === 'data_entry' && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            District is automatically set to your assigned district
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -511,7 +479,7 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                         <input
                           type="text"
-                          value={formData.divisional_secretariat}
+                          value={formData.divisional_secretariat || ''}
                           onChange={(e) => setFormData({ ...formData, divisional_secretariat: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -522,7 +490,7 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                         <input
                           type="text"
-                          value={formData.grama_niladhari_division}
+                          value={formData.grama_niladhari_division || ''}
                           onChange={(e) => setFormData({ ...formData, grama_niladhari_division: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -533,7 +501,7 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                         <input
                           type="text"
-                          value={formData.village}
+                          value={formData.village || ''}
                           onChange={(e) => setFormData({ ...formData, village: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -544,7 +512,7 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                         <input
                           type="text"
-                          value={formData.residence_type}
+                          value={formData.residence_type || ''}
                           onChange={(e) => setFormData({ ...formData, residence_type: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -563,7 +531,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="tel"
                           required
-                          value={formData.mobile_no}
+                          value={formData.mobile_no || ''}
                           onChange={(e) => setFormData({ ...formData, mobile_no: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -574,7 +542,7 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                         <input
                           type="email"
-                          value={formData.email}
+                          value={formData.email || ''}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -593,7 +561,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="text"
                           required
-                          value={formData.registration_no}
+                          value={formData.registration_no || ''}
                           onChange={(e) => setFormData({ ...formData, registration_no: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                           placeholder="Auto-generated if left empty"
@@ -609,7 +577,7 @@ const StudentDataEntry: React.FC = () => {
                         <input
                           type="date"
                           required
-                          value={formData.date_of_application}
+                          value={formData.date_of_application || ''}
                           onChange={(e) => setFormData({ ...formData, date_of_application: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
@@ -657,7 +625,7 @@ const StudentDataEntry: React.FC = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        {formData.ol_results.map((result, index) => (
+                        {(formData.ol_results || []).map((result, index) => (
                           <div key={index} className="flex justify-between items-center bg-white p-2 rounded border">
                             <span>{result.subject} - {result.grade} ({result.year})</span>
                             <button
@@ -708,7 +676,7 @@ const StudentDataEntry: React.FC = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        {formData.al_results.map((result, index) => (
+                        {(formData.al_results || []).map((result, index) => (
                           <div key={index} className="flex justify-between items-center bg-white p-2 rounded border">
                             <span>{result.subject} - {result.grade} ({result.year})</span>
                             <button
@@ -731,7 +699,7 @@ const StudentDataEntry: React.FC = () => {
                       <div className="flex items-center">
                         <input
                           type="checkbox"
-                          checked={formData.training_received}
+                          checked={formData.training_received || false}
                           onChange={(e) => setFormData({ ...formData, training_received: e.target.checked })}
                           className="mr-2"
                         />
@@ -740,7 +708,7 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                       </div>
                       
-                      {formData.training_received && (
+                      {(formData.training_received) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -748,7 +716,7 @@ const StudentDataEntry: React.FC = () => {
                             </label>
                             <input
                               type="text"
-                              value={formData.training_provider}
+                              value={formData.training_provider || ''}
                               onChange={(e) => setFormData({ ...formData, training_provider: e.target.value })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
@@ -759,7 +727,7 @@ const StudentDataEntry: React.FC = () => {
                             </label>
                             <input
                               type="text"
-                              value={formData.course_vocation_name}
+                              value={formData.course_vocation_name || ''}
                               onChange={(e) => setFormData({ ...formData, course_vocation_name: e.target.value })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
@@ -770,7 +738,7 @@ const StudentDataEntry: React.FC = () => {
                             </label>
                             <input
                               type="text"
-                              value={formData.training_duration}
+                              value={formData.training_duration || ''}
                               onChange={(e) => setFormData({ ...formData, training_duration: e.target.value })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
@@ -780,7 +748,7 @@ const StudentDataEntry: React.FC = () => {
                               Nature of Training
                             </label>
                             <select
-                              value={formData.training_nature}
+                              value={formData.training_nature || 'Initial'}
                               onChange={(e) => setFormData({ ...formData, training_nature: e.target.value as any })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                             >
@@ -795,7 +763,7 @@ const StudentDataEntry: React.FC = () => {
                             </label>
                             <input
                               type="text"
-                              value={formData.training_establishment}
+                              value={formData.training_establishment || ''}
                               onChange={(e) => setFormData({ ...formData, training_establishment: e.target.value })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
@@ -805,7 +773,7 @@ const StudentDataEntry: React.FC = () => {
                               Placement Preference
                             </label>
                             <select
-                              value={formData.training_placement_preference}
+                              value={formData.training_placement_preference || '1st'}
                               onChange={(e) => setFormData({ ...formData, training_placement_preference: e.target.value as any })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                             >
@@ -1206,7 +1174,7 @@ const StudentDataEntry: React.FC = () => {
                 {filteredStudents.length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-center text-gray-500 py-6">
-                      No student records found.
+                      {loading ? 'Loading...' : 'No student records found.'}
                     </td>
                   </tr>
                 )}
