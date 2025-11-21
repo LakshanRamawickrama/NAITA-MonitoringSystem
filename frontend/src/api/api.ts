@@ -20,127 +20,17 @@ api.interceptors.response.use(
       // Token expired or invalid
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("user_district");
+      localStorage.removeItem("center_id");
+      localStorage.removeItem("center_name");
+      localStorage.removeItem("user_first_name");
+      localStorage.removeItem("user_last_name");
       window.location.href = "/login";
     }
     return Promise.reject(error);
   }
 );
-
-/* ========== USER API ========== */
-export interface UserType {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  center: { id: number; name: string; district: string | null } | null;
-  district: string | null;
-  is_active: boolean;
-  is_staff: boolean;
-  last_login: string | null;
-}
-
-/* ========== CENTER API ========== */
-export interface Center {
-  id: number;
-  name: string;
-  location: string | null;
-  district: string | null;
-  manager?: string | null;
-  phone?: string | null;
-  student_count?: number | null;  // CHANGED from 'students'
-  instructor_count?: number | null;  // CHANGED from 'instructors'
-  status?: string;
-  performance?: string | null;
-  enrolled_students_count?: number;
-}
-
-/* ========== COURSE API ========== */
-export interface CourseType {
-  id: number;
-  name: string;
-  code: string;
-  description?: string | null;
-  category?: string | null;
-  duration?: string | null;
-  schedule?: string | null;
-  students: number;
-  progress: number;
-  next_session?: string | null;
-  instructor: number | null;
-  instructor_details?: {
-    id: number;
-    username: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-  } | null;
-  district: string;
-  center: number | null;
-  center_details?: Center | null;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Active' | 'Inactive';
-  priority: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CourseApprovalType {
-  id: number;
-  course: number;
-  course_details: CourseType;
-  requested_by: number;
-  requested_by_details: {
-    id: number;
-    username: string;
-    first_name: string;
-    last_name: string;
-  };
-  approval_status: string;
-  comments?: string | null;
-  approved_by?: number | null;
-  approved_by_details?: {
-    id: number;
-    username: string;
-    first_name: string;
-    last_name: string;
-  } | null;
-  approved_at?: string | null;
-  created_at: string;
-}
-
-/* ========== APPROVALS API ========== */
-export interface ApprovalType {
-  id: number;
-  type: string;
-  center: string;
-  requested_by: {
-    id: number;
-    username: string;
-    first_name: string;
-    last_name: string;
-  };
-  description: string;
-  date_requested: string;
-  priority: string;
-  status: string;
-}
-
-/* ========== ENROLLMENT API ========== */
-export interface EnrollmentType {
-  id: number;
-  course: number;
-  student: number;
-  enrolled_at: string;
-  status: string;
-  student_details?: {
-    id: number;
-    username: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-  };
-}
 
 /* ========== AUTH API ========== */
 export const loginUser = async (email: string, password: string) => {
@@ -178,7 +68,55 @@ export const getCurrentUser = async (): Promise<UserType> => {
   return res.data;
 };
 
-/* ========== USER MANAGEMENT API ========== */
+export const refreshToken = async (): Promise<{ access: string }> => {
+  const refresh = localStorage.getItem("refresh_token");
+  const res = await api.post("/api/token/refresh/", { refresh });
+  localStorage.setItem("access_token", res.data.access);
+  return res.data;
+};
+
+/* ========== UTILITY FUNCTIONS ========== */
+export const isAuthenticated = (): boolean => {
+  return !!localStorage.getItem("access_token");
+};
+
+export const getUserRole = (): string => {
+  return localStorage.getItem("user_role") || "";
+};
+
+export const getUserDistrict = (): string => {
+  return localStorage.getItem("user_district") || "";
+};
+
+export const getUserName = (): string => {
+  const firstName = localStorage.getItem("user_first_name") || "";
+  const lastName = localStorage.getItem("user_last_name") || "";
+  return `${firstName} ${lastName}`.trim();
+};
+
+export const getCenterId = (): string => {
+  return localStorage.getItem("center_id") || "";
+};
+
+export const getCenterName = (): string => {
+  return localStorage.getItem("center_name") || "";
+};
+
+/* ========== USER API ========== */
+export interface UserType {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  center: { id: number; name: string; district: string | null } | null;
+  district: string | null;
+  is_active: boolean;
+  is_staff: boolean;
+  last_login: string | null;
+}
+
 export const fetchUsers = async (): Promise<UserType[]> => {
   const res = await api.get("/api/users/");
   return res.data;
@@ -202,7 +140,32 @@ export const changePassword = async (id: number, new_password: string): Promise<
   await api.post(`/api/users/${id}/change-password/`, { new_password });
 };
 
-/* ========== CENTER MANAGEMENT API ========== */
+export const fetchInstructors = async (): Promise<UserType[]> => {
+  const res = await api.get("/api/instructors/");
+  return res.data;
+};
+
+export const fetchUsersByRole = async (role?: string): Promise<UserType[]> => {
+  const params = role ? { role } : {};
+  const res = await api.get("/api/users/", { params });
+  return res.data;
+};
+
+/* ========== CENTER API ========== */
+export interface Center {
+  id: number;
+  name: string;
+  location: string | null;
+  district: string | null;
+  manager?: string | null;
+  phone?: string | null;
+  student_count?: number | null;
+  instructor_count?: number | null;
+  status?: string;
+  performance?: string | null;
+  enrolled_students_count?: number;
+}
+
 export const fetchCenters = async (): Promise<Center[]> => {
   const res = await api.get("/api/centers/");
   return res.data;
@@ -214,8 +177,8 @@ export const createCenter = async (data: {
   district?: string | null;
   manager?: string | null;
   phone?: string | null;
-  student_count?: number | null;  // CHANGED
-  instructor_count?: number | null;  // CHANGED
+  student_count?: number | null;
+  instructor_count?: number | null;
   status?: string;
   performance?: string | null;
 }): Promise<Center> => {
@@ -231,8 +194,8 @@ export const updateCenter = async (
     district: string | null;
     manager: string | null;
     phone: string | null;
-    student_count: number | null;  // CHANGED
-    instructor_count: number | null;  // CHANGED
+    student_count: number | null;
+    instructor_count: number | null;
     status: string;
     performance: string | null;
   }>
@@ -245,7 +208,40 @@ export const deleteCenter = async (id: number): Promise<void> => {
   await api.delete(`/api/centers/${id}/delete/`);
 };
 
-/* ========== COURSE MANAGEMENT API ========== */
+export const fetchCentersForStudent = async (): Promise<Center[]> => {
+  const res = await api.get("/api/centers/for-student/");
+  return res.data;
+};
+
+/* ========== COURSE API ========== */
+export interface CourseType {
+  id: number;
+  name: string;
+  code: string;
+  description?: string | null;
+  category?: string | null;
+  duration?: string | null;
+  schedule?: string | null;
+  students: number;
+  progress: number;
+  next_session?: string | null;
+  instructor: number | null;
+  instructor_details?: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  } | null;
+  district: string;
+  center: number | null;
+  center_details?: Center | null;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Active' | 'Inactive';
+  priority: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const fetchCourses = async (params?: {
   district?: string;
   status?: string;
@@ -256,19 +252,16 @@ export const fetchCourses = async (params?: {
   return res.data;
 };
 
-/* GET /api/courses/my/ - Instructor's assigned courses */
 export const fetchMyCourses = async (): Promise<CourseType[]> => {
   const res = await api.get("/api/courses/my/");
   return res.data;
 };
 
-/* GET /api/courses/available/ - Available courses for instructors */
 export const fetchAvailableCourses = async (): Promise<CourseType[]> => {
   const res = await api.get("/api/courses/available/");
   return res.data;
 };
 
-/* GET /api/courses/pending/ - Pending approval courses */
 export const fetchPendingCourses = async (): Promise<CourseType[]> => {
   const res = await api.get("/api/courses/pending/");
   return res.data;
@@ -298,19 +291,16 @@ export const deleteCourse = async (id: number): Promise<void> => {
   await api.delete(`/api/courses/${id}/`);
 };
 
-/* POST /api/courses/:id/assign_instructor/ */
 export const assignInstructor = async (id: number, instructorId: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/assign_instructor/`, { instructor_id: instructorId });
   return res.data;
 };
 
-/* POST /api/courses/:id/assign_to_me/ - Instructor self-assign */
 export const assignCourseToMe = async (id: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/assign_to_me/`);
   return res.data;
 };
 
-/* POST /api/courses/:id/submit_for_approval/ */
 export const submitCourseForApproval = async (id: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/submit_for_approval/`);
   return res.data;
@@ -331,7 +321,37 @@ export const restoreCourse = async (id: number): Promise<CourseType> => {
   return res.data;
 };
 
+export const fetchCoursesForStudent = async (centerId?: number): Promise<CourseType[]> => {
+  const params = centerId ? { center: centerId } : {};
+  const res = await api.get("/api/courses/for-student/", { params });
+  return res.data;
+};
+
 /* ========== COURSE APPROVAL API ========== */
+export interface CourseApprovalType {
+  id: number;
+  course: number;
+  course_details: CourseType;
+  requested_by: number;
+  requested_by_details: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
+  approval_status: string;
+  comments?: string | null;
+  approved_by?: number | null;
+  approved_by_details?: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  } | null;
+  approved_at?: string | null;
+  created_at: string;
+}
+
 export const fetchCourseApprovals = async (): Promise<CourseApprovalType[]> => {
   const res = await api.get("/api/course-approvals/");
   return res.data;
@@ -365,234 +385,6 @@ export const requestCourseChanges = async (id: number, comments: string): Promis
   return res.data;
 };
 
-/* ========== COURSE ENROLLMENT API ========== */
-export const fetchCourseEnrollments = async (courseId: number): Promise<EnrollmentType[]> => {
-  const res = await api.get(`/api/courses/${courseId}/enrollments/`);
-  return res.data;
-};
-
-export const fetchMyEnrollments = async (): Promise<EnrollmentType[]> => {
-  const res = await api.get("/api/enrollments/my/");
-  return res.data;
-};
-
-export const enrollInCourse = async (courseId: number): Promise<EnrollmentType> => {
-  const res = await api.post(`/api/courses/${courseId}/enroll/`);
-  return res.data;
-};
-
-export const unenrollFromCourse = async (courseId: number): Promise<void> => {
-  await api.post(`/api/courses/${courseId}/unenroll/`);
-};
-
-export const updateEnrollmentStatus = async (enrollmentId: number, status: string): Promise<EnrollmentType> => {
-  const res = await api.post(`/api/enrollments/${enrollmentId}/update_status/`, { status });
-  return res.data;
-};
-
-/* ========== GENERAL APPROVALS API ========== */
-export const fetchGeneralApprovals = async (): Promise<ApprovalType[]> => {
-  const res = await api.get("/api/approvals/");
-  return res.data;
-};
-
-export const createApproval = async (data: {
-  type: string;
-  center: string;
-  description: string;
-  priority: string;
-}): Promise<ApprovalType> => {
-  const res = await api.post("/api/approvals/", data);
-  return res.data;
-};
-
-export const fetchMyApprovals = async (): Promise<ApprovalType[]> => {
-  const res = await api.get("/api/approvals/my/");
-  return res.data;
-};
-
-export const updateApprovalStatus = async (id: number, action: 'approve' | 'reject'): Promise<ApprovalType> => {
-  const res = await api.put(`/api/approvals/${id}/${action}/`);
-  return res.data;
-};
-
-/* ========== DASHBOARD & REPORTS API ========== */
-export const fetchOverview = async () => {
-  const res = await api.get("/api/overview/");
-  return res.data;
-};
-
-export const fetchSystemReports = async (period: string, center: string) => {
-  const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
-  return res.data;
-};
-
-export const fetchBasicDashboardStats = async () => {
-  const res = await api.get("/api/dashboard/stats/");
-  return res.data;
-};
-
-/* ========== UTILITY FUNCTIONS ========== */
-export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem("access_token");
-};
-
-export const getUserRole = (): string => {
-  return localStorage.getItem("user_role") || "";
-};
-
-export const getUserDistrict = (): string => {
-  return localStorage.getItem("user_district") || "";
-};
-
-export const getUserName = (): string => {
-  const firstName = localStorage.getItem("user_first_name") || "";
-  const lastName = localStorage.getItem("user_last_name") || "";
-  return `${firstName} ${lastName}`.trim();
-};
-
-export const getCenterId = (): string => {
-  return localStorage.getItem("center_id") || "";
-};
-
-export const getCenterName = (): string => {
-  return localStorage.getItem("center_name") || "";
-};
-
-/* ========== INSTRUCTOR API ========== */
-export const fetchInstructors = async (): Promise<UserType[]> => {
-  const res = await api.get("/api/instructors/");
-  return res.data;
-};
-
-export const fetchUsersByRole = async (role?: string): Promise<UserType[]> => {
-  const params = role ? { role } : {};
-  const res = await api.get("/api/users/", { params });
-  return res.data;
-};
-
-/* ========== REFRESH TOKEN ========== */
-export const refreshToken = async (): Promise<{ access: string }> => {
-  const refresh = localStorage.getItem("refresh_token");
-  const res = await api.post("/api/token/refresh/", { refresh });
-  localStorage.setItem("access_token", res.data.access);
-  return res.data;
-};
-
-/* ========== COURSE CONTENT API ========== */
-export interface CourseContentType {
-  id: number;
-  course: number;
-  title: string;
-  content_type: 'document' | 'video' | 'quiz' | 'assignment' | 'link';
-  file?: string | null;
-  external_url?: string | null;
-  description?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CourseProgressType {
-  id: number;
-  course: number;
-  student: number;
-  student_details?: UserType;
-  content: number | null;
-  content_details?: CourseContentType;
-  completed: boolean;
-  progress_percentage: number;
-  last_accessed: string;
-  time_spent: number;
-}
-
-export interface CourseReportType {
-  id: number;
-  course: number;
-  course_details?: CourseType;
-  instructor: number;
-  instructor_details?: UserType;
-  report_type: string;
-  period_start: string;
-  period_end: string;
-  total_students: number;
-  active_students: number;
-  avg_progress: number;
-  completion_rate: number;
-  generated_at: string;
-}
-
-export interface CourseAnalyticsType {
-  total_students: number;
-  active_students: number;
-  avg_progress: number;
-  completion_rate: number;
-  contents_count: number;
-}
-
-// Course Content API
-export const fetchCourseContents = async (courseId: number): Promise<CourseContentType[]> => {
-  const res = await api.get(`/api/course-contents/?course=${courseId}`);
-  return res.data;
-};
-
-export const createCourseContent = async (data: Partial<CourseContentType>): Promise<CourseContentType> => {
-  const res = await api.post('/api/course-contents/', data);
-  return res.data;
-};
-
-export const updateCourseContent = async (id: number, data: Partial<CourseContentType>): Promise<CourseContentType> => {
-  const res = await api.patch(`/api/course-contents/${id}/`, data);
-  return res.data;
-};
-
-export const deleteCourseContent = async (id: number): Promise<void> => {
-  await api.delete(`/api/course-contents/${id}/`);
-};
-
-// Course Progress API
-export const fetchCourseProgress = async (courseId: number): Promise<CourseProgressType[]> => {
-  const res = await api.get(`/api/course-progress/?course=${courseId}`);
-  return res.data;
-};
-
-// Course Reports API
-export const fetchCourseReports = async (courseId: number): Promise<CourseReportType[]> => {
-  const res = await api.get(`/api/course-reports/?course=${courseId}`);
-  return res.data;
-};
-
-export const createCourseReport = async (data: Partial<CourseReportType>): Promise<CourseReportType> => {
-  const res = await api.post('/api/course-reports/', data);
-  return res.data;
-};
-
-// Analytics API
-export const fetchCourseAnalytics = async (courseId: number): Promise<CourseAnalyticsType> => {
-  const res = await api.get(`/api/courses/${courseId}/analytics/`);
-  return res.data;
-};
-
-export const fetchStudentProgress = async (courseId: number): Promise<CourseProgressType[]> => {
-  const res = await api.get(`/api/courses/${courseId}/student-progress/`);
-  return res.data;
-};
-
-/* ========== COURSE EXPORT API ========== */
-export const exportCourseReport = async (courseId: number, format: 'pdf' | 'excel' = 'pdf'): Promise<Blob> => {
-  const res = await api.get(`/api/courses/${courseId}/export/`, {
-    params: { format },
-    responseType: 'blob'
-  });
-  return res.data;
-};
-
-export const exportCourseAnalytics = async (courseId: number): Promise<Blob> => {
-  const res = await api.get(`/api/courses/${courseId}/export-analytics/`, {
-    responseType: 'blob'
-  });
-  return res.data;
-};
-
 /* ========== STUDENT API ========== */
 export interface EducationalQualificationType {
   id?: number;
@@ -604,31 +396,22 @@ export interface EducationalQualificationType {
 
 export interface StudentType {
   id?: number;
-  // Personal Information
   full_name_english: string;
   full_name_sinhala: string;
   name_with_initials: string;
   gender: 'Male' | 'Female' | 'Other';
   date_of_birth: string;
   nic_id: string;
-  
-  // Address Information
   address_line: string;
   district: string;
   divisional_secretariat: string;
   grama_niladhari_division: string;
   village: string;
   residence_type: string;
-  
-  // Contact Information
   mobile_no: string;
   email: string;
-  
-  // Educational Qualifications
   ol_results: EducationalQualificationType[];
   al_results: EducationalQualificationType[];
-  
-  // Training Details
   training_received: boolean;
   training_provider: string;
   course_vocation_name: string;
@@ -636,8 +419,6 @@ export interface StudentType {
   training_nature: 'Initial' | 'Further' | 'Re-training';
   training_establishment: string;
   training_placement_preference: '1st' | '2nd' | '3rd';
-  
-  // Center and Course Information
   center?: number | null;
   center_name?: string;
   course?: number | null;
@@ -645,11 +426,8 @@ export interface StudentType {
   course_code?: string;
   enrollment_date?: string;
   enrollment_status?: 'Pending' | 'Enrolled' | 'Completed' | 'Dropped';
-  
   registration_no: string;
   date_of_application: string;
-  
-  // System fields
   created_at?: string;
   updated_at?: string;
 }
@@ -666,7 +444,6 @@ export interface StudentStatsType {
   center_distribution: Record<string, number>;
 }
 
-// Student API Functions
 export const fetchStudents = async (search?: string, filters?: {
   district?: string;
   center?: number;
@@ -723,19 +500,71 @@ export const importStudents = async (file: File): Promise<{ message: string; imp
   return res.data;
 };
 
-/* ========== CENTER & COURSE SELECTION API ========== */
-export const fetchCentersForStudent = async (): Promise<Center[]> => {
-  const res = await api.get("/api/centers/for-student/");
+/* ========== APPROVALS API ========== */
+export interface ApprovalType {
+  id: number;
+  type: string;
+  center: string;
+  requested_by: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
+  description: string;
+  date_requested: string;
+  priority: string;
+  status: string;
+}
+
+export const fetchGeneralApprovals = async (): Promise<ApprovalType[]> => {
+  const res = await api.get("/api/approvals/");
   return res.data;
 };
 
-export const fetchCoursesForStudent = async (centerId?: number): Promise<CourseType[]> => {
-  const params = centerId ? { center: centerId } : {};
-  const res = await api.get("/api/courses/for-student/", { params });
+export const createApproval = async (data: {
+  type: string;
+  center: string;
+  description: string;
+  priority: string;
+}): Promise<ApprovalType> => {
+  const res = await api.post("/api/approvals/", data);
   return res.data;
 };
 
-/* ========== DASHBOARD STATS API ========== */
+export const fetchMyApprovals = async (): Promise<ApprovalType[]> => {
+  const res = await api.get("/api/approvals/my/");
+  return res.data;
+};
+
+export const updateApprovalStatus = async (id: number, action: 'approve' | 'reject'): Promise<ApprovalType> => {
+  const res = await api.put(`/api/approvals/${id}/${action}/`);
+  return res.data;
+};
+
+/* ========== DASHBOARD & OVERVIEW API ========== */
+export interface OverviewDataType {
+  total_centers: number;
+  active_students: number;
+  total_instructors: number;
+  completion_rate: number;
+  enrollment_data: Array<{ month: string; students: number }>;
+  center_performance_data: Array<{ name: string; value: number; color: string }>;
+  recent_activities: Array<{
+    id: string;
+    activity: string;
+    time: string;
+    type: 'success' | 'info' | 'warning' | 'error';
+  }>;
+  trends: {
+    centers: { value: number; isPositive: boolean };
+    students: { value: number; isPositive: boolean };
+    instructors: { value: number; isPositive: boolean };
+    completion: { value: number; isPositive: boolean };
+  };
+  user_district?: string;
+}
+
 export interface DashboardStatsType {
   total_students: number;
   total_centers: number;
@@ -759,8 +588,167 @@ export interface DashboardStatsType {
   };
 }
 
+export const fetchOverview = async (): Promise<OverviewDataType> => {
+  const res = await api.get("/api/overview/");
+  return res.data;
+};
+
 export const fetchDashboardStats = async (): Promise<DashboardStatsType> => {
   const res = await api.get("/api/dashboard/stats/");
+  return res.data;
+};
+
+export const fetchSystemReports = async (period: string, center: string) => {
+  const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
+  return res.data;
+};
+
+/* ========== COURSE CONTENT API ========== */
+export interface CourseContentType {
+  id: number;
+  course: number;
+  title: string;
+  content_type: 'document' | 'video' | 'quiz' | 'assignment' | 'link';
+  file?: string | null;
+  external_url?: string | null;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseProgressType {
+  id: number;
+  course: number;
+  student: number;
+  student_details?: UserType;
+  content: number | null;
+  content_details?: CourseContentType;
+  completed: boolean;
+  progress_percentage: number;
+  last_accessed: string;
+  time_spent: number;
+}
+
+export interface CourseReportType {
+  id: number;
+  course: number;
+  course_details?: CourseType;
+  instructor: number;
+  instructor_details?: UserType;
+  report_type: string;
+  period_start: string;
+  period_end: string;
+  total_students: number;
+  active_students: number;
+  avg_progress: number;
+  completion_rate: number;
+  generated_at: string;
+}
+
+export interface CourseAnalyticsType {
+  total_students: number;
+  active_students: number;
+  avg_progress: number;
+  completion_rate: number;
+  contents_count: number;
+}
+
+export const fetchCourseContents = async (courseId: number): Promise<CourseContentType[]> => {
+  const res = await api.get(`/api/course-contents/?course=${courseId}`);
+  return res.data;
+};
+
+export const createCourseContent = async (data: Partial<CourseContentType>): Promise<CourseContentType> => {
+  const res = await api.post('/api/course-contents/', data);
+  return res.data;
+};
+
+export const updateCourseContent = async (id: number, data: Partial<CourseContentType>): Promise<CourseContentType> => {
+  const res = await api.patch(`/api/course-contents/${id}/`, data);
+  return res.data;
+};
+
+export const deleteCourseContent = async (id: number): Promise<void> => {
+  await api.delete(`/api/course-contents/${id}/`);
+};
+
+export const fetchCourseProgress = async (courseId: number): Promise<CourseProgressType[]> => {
+  const res = await api.get(`/api/course-progress/?course=${courseId}`);
+  return res.data;
+};
+
+export const fetchCourseReports = async (courseId: number): Promise<CourseReportType[]> => {
+  const res = await api.get(`/api/course-reports/?course=${courseId}`);
+  return res.data;
+};
+
+export const createCourseReport = async (data: Partial<CourseReportType>): Promise<CourseReportType> => {
+  const res = await api.post('/api/course-reports/', data);
+  return res.data;
+};
+
+export const fetchCourseAnalytics = async (courseId: number): Promise<CourseAnalyticsType> => {
+  const res = await api.get(`/api/courses/${courseId}/analytics/`);
+  return res.data;
+};
+
+export const fetchStudentProgress = async (courseId: number): Promise<CourseProgressType[]> => {
+  const res = await api.get(`/api/courses/${courseId}/student-progress/`);
+  return res.data;
+};
+
+export const exportCourseReport = async (courseId: number, format: 'pdf' | 'excel' = 'pdf'): Promise<Blob> => {
+  const res = await api.get(`/api/courses/${courseId}/export/`, {
+    params: { format },
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+export const exportCourseAnalytics = async (courseId: number): Promise<Blob> => {
+  const res = await api.get(`/api/courses/${courseId}/export-analytics/`, {
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+/* ========== ENROLLMENT API ========== */
+export interface EnrollmentType {
+  id: number;
+  course: number;
+  student: number;
+  enrolled_at: string;
+  status: string;
+  student_details?: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+}
+
+export const fetchCourseEnrollments = async (courseId: number): Promise<EnrollmentType[]> => {
+  const res = await api.get(`/api/courses/${courseId}/enrollments/`);
+  return res.data;
+};
+
+export const fetchMyEnrollments = async (): Promise<EnrollmentType[]> => {
+  const res = await api.get("/api/enrollments/my/");
+  return res.data;
+};
+
+export const enrollInCourse = async (courseId: number): Promise<EnrollmentType> => {
+  const res = await api.post(`/api/courses/${courseId}/enroll/`);
+  return res.data;
+};
+
+export const unenrollFromCourse = async (courseId: number): Promise<void> => {
+  await api.post(`/api/courses/${courseId}/unenroll/`);
+};
+
+export const updateEnrollmentStatus = async (enrollmentId: number, status: string): Promise<EnrollmentType> => {
+  const res = await api.post(`/api/enrollments/${enrollmentId}/update_status/`, { status });
   return res.data;
 };
 
@@ -842,22 +830,82 @@ export const globalSearch = async (query: string): Promise<SearchResultType> => 
   return res.data;
 };
 
-/* ========== BACKUP & RESTORE API ========== */
-export const createBackup = async (): Promise<Blob> => {
-  const res = await api.get("/api/backup/", {
-    responseType: 'blob'
-  });
+/* ========== GEOGRAPHICAL API ========== */
+export interface DistrictType {
+  name: string;
+  divisions: string[];
+}
+
+export const fetchDistricts = async (): Promise<DistrictType[]> => {
+  const res = await api.get("/api/geo/districts/");
   return res.data;
 };
 
-export const restoreBackup = async (file: File): Promise<{ message: string }> => {
-  const formData = new FormData();
-  formData.append('backup_file', file);
-  
-  const res = await api.post("/api/restore/", formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+export const fetchDivisions = async (district: string): Promise<string[]> => {
+  const res = await api.get("/api/geo/divisions/", { params: { district } });
+  return res.data;
+};
+
+export const fetchGNDivisions = async (district: string, division: string): Promise<string[]> => {
+  const res = await api.get("/api/geo/gn-divisions/", { params: { district, division } });
+  return res.data;
+};
+
+/* ========== VALIDATION API ========== */
+export const validateNIC = async (nic: string, studentId?: number): Promise<{ valid: boolean; message?: string }> => {
+  const res = await api.get("/api/validate/nic/", { params: { nic, student_id: studentId } });
+  return res.data;
+};
+
+export const validateEmail = async (email: string, studentId?: number): Promise<{ valid: boolean; message?: string }> => {
+  const res = await api.get("/api/validate/email/", { params: { email, student_id: studentId } });
+  return res.data;
+};
+
+export const validateMobile = async (mobile: string, studentId?: number): Promise<{ valid: boolean; message?: string }> => {
+  const res = await api.get("/api/validate/mobile/", { params: { mobile, student_id: studentId } });
+  return res.data;
+};
+
+/* ========== BULK OPERATIONS API ========== */
+export const bulkUpdateStudents = async (studentIds: number[], data: Partial<StudentType>): Promise<{ updated: number; errors: string[] }> => {
+  const res = await api.post("/api/students/bulk-update/", { student_ids: studentIds, data });
+  return res.data;
+};
+
+export const bulkDeleteStudents = async (studentIds: number[]): Promise<{ deleted: number; errors: string[] }> => {
+  const res = await api.post("/api/students/bulk-delete/", { student_ids: studentIds });
+  return res.data;
+};
+
+export const bulkEnrollStudents = async (studentIds: number[], courseId: number): Promise<{ enrolled: number; errors: string[] }> => {
+  const res = await api.post("/api/students/bulk-enroll/", { student_ids: studentIds, course_id: courseId });
+  return res.data;
+};
+
+/* ========== REPORTS API ========== */
+export interface ReportType {
+  id: number;
+  name: string;
+  type: string;
+  generated_at: string;
+  download_url: string;
+  status: 'pending' | 'completed' | 'failed';
+}
+
+export const fetchAllReports = async (): Promise<ReportType[]> => {
+  const res = await api.get("/api/reports/");
+  return res.data;
+};
+
+export const generateReport = async (type: string, params: any): Promise<{ report_id: number; status: string }> => {
+  const res = await api.post("/api/reports/generate/", { type, params });
+  return res.data;
+};
+
+export const downloadReport = async (reportId: number): Promise<Blob> => {
+  const res = await api.get(`/api/reports/${reportId}/download/`, {
+    responseType: 'blob'
   });
   return res.data;
 };
@@ -907,82 +955,22 @@ export const fetchAuditLogs = async (params?: {
   return res.data;
 };
 
-/* ========== BULK OPERATIONS API ========== */
-export const bulkUpdateStudents = async (studentIds: number[], data: Partial<StudentType>): Promise<{ updated: number; errors: string[] }> => {
-  const res = await api.post("/api/students/bulk-update/", { student_ids: studentIds, data });
-  return res.data;
-};
-
-export const bulkDeleteStudents = async (studentIds: number[]): Promise<{ deleted: number; errors: string[] }> => {
-  const res = await api.post("/api/students/bulk-delete/", { student_ids: studentIds });
-  return res.data;
-};
-
-export const bulkEnrollStudents = async (studentIds: number[], courseId: number): Promise<{ enrolled: number; errors: string[] }> => {
-  const res = await api.post("/api/students/bulk-enroll/", { student_ids: studentIds, course_id: courseId });
-  return res.data;
-};
-
-/* ========== VALIDATION API ========== */
-export const validateNIC = async (nic: string, studentId?: number): Promise<{ valid: boolean; message?: string }> => {
-  const res = await api.get("/api/validate/nic/", { params: { nic, student_id: studentId } });
-  return res.data;
-};
-
-export const validateEmail = async (email: string, studentId?: number): Promise<{ valid: boolean; message?: string }> => {
-  const res = await api.get("/api/validate/email/", { params: { email, student_id: studentId } });
-  return res.data;
-};
-
-export const validateMobile = async (mobile: string, studentId?: number): Promise<{ valid: boolean; message?: string }> => {
-  const res = await api.get("/api/validate/mobile/", { params: { mobile, student_id: studentId } });
-  return res.data;
-};
-
-/* ========== GEOGRAPHICAL API ========== */
-export interface DistrictType {
-  name: string;
-  divisions: string[];
-}
-
-export const fetchDistricts = async (): Promise<DistrictType[]> => {
-  const res = await api.get("/api/geo/districts/");
-  return res.data;
-};
-
-export const fetchDivisions = async (district: string): Promise<string[]> => {
-  const res = await api.get("/api/geo/divisions/", { params: { district } });
-  return res.data;
-};
-
-export const fetchGNDivisions = async (district: string, division: string): Promise<string[]> => {
-  const res = await api.get("/api/geo/gn-divisions/", { params: { district, division } });
-  return res.data;
-};
-
-/* ========== REPORTS API ========== */
-export interface ReportType {
-  id: number;
-  name: string;
-  type: string;
-  generated_at: string;
-  download_url: string;
-  status: 'pending' | 'completed' | 'failed';
-}
-
-export const fetchAllReports = async (): Promise<ReportType[]> => {
-  const res = await api.get("/api/reports/");
-  return res.data;
-};
-
-export const generateReport = async (type: string, params: any): Promise<{ report_id: number; status: string }> => {
-  const res = await api.post("/api/reports/generate/", { type, params });
-  return res.data;
-};
-
-export const downloadReport = async (reportId: number): Promise<Blob> => {
-  const res = await api.get(`/api/reports/${reportId}/download/`, {
+/* ========== BACKUP & RESTORE API ========== */
+export const createBackup = async (): Promise<Blob> => {
+  const res = await api.get("/api/backup/", {
     responseType: 'blob'
+  });
+  return res.data;
+};
+
+export const restoreBackup = async (file: File): Promise<{ message: string }> => {
+  const formData = new FormData();
+  formData.append('backup_file', file);
+  
+  const res = await api.post("/api/restore/", formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
   });
   return res.data;
 };

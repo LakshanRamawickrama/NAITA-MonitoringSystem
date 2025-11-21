@@ -15,6 +15,7 @@ import HeadOfficeReports from "../HeadOfficeDashboard/HeadOfficeReports";
 import DistrictManagerOverview from "../DistrictManagerDashboard/DistrictManagerOverview";
 import DistrictManagerCourses from "../DistrictManagerDashboard/DistrictManagerCourses";
 import DistrictManagerApprovals from "../DistrictManagerDashboard/DistrictManagerApprovals";
+import DistrictManagerReports from "../DistrictManagerDashboard/DistrictManagerReports";
 
 import TrainingOfficerInstructor from "../TrainingOfficerDashboard/TrainingOfficerInstructor";
 import TrainingOfficerCourses from "../TrainingOfficerDashboard/TrainingOfficerCourses";
@@ -76,12 +77,13 @@ const Dashboard = () => {
         {role === "admin" && location.pathname === "/dashboard/admin/courses" && <HeadOfficeCourses />}
         {role === "admin" && location.pathname === "/dashboard/admin/reports" && <HeadOfficeReports />}
 
-        {/* === CENTER MANAGER === */}
+        {/* === District MANAGER === */}
         {role === "district_manager" && location.pathname === "/dashboard/manager" && <DistrictManagerOverview />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/centers" && <Centers />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/users" && <Users />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/courses" && <DistrictManagerCourses />}
         {role === "district_manager" && location.pathname === "/dashboard/manager/approvals_dm" && <DistrictManagerApprovals />}
+        {role === "district_manager" && location.pathname === "/dashboard/manager/reports" && <DistrictManagerReports />}
 
         {/* === TRAINING OFFICER === */}
         {role === "training_officer" && location.pathname === "/dashboard/training_officer/instructors" && <TrainingOfficerInstructor />}
