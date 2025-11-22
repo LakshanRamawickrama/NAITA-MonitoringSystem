@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Users, Clock, BookOpen, Layers, Search, 
-  CheckCircle, AlertCircle, RefreshCw, Edit3, MapPin, Info,
+  CheckCircle, AlertCircle, RefreshCw, Edit3, MapPin,
   Hourglass, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -201,7 +201,6 @@ const InstructorCourses: React.FC = () => {
   const [assigning, setAssigning] = useState<number | null>(null);
   const [requesting, setRequesting] = useState<number | null>(null);
   const [updating, setUpdating] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
 
   // Modal state
   const [manageContentModal, setManageContentModal] = useState({ isOpen: false, course: null as CourseType | null });
@@ -375,13 +374,6 @@ const InstructorCourses: React.FC = () => {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setShowDebug(!showDebug)}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
-              >
-                <Info className="w-4 h-4" />
-                <span>Debug</span>
-              </button>
-              <button
                 onClick={handleRefresh}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
               >
@@ -391,40 +383,6 @@ const InstructorCourses: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Debug Information */}
-        {showDebug && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-800 mb-2">Debug Information:</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-600">
-              <div>
-                <strong>My Courses:</strong> {myCourses.length}
-                <br />
-                <strong>Available Courses:</strong> {availableCourses.length}
-              </div>
-              <div>
-                <strong>Filtered My Courses:</strong> {filteredMyCourses.length}
-                <br />
-                <strong>Filtered Available:</strong> {filteredAvailableCourses.length}
-              </div>
-              <div>
-                <strong>User District:</strong> {localStorage.getItem("user_district") || "Not set"}
-                <br />
-                <strong>User Role:</strong> {localStorage.getItem("user_role")}
-              </div>
-            </div>
-            <div className="mt-2 text-sm">
-              <strong>Course Status Distribution:</strong>
-              <br />
-              My Courses - Active: {myCourses.filter(c => c.status === 'Active').length}, 
-              Approved: {myCourses.filter(c => c.status === 'Approved').length}, 
-              Pending: {myCourses.filter(c => c.status === 'Pending').length}
-              <br />
-              Available Courses - Approved: {approvedAvailableCourses.length}, 
-              Pending: {pendingAvailableCourses.length}
-            </div>
-          </div>
-        )}
 
         {/* Search Bar */}
         <div className="mb-8">
