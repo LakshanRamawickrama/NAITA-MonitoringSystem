@@ -9,6 +9,7 @@ from .serializers import CourseSerializer, CourseApprovalSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
+from django.db.models import Q
 import logging
 
 logger = logging.getLogger(__name__)
@@ -44,13 +45,17 @@ class IsTrainingOfficerOrDistrictManager(IsAuthenticated):
 @api_view(['GET'])
 @permission_classes([IsInstructor])
 def my_courses_view(request):
-    """Get courses for the current instructor"""
+    """Get courses for the current instructor - including pending ones"""
     try:
         logger.info(f"My courses request from user: {request.user.id}, role: {request.user.role}, district: {request.user.district}")
         
-        # Get all courses assigned to this instructor, not just active ones
+        # Get all courses assigned to this instructor, including pending ones
         courses = Course.objects.filter(instructor=request.user)
         logger.info(f"Found {courses.count()} courses for instructor {request.user.id}")
+        
+        # Log course statuses for debugging
+        for course in courses:
+            logger.info(f"Course {course.id}: {course.name}, status: {course.status}")
         
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
@@ -69,10 +74,12 @@ def available_courses_view(request):
     try:
         logger.info(f"Available courses request from user: {request.user.id}, role: {request.user.role}, district: {request.user.district}")
         
-        # Get approved courses without instructors
+        # Get approved courses without instructors AND pending courses in user's district
         available_courses = Course.objects.filter(
-            status='Approved', 
+            district=request.user.district,
             instructor__isnull=True
+        ).filter(
+            Q(status='Approved') | Q(status='Pending')
         )
         
         logger.info(f"Available courses before district filter: {available_courses.count()}")
@@ -181,6 +188,66 @@ def assign_to_me_view(request, pk):
         logger.error(f"Error in assign_to_me_view: {str(e)}")
         return Response(
             {'error': 'Failed to assign course'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([IsInstructor])
+def request_course_assignment_view(request, pk):
+    """Instructor requests assignment for a pending course"""
+    try:
+        logger.info(f"Request course assignment from user: {request.user.id} for course: {pk}")
+        
+        course = Course.objects.get(id=pk)
+        logger.info(f"Found course: {course.name}, status: {course.status}, instructor: {course.instructor}, district: {course.district}")
+        
+        # Check if course is in instructor's district
+        if course.district != request.user.district:
+            logger.warning(f"District mismatch: course district {course.district} vs user district {request.user.district}")
+            return Response(
+                {'error': 'Can only request courses from your district'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if course.status != 'Pending':
+            logger.warning(f"Course status is {course.status}, not Pending")
+            return Response(
+                {'error': 'Can only request assignment for pending courses'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if course.instructor is not None:
+            logger.warning(f"Course already has instructor: {course.instructor.id}")
+            return Response(
+                {'error': 'Course is already assigned to an instructor'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create approval request instead of directly assigning
+        approval = CourseApproval.objects.create(
+            course=course,
+            requested_by=request.user,
+            approval_status='Pending',
+            comments=f"Instructor {request.user.get_full_name()} requested assignment for this course"
+        )
+        
+        logger.info(f"Successfully created assignment request for course {pk}")
+        
+        # Return course with approval info
+        serializer = CourseSerializer(course)
+        response_data = serializer.data
+        response_data['approval_request_id'] = approval.id
+        response_data['approval_status'] = 'requested'
+        
+        return Response(response_data)
+        
+    except Course.DoesNotExist:
+        logger.error(f"Course not found: {pk}")
+        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in request_course_assignment_view: {str(e)}")
+        return Response(
+            {'error': 'Failed to request course assignment'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

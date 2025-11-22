@@ -1,4 +1,4 @@
-// src/api/api.ts - COMPLETE UPDATED VERSION
+// src/api/api.ts - COMPLETE FIXED VERSION
 import axios from "axios";
 
 const api = axios.create({

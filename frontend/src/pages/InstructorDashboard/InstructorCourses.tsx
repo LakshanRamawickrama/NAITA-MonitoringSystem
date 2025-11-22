@@ -1,8 +1,9 @@
-// InstructorCourses.tsx - DEBUG VERSION
+// InstructorCourses.tsx - UPDATED WITH PENDING COURSES SECTION
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Users, Clock, BookOpen, Layers, Search, 
-  CheckCircle, AlertCircle, RefreshCw, Edit3, MapPin, Info
+  CheckCircle, AlertCircle, RefreshCw, Edit3, MapPin, Info,
+  Hourglass, X
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { 
@@ -10,7 +11,8 @@ import {
   fetchMyCourses, 
   fetchAvailableCourses, 
   assignCourseToMe,
-  updateCourse
+  updateCourse,
+  requestCourseAssignment
 } from '../../api/api';
 import toast from 'react-hot-toast';
 
@@ -80,9 +82,9 @@ const ManageContentModal: React.FC<ManageContentModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <AlertCircle className="w-6 h-6" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
@@ -164,7 +166,7 @@ const ManageContentModal: React.FC<ManageContentModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors"
               disabled={updating}
             >
               Cancel
@@ -172,7 +174,7 @@ const ManageContentModal: React.FC<ManageContentModalProps> = ({
             <button
               type="submit"
               disabled={updating}
-              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
+              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
             >
               {updating ? (
                 <>
@@ -197,6 +199,7 @@ const InstructorCourses: React.FC = () => {
   const [availableCourses, setAvailableCourses] = useState<CourseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<number | null>(null);
+  const [requesting, setRequesting] = useState<number | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
 
@@ -226,16 +229,23 @@ const InstructorCourses: React.FC = () => {
         userRole: localStorage.getItem("user_role")
       });
       
-      // Log each available course for debugging
+      // Log course statuses for debugging
+      myCoursesData.forEach((course: CourseType) => {
+        console.log('📚 My Course:', {
+          id: course.id,
+          name: course.name,
+          status: course.status,
+          instructor: course.instructor
+        });
+      });
+      
       availableCoursesData.forEach((course: CourseType) => {
         console.log('📚 Available Course:', {
           id: course.id,
           name: course.name,
-          code: course.code,
           status: course.status,
           district: course.district,
-          instructor: course.instructor,
-          hasInstructorDetails: !!course.instructor_details
+          instructor: course.instructor
         });
       });
       
@@ -247,7 +257,6 @@ const InstructorCourses: React.FC = () => {
       const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to load courses';
       toast.error(errorMessage);
       
-      // Set empty arrays on error
       setMyCourses([]);
       setAvailableCourses([]);
     } finally {
@@ -264,13 +273,32 @@ const InstructorCourses: React.FC = () => {
       console.log('✅ Assignment successful:', result);
       
       toast.success('Course assigned successfully!');
-      await loadCourses(); // Reload to refresh both lists
+      await loadCourses();
     } catch (error: any) {
       console.error('❌ Error assigning course:', error);
       const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to assign course';
       toast.error(errorMessage);
     } finally {
       setAssigning(null);
+    }
+  };
+
+  const handleRequestAssignment = async (id: number) => {
+    try {
+      setRequesting(id);
+      console.log(`🎯 Requesting assignment for course ${id}`);
+      
+      const result = await requestCourseAssignment(id);
+      console.log('✅ Assignment request successful:', result);
+      
+      toast.success('Assignment request submitted! Waiting for approval.');
+      await loadCourses();
+    } catch (error: any) {
+      console.error('❌ Error requesting assignment:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to request assignment';
+      toast.error(errorMessage);
+    } finally {
+      setRequesting(null);
     }
   };
 
@@ -315,6 +343,10 @@ const InstructorCourses: React.FC = () => {
       (course.category && course.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (course.center_details && course.center_details.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Separate available courses by status for different UI treatment
+  const approvedAvailableCourses = filteredAvailableCourses.filter(course => course.status === 'Approved');
+  const pendingAvailableCourses = filteredAvailableCourses.filter(course => course.status === 'Pending');
 
   if (loading) {
     return (
@@ -381,19 +413,16 @@ const InstructorCourses: React.FC = () => {
                 <strong>User Role:</strong> {localStorage.getItem("user_role")}
               </div>
             </div>
-            {availableCourses.length === 0 && (
-              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="text-yellow-700 text-sm">
-                  <strong>No available courses found.</strong> This could be because:
-                </p>
-                <ul className="list-disc list-inside text-yellow-600 text-sm mt-1">
-                  <li>No courses are approved in your district</li>
-                  <li>All approved courses already have instructors</li>
-                  <li>Your district is not set correctly</li>
-                  <li>There are no courses in the system</li>
-                </ul>
-              </div>
-            )}
+            <div className="mt-2 text-sm">
+              <strong>Course Status Distribution:</strong>
+              <br />
+              My Courses - Active: {myCourses.filter(c => c.status === 'Active').length}, 
+              Approved: {myCourses.filter(c => c.status === 'Approved').length}, 
+              Pending: {myCourses.filter(c => c.status === 'Pending').length}
+              <br />
+              Available Courses - Approved: {approvedAvailableCourses.length}, 
+              Pending: {pendingAvailableCourses.length}
+            </div>
           </div>
         )}
 
@@ -406,7 +435,7 @@ const InstructorCourses: React.FC = () => {
               placeholder="Search courses by name, code, or category..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors"
             />
           </div>
         </div>
@@ -463,7 +492,9 @@ const InstructorCourses: React.FC = () => {
                         ? 'bg-green-100 text-green-800'
                         : course.status === 'Approved'
                         ? 'bg-blue-100 text-blue-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                        : course.status === 'Pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-gray-100 text-gray-800'
                     }`}>
                       {course.status}
                     </span>
@@ -494,28 +525,37 @@ const InstructorCourses: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Progress Section */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-2">
-                      <span>Course Progress</span>
-                      <span className="font-semibold">{course.progress}%</span>
+                  {/* Progress Section - Only show for active courses */}
+                  {course.status === 'Active' && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Course Progress</span>
+                        <span className="font-semibold">{course.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-green-600 h-2.5 rounded-full transition-all duration-500"
+                          style={{ width: `${course.progress}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-green-600 h-2.5 rounded-full transition-all duration-500"
-                        style={{ width: `${course.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Action Button */}
-                  <button 
-                    onClick={() => handleManageContent(course)}
-                    className="w-full bg-green-600 text-white py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-green-700 transition-colors font-medium"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    <span>Manage Course</span>
-                  </button>
+                  {course.status === 'Pending' ? (
+                    <div className="w-full bg-yellow-100 text-yellow-800 py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium">
+                      <Hourglass className="w-4 h-4" />
+                      <span>Waiting Approval</span>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => handleManageContent(course)}
+                      className="w-full bg-green-600 text-white py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-green-700 transition-colors font-medium"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      <span>Manage Course</span>
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </div>
@@ -525,103 +565,225 @@ const InstructorCourses: React.FC = () => {
         {/* Available Courses Section */}
         <section>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Available Courses to Assign</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Available Courses</h2>
             <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-              {filteredAvailableCourses.length} available
+              {filteredAvailableCourses.length} total available
             </span>
           </div>
 
-          {filteredAvailableCourses.length === 0 ? (
+          {/* Approved Courses to Assign */}
+          {approvedAvailableCourses.length > 0 && (
+            <div className="mb-12">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                  <CheckCircle className="w-6 h-6 text-green-500 mr-3" />
+                  Ready to Assign
+                </h3>
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {approvedAvailableCourses.length} approved courses
+                </span>
+              </div>
+              
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
+                <div className="flex items-start space-x-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-green-800">Ready for Immediate Assignment</h4>
+                    <p className="text-green-700 text-sm mt-1">
+                      These courses are already approved and ready to be assigned to you immediately. 
+                      Click "Assign to Me" to start teaching right away.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {approvedAvailableCourses.map((course) => (
+                  <motion.div
+                    key={course.id}
+                    className="bg-white rounded-xl shadow-lg border-2 border-green-300 p-6 hover:shadow-xl transition-all duration-300"
+                    whileHover={{ y: -4 }}
+                  >
+                    {/* Course Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">{course.name}</h3>
+                        <p className="text-sm text-gray-500 font-mono">{course.code}</p>
+                        
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {course.category && (
+                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              <Layers className="w-3 h-3 mr-1" />
+                              {course.category}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {course.district}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                        Approved
+                      </span>
+                    </div>
+
+                    {/* Course Details */}
+                    <div className="space-y-3 mb-4">
+                      {course.duration && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Clock className="w-4 h-4 mr-2 text-green-600" />
+                          <span>Duration: {course.duration}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Users className="w-4 h-4 mr-2 text-green-600" />
+                        <span>{course.students} students enrolled</span>
+                      </div>
+                      {course.description && (
+                        <p className="text-sm text-gray-500 line-clamp-2">
+                          {course.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Assign Button */}
+                    <button 
+                      onClick={() => handleAssign(course.id)}
+                      disabled={assigning === course.id}
+                      className="w-full bg-green-600 text-white py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {assigning === course.id ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Assigning...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Assign to Me</span>
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pending Courses to Assign */}
+          {pendingAvailableCourses.length > 0 && (
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                  <Hourglass className="w-6 h-6 text-yellow-500 mr-3" />
+                  Pending Courses to Assign
+                </h3>
+                <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {pendingAvailableCourses.length} pending approval
+                </span>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-6">
+                <div className="flex items-start space-x-3">
+                  <Hourglass className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-yellow-800">Awaiting District Manager Approval</h4>
+                    <p className="text-yellow-700 text-sm mt-1">
+                      These courses are pending approval from your district manager. 
+                      You can request assignment, but you'll need to wait for approval before you can start teaching.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {pendingAvailableCourses.map((course) => (
+                  <motion.div
+                    key={course.id}
+                    className="bg-white rounded-xl shadow-lg border-2 border-yellow-300 p-6 hover:shadow-xl transition-all duration-300"
+                    whileHover={{ y: -4 }}
+                  >
+                    {/* Course Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">{course.name}</h3>
+                        <p className="text-sm text-gray-500 font-mono">{course.code}</p>
+                        
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {course.category && (
+                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                              <Layers className="w-3 h-3 mr-1" />
+                              {course.category}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {course.district}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                        Pending
+                      </span>
+                    </div>
+
+                    {/* Course Details */}
+                    <div className="space-y-3 mb-4">
+                      {course.duration && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Clock className="w-4 h-4 mr-2 text-yellow-600" />
+                          <span>Duration: {course.duration}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Users className="w-4 h-4 mr-2 text-yellow-600" />
+                        <span>{course.students} students enrolled</span>
+                      </div>
+                      {course.description && (
+                        <p className="text-sm text-gray-500 line-clamp-2">
+                          {course.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Request Assignment Button */}
+                    <button 
+                      onClick={() => handleRequestAssignment(course.id)}
+                      disabled={requesting === course.id}
+                      className="w-full bg-yellow-600 text-white py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {requesting === course.id ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Requesting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Hourglass className="w-4 h-4" />
+                          <span>Request Assignment</span>
+                        </>
+                      )}
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Available Courses Message */}
+          {filteredAvailableCourses.length === 0 && (
             <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-300">
               <AlertCircle className="mx-auto h-16 w-16 text-gray-400 mb-4" />
               <h3 className="text-xl font-medium text-gray-900 mb-2">No available courses</h3>
               <p className="text-gray-600 max-w-md mx-auto">
-                {availableCourses.length === 0 
-                  ? 'There are currently no approved courses available in your district. Please check back later or contact your administrator.'
-                  : 'No courses match your search criteria.'
-                }
+                There are currently no courses available in your district. Please check back later or contact your administrator.
               </p>
-              {availableCourses.length === 0 && (
-                <div className="mt-4 text-sm text-gray-500">
-                  <p>Your district: <strong>{localStorage.getItem("user_district") || "Not assigned"}</strong></p>
-                  <p>Make sure there are approved courses in your district without assigned instructors.</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredAvailableCourses.map((course) => (
-                <motion.div
-                  key={course.id}
-                  className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300"
-                  whileHover={{ y: -4 }}
-                >
-                  {/* Course Header */}
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900 mb-1">{course.name}</h3>
-                      <p className="text-sm text-gray-500 font-mono">{course.code}</p>
-                      
-                      {/* Course Meta */}
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {course.category && (
-                          <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                            <Layers className="w-3 h-3 mr-1" />
-                            {course.category}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {course.district}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Status Badge */}
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                      Available
-                    </span>
-                  </div>
-
-                  {/* Course Details */}
-                  <div className="space-y-3 mb-4">
-                    {course.duration && (
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Clock className="w-4 h-4 mr-2 text-green-600" />
-                        <span>Duration: {course.duration}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Users className="w-4 h-4 mr-2 text-green-600" />
-                      <span>{course.students} students enrolled</span>
-                    </div>
-                    {course.description && (
-                      <p className="text-sm text-gray-500 line-clamp-2">
-                        {course.description}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Assign Button */}
-                  <button 
-                    onClick={() => handleAssign(course.id)}
-                    disabled={assigning === course.id}
-                    className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                  >
-                    {assigning === course.id ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Assigning...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Assign to Me</span>
-                      </>
-                    )}
-                  </button>
-                </motion.div>
-              ))}
+              <div className="mt-4 text-sm text-gray-500">
+                <p>Your district: <strong>{localStorage.getItem("user_district") || "Not assigned"}</strong></p>
+              </div>
             </div>
           )}
         </section>

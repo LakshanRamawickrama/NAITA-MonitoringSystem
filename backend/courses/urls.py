@@ -29,4 +29,6 @@ urlpatterns = [
     # Course Approval endpoints
     path('approvals/', views.CourseApprovalViewSet.as_view({'get': 'list', 'post': 'create'}), name='course-approvals'),
     path('approvals/<int:pk>/', views.CourseApprovalViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update'}), name='course-approval-detail'),
+    
+    path('courses/<int:pk>/request-assignment/', views.request_course_assignment_view, name='request-course-assignment'),
 ]
