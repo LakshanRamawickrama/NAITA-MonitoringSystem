@@ -1,4 +1,4 @@
-// src/api/api.ts - COMPLETE FIXED VERSION
+// src/api/api.ts - COMPLETE UPDATED VERSION
 import axios from "axios";
 
 const api = axios.create({
@@ -301,6 +301,28 @@ export const assignCourseToMe = async (id: number): Promise<CourseType> => {
   return res.data;
 };
 
+// NEW: Request course assignment for pending courses
+export const requestCourseAssignment = async (courseId: number): Promise<any> => {
+  const res = await api.post(`/api/courses/${courseId}/request-assignment/`);
+  return res.data;
+};
+
+/* ========== COURSE APPROVAL ACTIONS ========== */
+export const approveCourse = async (courseId: number): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${courseId}/approve/`);
+  return res.data;
+};
+
+export const rejectCourse = async (courseId: number, comments?: string): Promise<CourseType> => {
+  const res = await api.post(`/api/courses/${courseId}/reject/`, { comments });
+  return res.data;
+};
+
+export const updateCourseStatus = async (id: number, status: string): Promise<CourseType> => {
+  const res = await api.patch(`/api/courses/${id}/`, { status });
+  return res.data;
+};
+
 export const submitCourseForApproval = async (id: number): Promise<CourseType> => {
   const res = await api.post(`/api/courses/${id}/submit_for_approval/`);
   return res.data;
@@ -370,12 +392,12 @@ export const createCourseApproval = async (data: {
   return res.data;
 };
 
-export const approveCourse = async (id: number): Promise<CourseApprovalType> => {
+export const approveCourseApproval = async (id: number): Promise<CourseApprovalType> => {
   const res = await api.post(`/api/course-approvals/${id}/approve/`);
   return res.data;
 };
 
-export const rejectCourse = async (id: number): Promise<CourseApprovalType> => {
+export const rejectCourseApproval = async (id: number): Promise<CourseApprovalType> => {
   const res = await api.post(`/api/course-approvals/${id}/reject/`);
   return res.data;
 };

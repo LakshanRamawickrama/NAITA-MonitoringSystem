@@ -1,4 +1,4 @@
-# courses/urls.py
+# courses/urls.py - COMPLETE FIXED VERSION
 from django.urls import path
 from . import views
 
@@ -9,6 +9,13 @@ urlpatterns = [
     path('pending/', views.pending_courses_view, name='pending-courses'),
     path('<int:pk>/assign_to_me/', views.assign_to_me_view, name='assign-to-me'),
     path('for-student/', views.courses_for_student, name='courses-for-student'),
+    
+    # Course approval actions for district managers
+    path('<int:pk>/approve/', views.approve_course_view, name='approve-course'),
+    path('<int:pk>/reject/', views.reject_course_view, name='reject-course'),
+    
+    # Course categories
+    path('categories/', views.course_categories_view, name='course-categories'),
     
     # Course ViewSet endpoints
     path('', views.CourseViewSet.as_view({'get': 'list', 'post': 'create'}), name='courses-list'),

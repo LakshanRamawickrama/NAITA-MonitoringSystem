@@ -1,14 +1,17 @@
-// DistrictManagerCourses.tsx - UPDATED VERSION
+// DistrictManagerCourses.tsx - COMPLETE FIXED VERSION WITH APPROVAL ACTIONS
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, BookOpen, Building, RefreshCw, X, Users, Calendar, Target } from 'lucide-react';
+import { Search, Edit, Trash2, BookOpen, Building, RefreshCw, X, Users, Calendar, Target, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { 
   type CourseType,
   fetchCourses, 
   updateCourse, 
   deleteCourse,
   fetchCenters,
-  type Center
+  type Center,
+  approveCourse,
+  rejectCourse
 } from '../../api/api';
+import toast from 'react-hot-toast';
 
 const DistrictManagerCourses: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +25,7 @@ const DistrictManagerCourses: React.FC = () => {
   const [courseToDelete, setCourseToDelete] = useState<CourseType | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseType | null>(null);
+  const [viewingCourse, setViewingCourse] = useState<CourseType | null>(null);
   const [editForm, setEditForm] = useState({
     name: '',
     code: '',
@@ -48,7 +52,6 @@ const DistrictManagerCourses: React.FC = () => {
   const loadCourses = async () => {
     try {
       setLoading(true);
-      // Fetch ALL courses for district manager
       const allCourses = await fetchCourses();
       
       // Filter courses by district manager's district
@@ -59,6 +62,7 @@ const DistrictManagerCourses: React.FC = () => {
       setCourses(districtCourses);
     } catch (error) {
       console.error('Error loading courses:', error);
+      toast.error('Failed to load courses');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -68,7 +72,6 @@ const DistrictManagerCourses: React.FC = () => {
   const loadCenters = async () => {
     try {
       const centersData = await fetchCenters();
-      // Filter centers by district manager's district
       const districtCenters = centersData.filter(center => 
         center.district === userDistrict
       );
@@ -99,14 +102,46 @@ const DistrictManagerCourses: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleApprove = async (id: number) => {
+    try {
+      setActionLoading(id);
+      await approveCourse(id);
+      await loadCourses();
+      toast.success('Course approved successfully!');
+    } catch (error: any) {
+      console.error('Error approving course:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to approve course';
+      toast.error(errorMessage);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    try {
+      setActionLoading(id);
+      await rejectCourse(id);
+      await loadCourses();
+      toast.success('Course rejected successfully!');
+    } catch (error: any) {
+      console.error('Error rejecting course:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to reject course';
+      toast.error(errorMessage);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleStatusChange = async (id: number, newStatus: 'Active' | 'Pending' | 'Approved' | 'Inactive' | 'Rejected') => {
     try {
       setActionLoading(id);
       await updateCourse(id, { status: newStatus });
       await loadCourses();
-    } catch (error) {
+      toast.success('Course status updated successfully!');
+    } catch (error: any) {
       console.error('Error updating course status:', error);
-      alert('Failed to update course status. Please try again.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to update course status';
+      toast.error(errorMessage);
     } finally {
       setActionLoading(null);
     }
@@ -126,9 +161,11 @@ const DistrictManagerCourses: React.FC = () => {
       await loadCourses();
       setShowDeleteModal(false);
       setCourseToDelete(null);
-    } catch (error) {
+      toast.success('Course deleted successfully!');
+    } catch (error: any) {
       console.error('Error deleting course:', error);
-      alert('Failed to delete course. Please try again.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to delete course';
+      toast.error(errorMessage);
     } finally {
       setActionLoading(null);
     }
@@ -166,12 +203,18 @@ const DistrictManagerCourses: React.FC = () => {
       await loadCourses();
       setShowEditModal(false);
       setEditingCourse(null);
-    } catch (error) {
+      toast.success('Course updated successfully!');
+    } catch (error: any) {
       console.error('Error updating course:', error);
-      alert('Failed to update course. Please try again.');
+      const errorMessage = error.response?.data?.error || error.response?.data?.detail || 'Failed to update course';
+      toast.error(errorMessage);
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleViewCourse = (course: CourseType) => {
+    setViewingCourse(course);
   };
 
   // Status options for filter
@@ -269,13 +312,10 @@ const DistrictManagerCourses: React.FC = () => {
                     Course Details
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Code
+                    Center & District
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Center
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Duration & Schedule
+                    Schedule
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Instructor
@@ -284,16 +324,14 @@ const DistrictManagerCourses: React.FC = () => {
                     Students/Progress
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Actions
+                    Status & Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCourses.map((course) => {
                   const availableStatuses = getAvailableStatuses(course.status);
+                  const isPending = course.status === 'Pending';
                   
                   return (
                     <tr key={course.id} className="hover:bg-gray-50">
@@ -304,6 +342,7 @@ const DistrictManagerCourses: React.FC = () => {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-gray-900">{course.name}</div>
+                            <div className="text-xs text-gray-500 font-mono">{course.code}</div>
                             {course.category && (
                               <div className="text-xs text-gray-500">{course.category}</div>
                             )}
@@ -315,9 +354,6 @@ const DistrictManagerCourses: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
-                        {course.code}
-                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
                           <Building className="w-4 h-4 text-gray-400" />
@@ -328,11 +364,9 @@ const DistrictManagerCourses: React.FC = () => {
                                 : 'No center'
                               }
                             </div>
-                            {course.center_details?.district && (
-                              <div className="text-xs text-gray-500">
-                                {course.center_details.district}
-                              </div>
-                            )}
+                            <div className="text-xs text-gray-500">
+                              {course.district}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -395,8 +429,42 @@ const DistrictManagerCourses: React.FC = () => {
                             {course.status}
                           </span>
                           
-                          {/* Status Change Dropdown */}
-                          {availableStatuses.length > 0 && (
+                          {/* Quick Actions for Pending Courses */}
+                          {isPending && (
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => handleApprove(course.id)}
+                                disabled={actionLoading === course.id}
+                                className="flex-1 bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                              >
+                                {actionLoading === course.id ? (
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Approve
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleReject(course.id)}
+                                disabled={actionLoading === course.id}
+                                className="flex-1 bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                              >
+                                {actionLoading === course.id ? (
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                  <>
+                                    <XCircle className="w-3 h-3 mr-1" />
+                                    Reject
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                          
+                          {/* Status Change Dropdown for non-pending courses */}
+                          {!isPending && availableStatuses.length > 0 && (
                             <select
                               value=""
                               onChange={(e) => handleStatusChange(course.id, e.target.value as any)}
@@ -412,36 +480,25 @@ const DistrictManagerCourses: React.FC = () => {
                             </select>
                           )}
                           
-                          {course.priority && (
-                            <div className={`text-xs ${
-                              course.priority === 'High' ? 'text-red-600' :
-                              course.priority === 'Medium' ? 'text-yellow-600' : 'text-green-600'
-                            }`}>
-                              {course.priority} Priority
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex flex-col space-y-2">
+                          {/* Action Buttons */}
                           <div className="flex space-x-1">
                             <button 
                               onClick={() => openEditModal(course)}
-                              className="flex-1 bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                              className="flex-1 bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors flex items-center justify-center"
                               title="Edit Course"
                             >
-                              <Edit className="w-3 h-3 mx-auto" />
+                              <Edit className="w-3 h-3" />
                             </button>
                             <button 
                               onClick={() => openDeleteModal(course)} 
-                              className="flex-1 bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700 transition-colors disabled:opacity-50"
+                              className="flex-1 bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center"
                               disabled={actionLoading === course.id}
                               title="Delete Course"
                             >
                               {actionLoading === course.id ? (
-                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                               ) : (
-                                <Trash2 className="w-3 h-3 mx-auto" />
+                                <Trash2 className="w-3 h-3" />
                               )}
                             </button>
                           </div>
@@ -542,7 +599,7 @@ const DistrictManagerCourses: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Course Modal */}
+      {/* Edit Course Modal - Keep the existing edit modal code */}
       {showEditModal && editingCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl p-6 relative max-h-screen overflow-y-auto">
