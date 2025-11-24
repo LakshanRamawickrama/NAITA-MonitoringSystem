@@ -261,3 +261,208 @@ def get_attendance_summary(request, course_id):
             {'error': 'Failed to load attendance summary'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+        
+#Attendance UPDATED BULK UPDATE FUNCTION
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bulk_update_attendance(request, course_id):
+    """Bulk update attendance for multiple students"""
+    try:
+        user = request.user
+        date = request.data.get('date', timezone.now().date())
+        attendance_data = request.data.get('attendance', [])
+        
+        logger.info(f"Bulk attendance update request from user {user.id} for course {course_id} on date {date}")
+        logger.info(f"Attendance data: {attendance_data}")
+        
+        # Verify instructor owns the course
+        if user.role == 'instructor':
+            try:
+                course = Course.objects.get(id=course_id, instructor=user)
+            except Course.DoesNotExist:
+                return Response(
+                    {'error': 'Course not found or you do not have permission'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        else:
+            return Response(
+                {'error': 'Permission denied'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        updated_count = 0
+        errors = []
+        
+        for record in attendance_data:
+            try:
+                student_id = record.get('student_id')
+                status_val = record.get('status', 'absent')  # Default to absent if not specified
+                check_in_time = record.get('check_in_time')
+                remarks = record.get('remarks')
+                
+                # Get student
+                try:
+                    student = Student.objects.get(id=student_id)
+                except Student.DoesNotExist:
+                    errors.append(f"Student with ID {student_id} not found")
+                    continue
+                
+                # Create or update attendance record
+                attendance, created = Attendance.objects.update_or_create(
+                    student=student,
+                    course=course,
+                    date=date,
+                    defaults={
+                        'status': status_val,
+                        'check_in_time': check_in_time if status_val != 'absent' else None,
+                        'remarks': remarks,
+                        'recorded_by': user
+                    }
+                )
+                updated_count += 1
+                logger.info(f"Updated attendance for student {student_id}: {status_val}")
+                
+            except Exception as e:
+                error_msg = f"Failed to update attendance for student {student_id}: {str(e)}"
+                errors.append(error_msg)
+                logger.error(error_msg)
+        
+        # Update summary
+        if updated_count > 0:
+            try:
+                # Recalculate summary for this course and date
+                attendance_records = Attendance.objects.filter(
+                    course=course,
+                    date=date
+                )
+                
+                total_students = attendance_records.count()
+                present_count = attendance_records.filter(status='present').count()
+                absent_count = attendance_records.filter(status='absent').count()
+                late_count = attendance_records.filter(status='late').count()
+                
+                attendance_rate = (
+                    (present_count + late_count * 0.8) / total_students * 100
+                    if total_students > 0 else 0
+                )
+                
+                # Update or create summary
+                summary, created = AttendanceSummary.objects.update_or_create(
+                    course=course,
+                    date=date,
+                    defaults={
+                        'total_students': total_students,
+                        'present_count': present_count,
+                        'absent_count': absent_count,
+                        'late_count': late_count,
+                        'attendance_rate': attendance_rate
+                    }
+                )
+                logger.info(f"Updated attendance summary: {present_count} present, {absent_count} absent, {late_count} late")
+                
+            except Exception as e:
+                logger.error(f"Error updating attendance summary: {str(e)}")
+        
+        response_data = {
+            'message': f'Successfully updated {updated_count} attendance records',
+            'updated': updated_count,
+            'errors': errors
+        }
+        
+        if errors:
+            response_data['warning'] = f'Completed with {len(errors)} errors'
+            
+        logger.info(f"Bulk update completed: {response_data}")
+        return Response(response_data)
+        
+    except Course.DoesNotExist:
+        logger.error(f"Course not found: {course_id}")
+        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in bulk attendance update: {str(e)}")
+        return Response(
+            {'error': 'Failed to update attendance'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_student_attendance_stats(request, course_id):
+    """Get attendance statistics for all students in a course"""
+    try:
+        user = request.user
+        
+        # Verify instructor owns the course
+        if user.role == 'instructor':
+            course = Course.objects.get(id=course_id, instructor=user)
+        else:
+            return Response(
+                {'error': 'Permission denied'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get all students enrolled in the course
+        students = Student.objects.filter(
+            course_id=course_id,
+            enrollment_status='Enrolled'
+        )
+        
+        # Calculate attendance for each student
+        student_stats = []
+        for student in students:
+            # Get all attendance records for this student in this course
+            attendance_records = Attendance.objects.filter(
+                student=student,
+                course=course
+            )
+            
+            total_classes = attendance_records.count()
+            if total_classes > 0:
+                present_classes = attendance_records.filter(status='present').count()
+                late_classes = attendance_records.filter(status='late').count()
+                
+                # Calculate attendance percentage (late counts as 0.8 of present)
+                attendance_percentage = round(
+                    ((present_classes + late_classes * 0.8) / total_classes) * 100, 2
+                )
+            else:
+                attendance_percentage = 0
+            
+            # Determine status based on attendance
+            if attendance_percentage >= 80:
+                status = 'active'
+            elif attendance_percentage >= 60:
+                status = 'at-risk'
+            else:
+                status = 'inactive'
+            
+            # Get last activity date
+            last_attendance = attendance_records.order_by('-date').first()
+            last_active = last_attendance.date if last_attendance else 'Never'
+            
+            student_stats.append({
+                'id': student.id,
+                'name': student.full_name_english,
+                'email': student.email,
+                'phone': student.mobile_no,
+                'nic': student.nic_id,
+                'attendance_percentage': attendance_percentage,
+                'total_classes': total_classes,
+                'present_classes': present_classes,
+                'late_classes': late_classes,
+                'absent_classes': attendance_records.filter(status='absent').count(),
+                'status': status,
+                'last_active': last_active,
+                'enrollment_status': student.enrollment_status
+            })
+        
+        return Response(student_stats)
+        
+    except Course.DoesNotExist:
+        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error getting student attendance stats: {str(e)}")
+        return Response(
+            {'error': 'Failed to load student statistics'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

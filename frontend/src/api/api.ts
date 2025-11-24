@@ -1074,4 +1074,25 @@ export const fetchAttendanceSummary = async (courseId: number, date?: string): P
   return res.data;
 };
 
+export const fetchStudentAttendanceStats = async (courseId: number): Promise<StudentAttendanceStats[]> => {
+  const res = await api.get(`/api/attendance/course/${courseId}/student-stats/`);
+  return res.data;
+};
+
+export interface StudentAttendanceStats {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  nic: string;
+  attendance_percentage: number;
+  total_classes: number;
+  present_classes: number;
+  late_classes: number;
+  absent_classes: number;
+  status: 'active' | 'at-risk' | 'inactive';
+  last_active: string;
+  enrollment_status: string;
+}
+
 export default api;

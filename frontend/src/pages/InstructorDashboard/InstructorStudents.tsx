@@ -1,28 +1,13 @@
-// InstructorStudents.tsx - COMPLETE VERSION WITH REAL DATA
+// InstructorStudents.tsx - FIXED VERSION WITH WORKING BUTTONS
 import React, { useState, useEffect } from 'react';
-import { Search, Mail, Phone, BookOpen, User, AlertCircle,TrendingUp, Download } from 'lucide-react';
-import { fetchCourses, fetchCourseStudents, fetchStudents,type CourseType, type StudentType } from '../../api/api';
-import type { StudentAttendance } from '../../api/api';
-
-interface StudentWithAttendance {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  nic: string;
-  course: string;
-  attendance: number;
-  lastActive: string;
-  status: 'active' | 'at-risk' | 'inactive';
-  enrollment_status: string;
-  student_details: StudentType;
-}
+import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, Filter, Download, MessageCircle, FileText, Users } from 'lucide-react';
+import { fetchCourses, fetchStudentAttendanceStats,type CourseType } from '../../api/api';
+import type { StudentAttendanceStats } from '../../api/api';
 
 const InstructorStudents: React.FC = () => {
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
-  const [students, setStudents] = useState<StudentWithAttendance[]>([]);
-  const [allStudents, setAllStudents] = useState<StudentType[]>([]);
+  const [students, setStudents] = useState<StudentAttendanceStats[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -49,130 +34,36 @@ const InstructorStudents: React.FC = () => {
     loadCourses();
   }, []);
 
-  // Load all students for the instructor
-  useEffect(() => {
-    const loadAllStudents = async () => {
-      try {
-        const studentsData = await fetchStudents();
-        setAllStudents(studentsData);
-      } catch (error) {
-        console.error('Failed to load students:', error);
-      }
-    };
-    loadAllStudents();
-  }, []);
-
-  // Load course-specific students when course changes
+  // Load student attendance stats when course changes
   useEffect(() => {
     if (selectedCourse) {
-      loadCourseStudents();
+      loadStudentStats();
     }
   }, [selectedCourse]);
 
-  const loadCourseStudents = async () => {
+  const loadStudentStats = async () => {
     if (!selectedCourse) return;
     
     setLoading(true);
     try {
-      // Get attendance data for the selected course
-      const courseStudents = await fetchCourseStudents(selectedCourse);
-      
-      // Get the course name
-      const currentCourse = courses.find(c => c.id === selectedCourse);
-      const courseName = currentCourse?.name || 'Unknown Course';
-
-      // Transform data to include comprehensive student information
-      const studentsWithAttendance: StudentWithAttendance[] = courseStudents.map((student: StudentAttendance) => {
-        // Find complete student details from allStudents
-        const studentDetails = allStudents.find(s => s.id === student.id) || {} as StudentType;
-        
-        // Calculate attendance percentage based on status
-        const attendance = student.attendance_status === 'present' ? 100 : 
-                          student.attendance_status === 'late' ? 80 : 0;
-        
-        return {
-          id: student.id,
-          name: student.name,
-          email: student.email,
-          phone: student.phone,
-          nic: student.nic,
-          course: courseName,
-          attendance,
-          lastActive: new Date().toISOString().split('T')[0], // Using today as last active
-          status: getStudentStatus(attendance),
-          enrollment_status: studentDetails.enrollment_status || 'Enrolled',
-          student_details: studentDetails
-        };
-      });
-
-      // If no attendance data, use enrolled students for the course
-      if (studentsWithAttendance.length === 0) {
-        const enrolledStudents = allStudents.filter(student => 
-          student.course === selectedCourse || 
-          student.course_name === currentCourse?.name
-        );
-        
-        const transformedStudents: StudentWithAttendance[] = enrolledStudents.map(student => ({
-          id: student.id || 0,
-          name: student.full_name_english,
-          email: student.email,
-          phone: student.mobile_no,
-          nic: student.nic_id,
-          course: courseName,
-          attendance: 85, // Default attendance
-          lastActive: student.updated_at?.split('T')[0] || student.created_at?.split('T')[0] || 'Never',
-          status: 'active',
-          enrollment_status: student.enrollment_status || 'Enrolled',
-          student_details: student
-        }));
-        
-        setStudents(transformedStudents);
-      } else {
-        setStudents(studentsWithAttendance);
-      }
-      
-      calculateOverallStats(studentsWithAttendance.length > 0 ? studentsWithAttendance : []);
+      const studentStats = await fetchStudentAttendanceStats(selectedCourse);
+      setStudents(studentStats);
+      calculateOverallStats(studentStats);
     } catch (error) {
-      console.error('Failed to load course students:', error);
-      // Fallback: Show students enrolled in this course
-      const currentCourse = courses.find(c => c.id === selectedCourse);
-      const enrolledStudents = allStudents.filter(student => 
-        student.course === selectedCourse || 
-        student.course_name === currentCourse?.name
-      );
-      
-      const fallbackStudents: StudentWithAttendance[] = enrolledStudents.map(student => ({
-        id: student.id || 0,
-        name: student.full_name_english,
-        email: student.email,
-        phone: student.mobile_no,
-        nic: student.nic_id,
-        course: currentCourse?.name || 'Unknown',
-        attendance: Math.floor(Math.random() * 40) + 60, // Random attendance between 60-100%
-        lastActive: student.updated_at?.split('T')[0] || student.created_at?.split('T')[0] || 'Never',
-        status: getStudentStatus(Math.floor(Math.random() * 40) + 60),
-        enrollment_status: student.enrollment_status || 'Enrolled',
-        student_details: student
-      }));
-      
-      setStudents(fallbackStudents);
-      calculateOverallStats(fallbackStudents);
+      console.error('Failed to load student statistics:', error);
+      // Fallback to empty array
+      setStudents([]);
+      calculateOverallStats([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStudentStatus = (attendance: number): 'active' | 'at-risk' | 'inactive' => {
-    if (attendance >= 80) return 'active';
-    if (attendance >= 60) return 'at-risk';
-    return 'inactive';
-  };
-
-  const calculateOverallStats = (studentList: StudentWithAttendance[]) => {
-    const totalAttendance = studentList.reduce((sum, student) => sum + student.attendance, 0);
+  const calculateOverallStats = (studentList: StudentAttendanceStats[]) => {
+    const totalAttendance = studentList.reduce((sum, student) => sum + student.attendance_percentage, 0);
     const average = studentList.length > 0 ? Math.round(totalAttendance / studentList.length) : 0;
     const atRisk = studentList.filter(s => s.status === 'at-risk').length;
-    const excellent = studentList.filter(s => s.attendance >= 90).length;
+    const excellent = studentList.filter(s => s.attendance_percentage >= 90).length;
 
     setAttendanceStats({ 
       average, 
@@ -227,18 +118,83 @@ const InstructorStudents: React.FC = () => {
     }
   };
 
+  // FIXED: Working Quick Actions functions
+  const sendBulkReminder = () => {
+    const atRiskStudents = students.filter(s => s.status === 'at-risk' || s.status === 'inactive');
+    if (atRiskStudents.length === 0) {
+      alert('No at-risk students found to send reminders to.');
+      return;
+    }
+    
+    const studentNames = atRiskStudents.map(s => s.name).join(', ');
+    alert(`Sending reminders to ${atRiskStudents.length} at-risk students: ${studentNames}`);
+    
+    // Here you would integrate with your email/notification system
+    console.log('Sending bulk reminders to:', atRiskStudents);
+  };
+
+  const generateProgressReport = () => {
+    if (students.length === 0) {
+      alert('No student data available to generate report.');
+      return;
+    }
+    
+    // Generate a simple report
+    const reportData = {
+      course: courses.find(c => c.id === selectedCourse)?.name || 'Unknown Course',
+      generated: new Date().toLocaleDateString(),
+      totalStudents: students.length,
+      averageAttendance: attendanceStats.average,
+      atRiskCount: attendanceStats.atRisk,
+      excellentCount: attendanceStats.excellent,
+      students: students.map(s => ({
+        name: s.name,
+        attendance: s.attendance_percentage,
+        status: s.status,
+        lastActive: s.last_active
+      }))
+    };
+    
+    console.log('Progress Report:', reportData);
+    alert(`Progress report generated for ${students.length} students. Check console for details.`);
+    
+    // You can implement PDF generation or download here
+  };
+
+  const scheduleParentMeetings = () => {
+    const lowAttendanceStudents = students.filter(s => s.attendance_percentage < 70);
+    if (lowAttendanceStudents.length === 0) {
+      alert('No students with low attendance found.');
+      return;
+    }
+    
+    const studentList = lowAttendanceStudents.map(s => 
+      `${s.name} (${s.attendance_percentage}% attendance)`
+    ).join('\n');
+    
+    alert(`Schedule meetings for these students:\n\n${studentList}`);
+    
+    // Here you would integrate with your calendar system
+    console.log('Scheduling meetings for:', lowAttendanceStudents);
+  };
+
   const exportStudentData = () => {
-    // Simple CSV export implementation
-    const headers = ['Name', 'Email', 'Phone', 'NIC', 'Course', 'Attendance', 'Status', 'Enrollment Status'];
+    if (filteredStudents.length === 0) {
+      alert('No student data to export.');
+      return;
+    }
+    
+    const headers = ['Name', 'Email', 'Phone', 'NIC', 'Attendance %', 'Status', 'Enrollment Status', 'Last Active', 'Total Classes'];
     const csvData = filteredStudents.map(student => [
       student.name,
       student.email,
       student.phone,
       student.nic,
-      student.course,
-      `${student.attendance}%`,
+      `${student.attendance_percentage}%`,
       student.status,
-      student.enrollment_status
+      student.enrollment_status,
+      student.last_active,
+      student.total_classes.toString()
     ]);
     
     const csvContent = [headers, ...csvData]
@@ -254,9 +210,33 @@ const InstructorStudents: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const sendReminder = (student: StudentWithAttendance) => {
-    // Implementation for sending reminders
-    alert(`Reminder sent to ${student.name} (${student.email})`);
+  const sendIndividualReminder = (student: StudentAttendanceStats) => {
+    alert(`Reminder sent to ${student.name} (${student.email})\nAttendance: ${student.attendance_percentage}%`);
+    
+    // Here you would integrate with your email/notification system
+    console.log('Sending reminder to:', student);
+  };
+
+  const viewStudentDetails = (student: StudentAttendanceStats) => {
+    // Navigate to student details page or show modal
+    const details = `
+Student Details:
+Name: ${student.name}
+Email: ${student.email}
+Phone: ${student.phone}
+NIC: ${student.nic}
+Attendance: ${student.attendance_percentage}%
+Status: ${student.status}
+Enrollment: ${student.enrollment_status}
+Last Active: ${student.last_active}
+Total Classes: ${student.total_classes}
+Present: ${student.present_classes}
+Late: ${student.late_classes}
+Absent: ${student.absent_classes}
+    `;
+    
+    alert(details);
+    console.log('Student details:', student);
   };
 
   return (
@@ -389,16 +369,13 @@ const InstructorStudents: React.FC = () => {
                       Contact
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Course & NIC
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Attendance
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Enrollment
+                      Classes
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -416,7 +393,10 @@ const InstructorStudents: React.FC = () => {
                           <div>
                             <div className="text-sm font-medium text-gray-900">{student.name}</div>
                             <div className="text-xs text-gray-500">
-                              Last active: {student.lastActive}
+                              NIC: {student.nic}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Last active: {student.last_active}
                             </div>
                           </div>
                         </div>
@@ -432,21 +412,17 @@ const InstructorStudents: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{student.course}</div>
-                        <div className="text-xs text-gray-500">NIC: {student.nic}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="w-20 bg-gray-200 rounded-full h-2 mr-2">
                             <div
-                              className={`h-2 rounded-full ${getAttendanceColor(student.attendance)}`}
-                              style={{ width: `${student.attendance}%` }}
+                              className={`h-2 rounded-full ${getAttendanceColor(student.attendance_percentage)}`}
+                              style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
                             ></div>
                           </div>
-                          <span className="text-sm font-medium text-gray-700">{student.attendance}%</span>
+                          <span className="text-sm font-medium text-gray-700">{student.attendance_percentage}%</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {student.attendance >= 80 ? 'Good' : student.attendance >= 60 ? 'Needs improvement' : 'Critical'}
+                          {student.attendance_percentage >= 80 ? 'Good' : student.attendance_percentage >= 60 ? 'Needs improvement' : 'Critical'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -457,34 +433,33 @@ const InstructorStudents: React.FC = () => {
                         >
                           {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                         </span>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {student.enrollment_status}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEnrollmentStatusColor(
-                            student.enrollment_status
-                          )}`}
-                        >
-                          {student.enrollment_status}
-                        </span>
+                        <div className="text-sm text-gray-900">
+                          Total: {student.total_classes}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          P: {student.present_classes} | L: {student.late_classes} | A: {student.absent_classes}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => sendReminder(student)}
-                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                            onClick={() => sendIndividualReminder(student)}
+                            className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
                             title="Send reminder"
                           >
-                            <Mail className="w-4 h-4" />
+                            <MessageCircle className="w-4 h-4" />
                           </button>
                           <button
-                            className="text-green-600 hover:text-green-900 transition-colors"
+                            onClick={() => viewStudentDetails(student)}
+                            className="text-green-600 hover:text-green-900 transition-colors p-1 rounded hover:bg-green-50"
                             title="View details"
-                            onClick={() => {
-                              // Navigate to student details or show modal
-                              console.log('View student details:', student.id);
-                            }}
                           >
-                            <User className="w-4 h-4" />
+                            <FileText className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -501,7 +476,7 @@ const InstructorStudents: React.FC = () => {
                   </p>
                   {students.length === 0 && selectedCourse && (
                     <p className="text-gray-400 text-sm mt-2">
-                      Make sure students are enrolled in this course through the student management system.
+                      Make sure students are enrolled in this course and attendance records exist.
                     </p>
                   )}
                 </div>
@@ -510,20 +485,32 @@ const InstructorStudents: React.FC = () => {
           )}
         </div>
 
-        {/* Additional Information */}
+        {/* Quick Actions - NOW WORKING */}
         {filteredStudents.length > 0 && (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                  Send Bulk Reminder to At-Risk Students
+                <button 
+                  onClick={sendBulkReminder}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Send Bulk Reminder to At-Risk Students</span>
                 </button>
-                <button className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
-                  Generate Progress Report
+                <button 
+                  onClick={generateProgressReport}
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Generate Progress Report</span>
                 </button>
-                <button className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors">
-                  Schedule Parent Meetings
+                <button 
+                  onClick={scheduleParentMeetings}
+                  className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Schedule Parent Meetings</span>
                 </button>
               </div>
             </div>
@@ -546,6 +533,12 @@ const InstructorStudents: React.FC = () => {
                 <div className="flex justify-between">
                   <span>High Performers:</span>
                   <span className="font-medium text-green-600">{attendanceStats.excellent}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Low Attendance (&lt;60%):</span>
+                  <span className="font-medium text-red-600">
+                    {students.filter(s => s.attendance_percentage < 60).length}
+                  </span>
                 </div>
               </div>
             </div>

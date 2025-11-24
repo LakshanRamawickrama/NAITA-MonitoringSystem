@@ -11,4 +11,5 @@ urlpatterns = [
     path('course/<int:course_id>/students/', views.get_course_students, name='course-students'),
     path('course/<int:course_id>/bulk/', views.bulk_update_attendance, name='bulk-update-attendance'),
     path('summary/<int:course_id>/', views.get_attendance_summary, name='attendance-summary'),
+    path('course/<int:course_id>/student-stats/', views.get_student_attendance_stats, name='student-attendance-stats'),
 ]
