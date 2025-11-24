@@ -24,7 +24,7 @@ INSTALLED_APPS = [
     'corsheaders',
 
     # Your apps
-    'attendence',
+    'attendance',
     'centers',
     'courses',
     'instructor',
