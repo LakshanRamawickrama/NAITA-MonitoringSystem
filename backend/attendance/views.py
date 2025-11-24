@@ -1,4 +1,4 @@
-# attendance/views.py
+# attendance/views.py - COMPLETE UPDATED WITH CENTER FILTERING
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -24,12 +24,21 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Attendance.objects.all()
         
-        # Instructors can only see attendance for their courses
+        # Instructors can only see attendance for their courses in their center
         if user.role == 'instructor':
+            # Filter by instructor's courses
             queryset = queryset.filter(
                 Q(course__instructor=user) | 
                 Q(recorded_by=user)
             )
+            
+            # If user has a center, filter by that center
+            if user.center:
+                queryset = queryset.filter(course__center=user.center)
+        
+        # District managers can only see their district
+        elif user.role == 'district_manager' and user.district:
+            queryset = queryset.filter(course__center__district=user.district)
         
         # Filter by course if provided
         course_id = self.request.query_params.get('course')
@@ -101,18 +110,33 @@ def get_course_students(request, course_id):
     try:
         user = request.user
         
-        # Verify instructor owns the course
+        # Verify instructor owns the course and it's in their center
         if user.role == 'instructor':
-            course = Course.objects.get(id=course_id, instructor=user)
+            try:
+                course = Course.objects.get(id=course_id, instructor=user)
+                # Additional center check
+                if user.center and course.center != user.center:
+                    return Response(
+                        {'error': 'You do not have permission to access this course'}, 
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except Course.DoesNotExist:
+                return Response(
+                    {'error': 'Course not found or you do not have permission'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
         else:
             course = Course.objects.get(id=course_id)
         
-        # Get enrolled students (you'll need to implement enrollment system)
-        # For now, using all students - replace with actual enrollment logic
+        # Get enrolled students from the same center
         students = Student.objects.filter(
             course=course_id,
             enrollment_status='Enrolled'
         )
+        
+        # If user has a center, filter students by that center
+        if user.center:
+            students = students.filter(center=user.center)
         
         # Get today's attendance records
         today = timezone.now().date()
@@ -128,6 +152,8 @@ def get_course_students(request, course_id):
             student_data.append({
                 'id': student.id,
                 'name': student.full_name_english,
+                'email': student.email,
+                'phone': student.mobile_no,
                 'nic': student.nic_id,
                 'attendance_status': attendance_record.status if attendance_record else None,
                 'check_in_time': attendance_record.check_in_time if attendance_record else None,
@@ -154,131 +180,18 @@ def bulk_update_attendance(request, course_id):
         date = request.data.get('date', timezone.now().date())
         attendance_data = request.data.get('attendance', [])
         
-        # Verify instructor owns the course
-        if user.role == 'instructor':
-            course = Course.objects.get(id=course_id, instructor=user)
-        else:
-            return Response(
-                {'error': 'Permission denied'}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        updated_count = 0
-        errors = []
-        
-        for record in attendance_data:
-            try:
-                student_id = record.get('student_id')
-                status = record.get('status')
-                check_in_time = record.get('check_in_time')
-                remarks = record.get('remarks')
-                
-                attendance, created = Attendance.objects.update_or_create(
-                    student_id=student_id,
-                    course_id=course_id,
-                    date=date,
-                    defaults={
-                        'status': status,
-                        'check_in_time': check_in_time if status != 'absent' else None,
-                        'remarks': remarks,
-                        'recorded_by': user
-                    }
-                )
-                updated_count += 1
-                
-            except Exception as e:
-                errors.append(f"Failed to update attendance for student {student_id}: {str(e)}")
-        
-        # Update summary
-        if updated_count > 0:
-            summary_view = AttendanceViewSet()
-            # Trigger summary update for any record
-            try:
-                first_attendance = Attendance.objects.filter(
-                    course_id=course_id, date=date
-                ).first()
-                if first_attendance:
-                    summary_view._update_attendance_summary(first_attendance)
-            except Exception as e:
-                logger.error(f"Error updating summary after bulk update: {str(e)}")
-        
-        return Response({
-            'message': f'Successfully updated {updated_count} attendance records',
-            'updated': updated_count,
-            'errors': errors
-        })
-        
-    except Course.DoesNotExist:
-        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        logger.error(f"Error in bulk attendance update: {str(e)}")
-        return Response(
-            {'error': 'Failed to update attendance'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_attendance_summary(request, course_id):
-    """Get attendance summary for a course"""
-    try:
-        user = request.user
-        
-        # Verify instructor owns the course
-        if user.role == 'instructor':
-            course = Course.objects.get(id=course_id, instructor=user)
-        else:
-            course = Course.objects.get(id=course_id)
-        
-        # Get date from query params or use today
-        date_str = request.GET.get('date')
-        if date_str:
-            date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
-        else:
-            date = timezone.now().date()
-        
-        # Get or create summary
-        summary, created = AttendanceSummary.objects.get_or_create(
-            course=course,
-            date=date,
-            defaults={
-                'total_students': 0,
-                'present_count': 0,
-                'absent_count': 0,
-                'late_count': 0,
-                'attendance_rate': 0.0
-            }
-        )
-        
-        serializer = AttendanceSummarySerializer(summary)
-        return Response(serializer.data)
-        
-    except Course.DoesNotExist:
-        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        logger.error(f"Error getting attendance summary: {str(e)}")
-        return Response(
-            {'error': 'Failed to load attendance summary'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        
-#Attendance UPDATED BULK UPDATE FUNCTION
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def bulk_update_attendance(request, course_id):
-    """Bulk update attendance for multiple students"""
-    try:
-        user = request.user
-        date = request.data.get('date', timezone.now().date())
-        attendance_data = request.data.get('attendance', [])
-        
         logger.info(f"Bulk attendance update request from user {user.id} for course {course_id} on date {date}")
-        logger.info(f"Attendance data: {attendance_data}")
         
-        # Verify instructor owns the course
+        # Verify instructor owns the course and it's in their center
         if user.role == 'instructor':
             try:
                 course = Course.objects.get(id=course_id, instructor=user)
+                # Additional center check
+                if user.center and course.center != user.center:
+                    return Response(
+                        {'error': 'You do not have permission to access this course'}, 
+                        status=status.HTTP_403_FORBIDDEN
+                    )
             except Course.DoesNotExist:
                 return Response(
                     {'error': 'Course not found or you do not have permission'}, 
@@ -296,13 +209,17 @@ def bulk_update_attendance(request, course_id):
         for record in attendance_data:
             try:
                 student_id = record.get('student_id')
-                status_val = record.get('status', 'absent')  # Default to absent if not specified
+                status_val = record.get('status', 'absent')
                 check_in_time = record.get('check_in_time')
                 remarks = record.get('remarks')
                 
-                # Get student
+                # Get student and verify they belong to the same center
                 try:
                     student = Student.objects.get(id=student_id)
+                    # Center check for students
+                    if user.center and student.center != user.center:
+                        errors.append(f"Student {student_id} does not belong to your center")
+                        continue
                 except Student.DoesNotExist:
                     errors.append(f"Student with ID {student_id} not found")
                     continue
@@ -384,7 +301,64 @@ def bulk_update_attendance(request, course_id):
             {'error': 'Failed to update attendance'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_attendance_summary(request, course_id):
+    """Get attendance summary for a course"""
+    try:
+        user = request.user
         
+        # Verify instructor owns the course and it's in their center
+        if user.role == 'instructor':
+            try:
+                course = Course.objects.get(id=course_id, instructor=user)
+                # Additional center check
+                if user.center and course.center != user.center:
+                    return Response(
+                        {'error': 'You do not have permission to access this course'}, 
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except Course.DoesNotExist:
+                return Response(
+                    {'error': 'Course not found or you do not have permission'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        else:
+            course = Course.objects.get(id=course_id)
+        
+        # Get date from query params or use today
+        date_str = request.GET.get('date')
+        if date_str:
+            date = timezone.datetime.strptime(date_str, '%Y-%m-%d').date()
+        else:
+            date = timezone.now().date()
+        
+        # Get or create summary
+        summary, created = AttendanceSummary.objects.get_or_create(
+            course=course,
+            date=date,
+            defaults={
+                'total_students': 0,
+                'present_count': 0,
+                'absent_count': 0,
+                'late_count': 0,
+                'attendance_rate': 0.0
+            }
+        )
+        
+        serializer = AttendanceSummarySerializer(summary)
+        return Response(serializer.data)
+        
+    except Course.DoesNotExist:
+        return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error getting attendance summary: {str(e)}")
+        return Response(
+            {'error': 'Failed to load attendance summary'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_student_attendance_stats(request, course_id):
@@ -392,20 +366,36 @@ def get_student_attendance_stats(request, course_id):
     try:
         user = request.user
         
-        # Verify instructor owns the course
+        # Verify instructor owns the course and it's in their center
         if user.role == 'instructor':
-            course = Course.objects.get(id=course_id, instructor=user)
+            try:
+                course = Course.objects.get(id=course_id, instructor=user)
+                # Additional center check
+                if user.center and course.center != user.center:
+                    return Response(
+                        {'error': 'You do not have permission to access this course'}, 
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except Course.DoesNotExist:
+                return Response(
+                    {'error': 'Course not found or you do not have permission'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
         else:
             return Response(
                 {'error': 'Permission denied'}, 
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Get all students enrolled in the course
+        # Get all students enrolled in the course from the same center
         students = Student.objects.filter(
             course_id=course_id,
             enrollment_status='Enrolled'
         )
+        
+        # If user has a center, filter students by that center
+        if user.center:
+            students = students.filter(center=user.center)
         
         # Calculate attendance for each student
         student_stats = []

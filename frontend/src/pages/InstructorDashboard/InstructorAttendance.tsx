@@ -1,6 +1,6 @@
-// InstructorAttendance.tsx - COMPLETE REAL DATA ONLY VERSION
+// InstructorAttendance.tsx - COMPLETE UPDATED WITH CENTER INFORMATION
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, CheckCircle, XCircle, Clock, Download, Search, BookOpen, Save, RefreshCw } from 'lucide-react';
+import { Calendar, Users, CheckCircle, XCircle, Clock, Download, Search, BookOpen, Save, RefreshCw, Building, MapPin } from 'lucide-react';
 import { fetchMyCourses, fetchCourseStudents, bulkUpdateAttendance } from '../../api/api';
 import type { CourseType, StudentAttendance } from '../../api/api';
 
@@ -301,6 +301,16 @@ const InstructorAttendance: React.FC = () => {
     return course ? `${course.name} - ${course.code}` : 'Select a course';
   };
 
+  const getCourseCenterInfo = () => {
+    const course = courses.find(c => c.id === selectedCourse);
+    if (!course) return null;
+    
+    return {
+      center: course.center_details?.name || 'No Center',
+      district: course.center_details?.district || 'No District'
+    };
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -309,9 +319,21 @@ const InstructorAttendance: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Attendance Management</h1>
             <p className="text-gray-600 mt-1">Track and manage student attendance</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Course: <span className="font-medium">{getCourseName()}</span>
-            </p>
+            <div className="text-sm text-gray-500 mt-1">
+              <p>
+                Course: <span className="font-medium">{getCourseName()}</span>
+              </p>
+              {selectedCourse && getCourseCenterInfo() && (
+                <p className="mt-1">
+                  <Building className="w-4 h-4 inline mr-1" />
+                  Center: <span className="font-medium">{getCourseCenterInfo()?.center}</span>
+                  <span className="ml-4">
+                    <MapPin className="w-4 h-4 inline mr-1" />
+                    District: <span className="font-medium">{getCourseCenterInfo()?.district}</span>
+                  </span>
+                </p>
+              )}
+            </div>
             {courses.length === 0 && !coursesLoading && (
               <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <p className="text-yellow-800 text-sm">
@@ -359,7 +381,7 @@ const InstructorAttendance: React.FC = () => {
                     <option value="">{courses.length === 0 ? 'No courses available' : 'Select a course'}</option>
                     {courses.map(course => (
                       <option key={course.id} value={course.id}>
-                        {course.name} - {course.code}
+                        {course.name} - {course.code} ({course.center_details?.name || 'No Center'})
                       </option>
                     ))}
                   </select>
