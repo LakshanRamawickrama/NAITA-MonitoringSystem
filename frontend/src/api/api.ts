@@ -997,4 +997,81 @@ export const restoreBackup = async (file: File): Promise<{ message: string }> =>
   return res.data;
 };
 
+/* ========== ATTENDANCE API ========== */
+export interface AttendanceRecord {
+  id: number;
+  student: number;
+  student_details?: StudentType;
+  course: number;
+  course_details?: CourseType;
+  date: string;
+  status: 'present' | 'absent' | 'late';
+  check_in_time?: string | null;
+  remarks?: string | null;
+  recorded_by: number;
+  recorded_by_details?: UserType;
+  recorded_at: string;
+}
+
+export interface StudentAttendance {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  nic: string;
+  attendance_status: 'present' | 'absent' | 'late' | null;
+  check_in_time: string | null;
+  remarks: string | null;
+}
+
+export interface AttendanceSummary {
+  id: number;
+  course: number;
+  course_details?: CourseType;
+  date: string;
+  total_students: number;
+  present_count: number;
+  absent_count: number;
+  late_count: number;
+  attendance_rate: number;
+}
+
+export const fetchAttendance = async (params?: {
+  course?: number;
+  date?: string;
+  status?: string;
+}): Promise<AttendanceRecord[]> => {
+  const res = await api.get("/api/attendance/", { params });
+  return res.data;
+};
+
+export const fetchCourseStudents = async (courseId: number): Promise<StudentAttendance[]> => {
+  const res = await api.get(`/api/attendance/course/${courseId}/students/`);
+  return res.data;
+};
+
+export const updateAttendance = async (data: Partial<AttendanceRecord>): Promise<AttendanceRecord> => {
+  const res = await api.post("/api/attendance/", data);
+  return res.data;
+};
+
+export const bulkUpdateAttendance = async (courseId: number, data: {
+  date: string;
+  attendance: Array<{
+    student_id: number;
+    status: 'present' | 'absent' | 'late';
+    check_in_time?: string | null;
+    remarks?: string | null;
+  }>;
+}): Promise<{ message: string; updated: number; errors: string[] }> => {
+  const res = await api.post(`/api/attendance/course/${courseId}/bulk/`, data);
+  return res.data;
+};
+
+export const fetchAttendanceSummary = async (courseId: number, date?: string): Promise<AttendanceSummary> => {
+  const params = date ? { date } : {};
+  const res = await api.get(`/api/attendance/summary/${courseId}/`, { params });
+  return res.data;
+};
+
 export default api;
