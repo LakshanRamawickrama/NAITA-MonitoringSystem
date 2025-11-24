@@ -1,8 +1,8 @@
-// InstructorStudents.tsx - COMPLETE FIXED VERSION WITH IMPROVED PDF REPORTS
+// InstructorStudents.tsx - COMPLETE REAL DATA ONLY VERSION
 import React, { useState, useEffect } from 'react';
-import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, FileText, X, Eye, Send, DownloadCloud} from 'lucide-react';
-import { fetchCourses, fetchStudentAttendanceStats } from '../../api/api';
-import type { StudentAttendanceStats, CourseType} from '../../api/api';
+import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, FileText, X, Eye, Send, DownloadCloud } from 'lucide-react';
+import { fetchMyCourses, fetchStudentAttendanceStats } from '../../api/api';
+import type { StudentAttendanceStats, CourseType } from '../../api/api';
 
 // Interfaces
 interface StudentDetailsPopupProps {
@@ -49,7 +49,6 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col mx-2">
-        {/* Header */}
         <div className="flex justify-between items-start border-b border-gray-200 px-4 py-4">
           <div className="flex items-start space-x-3 flex-1 min-w-0">
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
@@ -69,7 +68,6 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="border-b border-gray-200">
           <div className="flex px-2">
             {[
@@ -93,7 +91,6 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {activeTab === 'details' && (
             <div className="space-y-4">
@@ -280,7 +277,6 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
           )}
         </div>
 
-        {/* Footer with Message Action */}
         <div className="border-t border-gray-200 px-4 py-4 bg-gray-50">
           <div className="flex flex-col space-y-2">
             <input
@@ -546,7 +542,7 @@ const ReportPopup: React.FC<ReportPopupProps> = ({
   );
 };
 
-// Main Component
+// Main Component - REAL DATA ONLY
 const InstructorStudents: React.FC = () => {
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
@@ -554,6 +550,7 @@ const InstructorStudents: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [coursesLoading, setCoursesLoading] = useState(true);
   
   // Popup states
   const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceStats | null>(null);
@@ -570,17 +567,28 @@ const InstructorStudents: React.FC = () => {
     total: 0
   });
 
-  // Load instructor's courses
+  // Load ONLY instructor's assigned courses
   useEffect(() => {
     const loadCourses = async () => {
+      setCoursesLoading(true);
       try {
-        const instructorCourses = await fetchCourses();
-        setCourses(instructorCourses);
-        if (instructorCourses.length > 0) {
-          setSelectedCourse(instructorCourses[0].id);
+        const myCourses = await fetchMyCourses();
+        setCourses(myCourses);
+        if (myCourses.length > 0) {
+          setSelectedCourse(myCourses[0].id);
+        } else {
+          setSelectedCourse(null);
+          setStudents([]);
+          calculateOverallStats([]);
         }
       } catch (error) {
-        console.error('Failed to load courses:', error);
+        console.error('Failed to load assigned courses:', error);
+        setCourses([]);
+        setSelectedCourse(null);
+        setStudents([]);
+        calculateOverallStats([]);
+      } finally {
+        setCoursesLoading(false);
       }
     };
     loadCourses();
@@ -590,6 +598,9 @@ const InstructorStudents: React.FC = () => {
   useEffect(() => {
     if (selectedCourse) {
       loadStudentStats();
+    } else {
+      setStudents([]);
+      calculateOverallStats([]);
     }
   }, [selectedCourse]);
 
@@ -655,111 +666,43 @@ const InstructorStudents: React.FC = () => {
     alert(`✅ Message sent to ${student.name}:\n\n${message}`);
   };
 
-  // IMPROVED PDF Generation Functions with MULTI-PAGE DETAILED REPORTS
+  // PDF Generation Functions
   const generatePDFReport = async (reportType: string, students: StudentAttendanceStats[]) => {
     try {
       const { jsPDF } = await import('jspdf');
       
-      // Create PDF
       const doc = new jsPDF();
-      
       const course = courses.find(c => c.id === selectedCourse);
-      const currentDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-
-      // Report configuration
-      const reportConfig = {
-        attendance: {
-          title: 'STUDENT ATTENDANCE REPORT',
-          color: [34, 197, 94],
-          description: 'Detailed attendance analysis and statistics'
-        },
-        performance: {
-          title: 'STUDENT PERFORMANCE REPORT', 
-          color: [59, 130, 246],
-          description: 'Performance metrics and progress analysis'
-        },
-        detailed: {
-          title: 'DETAILED STUDENT REPORT',
-          color: [139, 92, 246],
-          description: 'Comprehensive student profiles and information'
-        },
-        summary: {
-          title: 'CLASS SUMMARY REPORT',
-          color: [245, 158, 11],
-          description: 'Course overview and key insights'
-        }
-      };
-
-      const config = reportConfig[reportType as keyof typeof reportConfig] || reportConfig.attendance;
-
-      // Set document properties
-      doc.setProperties({
-        title: `${config.title} - ${course?.name || 'Course'}`,
-        subject: config.description,
-        author: 'NAITA System',
-        creator: 'NAITA Monitoring System'
-      });
-
-      // Title
+      
+      // Add basic content
       doc.setFontSize(20);
-      doc.setTextColor(config.color[0], config.color[1], config.color[2]);
-      doc.text(config.title, 105, 25, { align: 'center' });
-
-      // Course info
+      doc.text(`${reportType.toUpperCase()} REPORT`, 105, 20, { align: 'center' });
+      
       doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`Course: ${course?.name || 'N/A'}`, 20, 45);
-      doc.text(`Course Code: ${course?.code || 'N/A'}`, 20, 55);
-      doc.text(`Report Date: ${currentDate}`, 20, 65);
-      doc.text(`Total Students: ${students.length}`, 20, 75);
-      doc.text(`Generated by: NAITA Monitoring System`, 20, 85);
-
-      let yPosition = 100;
-
-      // Generate report content based on type
-      switch (reportType) {
-        case 'attendance':
-          yPosition = generateAttendanceReport(doc, students, yPosition, config.color);
-          break;
-        case 'performance':
-          yPosition = generatePerformanceReport(doc, students, yPosition, config.color);
-          break;
-        case 'detailed':
-          yPosition = generateDetailedReport(doc, students, yPosition, config.color);
-          break;
-        case 'summary':
-          yPosition = generateSummaryReport(doc, students, yPosition, config.color);
-          break;
-      }
-
-      // Add page numbers and footer
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(
-          `Page ${i} of ${pageCount}`,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 15,
-          { align: 'center' }
-        );
-        doc.text(
-          `NAITA Monitoring System - ${currentDate}`,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
-          { align: 'center' }
-        );
-      }
-
-      // Save PDF
-      const fileName = `${reportType}-report-${course?.code || 'course'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.text(`Course: ${course?.name || 'N/A'}`, 20, 40);
+      doc.text(`Course Code: ${course?.code || 'N/A'}`, 20, 50);
+      doc.text(`Report Date: ${new Date().toLocaleDateString()}`, 20, 60);
+      doc.text(`Total Students: ${students.length}`, 20, 70);
+      
+      let yPosition = 90;
+      
+      // Add student data
+      doc.setFontSize(10);
+      students.forEach((student, index) => {
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        doc.text(`${index + 1}. ${student.name}`, 20, yPosition);
+        doc.text(`Attendance: ${student.attendance_percentage}%`, 120, yPosition);
+        doc.text(`Status: ${student.status}`, 160, yPosition);
+        yPosition += 10;
+      });
+      
+      const fileName = `${reportType}-report-${course?.code || 'course'}.pdf`;
       doc.save(fileName);
-      alert(`✅ ${config.title} has been downloaded successfully!`);
+      alert(`✅ ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report has been downloaded successfully!`);
       
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -769,400 +712,6 @@ const InstructorStudents: React.FC = () => {
     }
   };
 
-  // IMPROVED Table Generator with BETTER FORMATTING
-  const generateSimpleTable = (
-    doc: any,
-    students: StudentAttendanceStats[],
-    title: string,
-    startY: number,
-    color: number[],
-    columns: { header: string; key: string; width: number; align?: 'left' | 'center' | 'right' }[]
-  ): number => {
-    let yPosition = startY;
-
-    // Table title
-    doc.setFontSize(12);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.text(title, 20, yPosition);
-    yPosition += 10;
-
-    // Table header
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    doc.setFillColor(color[0], color[1], color[2]);
-    
-    // Draw header background
-    doc.rect(20, yPosition, 170, 7, 'F');
-    
-    // Draw header text
-    doc.setFont('helvetica', 'bold');
-    let currentX = 20;
-    columns.forEach(col => {
-      const textX = col.align === 'center' ? currentX + col.width / 2 : 
-                   col.align === 'right' ? currentX + col.width - 3 : currentX + 3;
-      
-      doc.text(col.header, textX, yPosition + 5, { 
-        align: col.align as any 
-      });
-      currentX += col.width;
-    });
-    
-    yPosition += 12;
-
-    // Student rows
-    doc.setFontSize(8);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'normal');
-
-    students.forEach((student, index) => {
-      // Check for page break
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-        
-        // Header for new page
-        doc.setFontSize(9);
-        doc.setTextColor(255, 255, 255);
-        doc.setFillColor(color[0], color[1], color[2]);
-        doc.rect(20, yPosition, 170, 7, 'F');
-        doc.setFont('helvetica', 'bold');
-        currentX = 20;
-        columns.forEach(col => {
-          const textX = col.align === 'center' ? currentX + col.width / 2 : 
-                       col.align === 'right' ? currentX + col.width - 3 : currentX + 3;
-          
-          doc.text(col.header, textX, yPosition + 5, { 
-            align: col.align as any 
-          });
-          currentX += col.width;
-        });
-        yPosition += 12;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-      }
-
-      // Alternate row background
-      if (index % 2 === 0) {
-        doc.setFillColor(245, 245, 245);
-        doc.rect(20, yPosition - 4, 170, 7, 'F');
-      }
-
-      // Draw row content
-      currentX = 20;
-      let maxLinesInRow = 1;
-
-      columns.forEach(col => {
-        const textX = col.align === 'center' ? currentX + col.width / 2 : 
-                     col.align === 'right' ? currentX + col.width - 3 : currentX + 3;
-        
-        let cellValue = '';
-        
-        switch (col.key) {
-          case 'id':
-            cellValue = (index + 1).toString();
-            break;
-          case 'name':
-            // Improved name formatting
-            const nameParts = student.name.split(' ');
-            if (nameParts.length >= 3 && student.name.length > 20) {
-              const firstName = nameParts[0];
-              const lastName = nameParts[nameParts.length - 1];
-              const middleInitials = nameParts.slice(1, -1).map(part => part.charAt(0) + '.').join(' ');
-              cellValue = `${firstName} ${middleInitials} ${lastName}`;
-            } else if (student.name.length > 25) {
-              cellValue = student.name.substring(0, 24) + '...';
-            } else {
-              cellValue = student.name;
-            }
-            break;
-          case 'email':
-            cellValue = student.email.length > 25 ? student.email.substring(0, 24) + '...' : student.email;
-            break;
-          case 'phone':
-            cellValue = student.phone;
-            break;
-          case 'nic':
-            cellValue = student.nic;
-            break;
-          case 'attendance':
-            cellValue = `${student.attendance_percentage}%`;
-            break;
-          case 'status':
-            cellValue = student.status.charAt(0).toUpperCase() + student.status.slice(1);
-            break;
-          case 'present':
-            cellValue = student.present_classes.toString();
-            break;
-          case 'performance':
-            cellValue = student.attendance_percentage >= 90 ? 'EXCELLENT' :
-                       student.attendance_percentage >= 80 ? 'GOOD' :
-                       student.attendance_percentage >= 60 ? 'AVERAGE' : 'POOR';
-            break;
-          case 'recommendation':
-            cellValue = student.attendance_percentage >= 90 ? 'MAINTAIN' :
-                       student.attendance_percentage >= 80 ? 'GOOD WORK' :
-                       student.attendance_percentage >= 60 ? 'NEEDS FOCUS' : 'CRITICAL';
-            break;
-          case 'classes':
-            cellValue = student.total_classes.toString();
-            break;
-          default:
-            cellValue = '';
-        }
-
-        doc.text(cellValue, textX, yPosition + 3, { align: col.align as any });
-        currentX += col.width;
-      });
-
-      yPosition += 8;
-    });
-
-    return yPosition + 10;
-  };
-
-  // Column Definitions
-  const attendanceColumns = [
-    { header: 'NO', key: 'id', width: 15, align: 'center' as const },
-    { header: 'STUDENT NAME', key: 'name', width: 50, align: 'left' as const },
-    { header: 'NIC', key: 'nic', width: 35, align: 'center' as const },
-    { header: 'ATTEND %', key: 'attendance', width: 25, align: 'center' as const },
-    { header: 'STATUS', key: 'status', width: 25, align: 'center' as const },
-    { header: 'PRESENT', key: 'present', width: 20, align: 'center' as const }
-  ];
-
-  const performanceColumns = [
-    { header: 'NO', key: 'id', width: 15, align: 'center' as const },
-    { header: 'STUDENT NAME', key: 'name', width: 45, align: 'left' as const },
-    { header: 'ATTEND %', key: 'attendance', width: 20, align: 'center' as const },
-    { header: 'STATUS', key: 'status', width: 20, align: 'center' as const },
-    { header: 'PERFORMANCE', key: 'performance', width: 35, align: 'center' as const },
-    { header: 'RECOMMENDATION', key: 'recommendation', width: 35, align: 'center' as const }
-  ];
-
-  const summaryColumns = [
-    { header: 'NO', key: 'id', width: 15, align: 'center' as const },
-    { header: 'STUDENT NAME', key: 'name', width: 50, align: 'left' as const },
-    { header: 'ATTEND %', key: 'attendance', width: 20, align: 'center' as const },
-    { header: 'STATUS', key: 'status', width: 25, align: 'center' as const },
-    { header: 'PERFORMANCE', key: 'performance', width: 35, align: 'center' as const },
-    { header: 'TOTAL CLASSES', key: 'classes', width: 25, align: 'center' as const }
-  ];
-
-  // NEW: Multi-page Detailed Report Generator
-  const generateDetailedReport = (doc: any, students: StudentAttendanceStats[], startY: number, color: number[]) => {
-    let yPosition = startY;
-
-    doc.setFontSize(14);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.text('COMPREHENSIVE STUDENT PROFILES', 105, yPosition, { align: 'center' });
-    yPosition += 20;
-
-    // Generate individual student profiles
-    students.forEach((student, index) => {
-      // Check for page break before each student
-      if (yPosition > 220) {
-        doc.addPage();
-        yPosition = 20;
-        // Add title on new page
-        doc.setFontSize(14);
-        doc.setTextColor(color[0], color[1], color[2]);
-        doc.text('COMPREHENSIVE STUDENT PROFILES (CONTINUED)', 105, yPosition, { align: 'center' });
-        yPosition += 20;
-      }
-
-      // Student header with number
-      doc.setFontSize(12);
-      doc.setTextColor(color[0], color[1], color[2]);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`STUDENT ${index + 1}: ${student.name}`, 20, yPosition);
-      yPosition += 10;
-
-      // Personal information section
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'bold');
-      doc.text('PERSONAL INFORMATION', 20, yPosition);
-      yPosition += 6;
-      
-      doc.setFont('helvetica', 'normal');
-      const personalInfo = [
-        `Full Name: ${student.name}`,
-        `NIC Number: ${student.nic}`,
-        `Email: ${student.email}`,
-        `Phone: ${student.phone}`,
-        `Enrollment Status: ${student.enrollment_status || 'Enrolled'}`
-      ];
-
-      personalInfo.forEach((info, infoIndex) => {
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(`• ${info}`, 25, yPosition + (infoIndex * 6));
-      });
-
-      yPosition += (personalInfo.length * 6) + 12;
-
-      // Academic information section
-      doc.setFont('helvetica', 'bold');
-      doc.text('ACADEMIC INFORMATION', 20, yPosition);
-      yPosition += 6;
-
-      doc.setFont('helvetica', 'normal');
-      const academicInfo = [
-        `Attendance Percentage: ${student.attendance_percentage}%`,
-        `Total Classes: ${student.total_classes}`,
-        `Present: ${student.present_classes} classes`,
-        `Late: ${student.late_classes} classes`,
-        `Absent: ${student.absent_classes} classes`,
-        `Status: ${student.status.charAt(0).toUpperCase() + student.status.slice(1)}`
-      ];
-
-      academicInfo.forEach((info, infoIndex) => {
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(`• ${info}`, 25, yPosition + (infoIndex * 6));
-      });
-
-      yPosition += (academicInfo.length * 6) + 15;
-
-      // Performance assessment
-      doc.setFont('helvetica', 'bold');
-      doc.text('PERFORMANCE ASSESSMENT', 20, yPosition);
-      yPosition += 6;
-
-      doc.setFont('helvetica', 'normal');
-      let performance = '';
-      let recommendation = '';
-
-      if (student.attendance_percentage >= 90) {
-        performance = 'EXCELLENT';
-        recommendation = 'Maintain current performance level';
-      } else if (student.attendance_percentage >= 80) {
-        performance = 'GOOD';
-        recommendation = 'Good work, continue consistent attendance';
-      } else if (student.attendance_percentage >= 60) {
-        performance = 'AVERAGE';
-        recommendation = 'Needs improvement in attendance';
-      } else {
-        performance = 'POOR';
-        recommendation = 'Critical - requires immediate attention';
-      }
-
-      const assessmentInfo = [
-        `Performance Rating: ${performance}`,
-        `Recommendation: ${recommendation}`
-      ];
-
-      assessmentInfo.forEach((info, infoIndex) => {
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(`• ${info}`, 25, yPosition + (infoIndex * 6));
-      });
-
-      yPosition += (assessmentInfo.length * 6) + 20;
-
-      // Add separator line between students (except last one)
-      if (index < students.length - 1) {
-        if (yPosition > 250) {
-          doc.addPage();
-          yPosition = 20;
-        } else {
-          doc.setDrawColor(200, 200, 200);
-          doc.line(20, yPosition, 190, yPosition);
-          yPosition += 15;
-        }
-      }
-    });
-
-    return yPosition;
-  };
-
-  // Report generation functions
-  const generatePerformanceReport = (doc: any, students: StudentAttendanceStats[], startY: number, color: number[]) => {
-    let yPosition = startY;
-
-    doc.setFontSize(12);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.text('PERFORMANCE ANALYSIS', 20, yPosition);
-    yPosition += 10;
-
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    const active = students.filter(s => s.status === 'active').length;
-    const atRisk = students.filter(s => s.status === 'at-risk').length;
-    const inactive = students.filter(s => s.status === 'inactive').length;
-
-    const stats = [
-      `Active Students: ${active}`,
-      `At-Risk Students: ${atRisk}`,
-      `Inactive Students: ${inactive}`,
-      `Overall Performance: ${attendanceStats.average}%`
-    ];
-
-    stats.forEach((stat, index) => {
-      doc.text(`• ${stat}`, 25, yPosition + (index * 6));
-    });
-    yPosition += 30;
-
-    return generateSimpleTable(doc, students, 'PERFORMANCE DETAILS', yPosition, color, performanceColumns);
-  };
-
-  const generateAttendanceReport = (doc: any, students: StudentAttendanceStats[], startY: number, color: number[]) => {
-    let yPosition = startY;
-
-    doc.setFontSize(12);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.text('ATTENDANCE SUMMARY', 20, yPosition);
-    yPosition += 10;
-
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    const stats = [
-      `Average Attendance: ${attendanceStats.average}%`,
-      `Students at Risk: ${attendanceStats.atRisk}`,
-      `Excellent Attendance: ${attendanceStats.excellent}`,
-      `Total Classes: ${students[0]?.total_classes || 0}`
-    ];
-
-    stats.forEach((stat, index) => {
-      doc.text(`• ${stat}`, 25, yPosition + (index * 6));
-    });
-    yPosition += 30;
-
-    return generateSimpleTable(doc, students, 'DETAILED ATTENDANCE RECORDS', yPosition, color, attendanceColumns);
-  };
-
-  const generateSummaryReport = (doc: any, students: StudentAttendanceStats[], startY: number, color: number[]) => {
-    let yPosition = startY;
-
-    doc.setFontSize(12);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.text('COURSE OVERVIEW', 20, yPosition);
-    yPosition += 10;
-
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    const overview = [
-      `Total Students: ${attendanceStats.total}`,
-      `Average Attendance: ${attendanceStats.average}%`,
-      `Students at Risk: ${attendanceStats.atRisk}`,
-      `Excellent Attendance: ${attendanceStats.excellent}`
-    ];
-
-    overview.forEach((item, index) => {
-      doc.text(`• ${item}`, 25, yPosition + (index * 6));
-    });
-    yPosition += 40;
-
-    return generateSimpleTable(doc, students, 'STUDENT SUMMARY', yPosition, color, summaryColumns);
-  };
-
-  // Rest of the component remains the same...
   const filteredStudents = students.filter(student => {
     const matchesSearch = 
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1197,33 +746,59 @@ const InstructorStudents: React.FC = () => {
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Students</h1>
             <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage and monitor your students' progress and attendance</p>
+            {courses.length === 0 && !coursesLoading && (
+              <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-yellow-800 text-sm">
+                  No courses assigned to you yet. Please contact administrator to get assigned to courses.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Course Selection */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex flex-col gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Course</label>
-              <select 
-                value={selectedCourse || ''} 
-                onChange={(e) => setSelectedCourse(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                <option value="">Select a course</option>
-                {courses.map(course => (
-                  <option key={course.id} value={course.id}>
-                    {course.name} - {course.code} ({course.status})
-                  </option>
-                ))}
-              </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <BookOpen className="w-4 h-4 inline mr-1" />
+                Select Your Course
+              </label>
+              {coursesLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
+                  <span className="text-gray-500 text-sm">Loading your courses...</span>
+                </div>
+              ) : (
+                <select 
+                  value={selectedCourse || ''} 
+                  onChange={(e) => setSelectedCourse(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  disabled={courses.length === 0}
+                >
+                  <option value="">{courses.length === 0 ? 'No courses available' : 'Select a course'}</option>
+                  {courses.map(course => (
+                    <option key={course.id} value={course.id}>
+                      {course.name} - {course.code} ({course.center_details?.name || 'No Center'})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedCourse && (
+                <p className="text-sm text-gray-500 mt-1">
+                  {courses.find(c => c.id === selectedCourse)?.center_details?.district || 'No district info'} • 
+                  {courses.find(c => c.id === selectedCourse)?.center_details?.name || 'No center info'}
+                </p>
+              )}
             </div>
-            <div className="flex-1">
+            
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
               <select 
                 value={statusFilter} 
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                disabled={students.length === 0}
               >
                 <option value="all">All Students</option>
                 <option value="active">Active</option>
@@ -1244,61 +819,75 @@ const InstructorStudents: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              disabled={students.length === 0}
             />
           </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Students</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">{attendanceStats.total}</p>
+        {selectedCourse && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Students</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{attendanceStats.total}</p>
+                </div>
+                <User className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
               </div>
-              <User className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Average Attendance</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {attendanceStats.average}%
+                  </p>
+                </div>
+                <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">At Risk</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {attendanceStats.atRisk}
+                  </p>
+                </div>
+                <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Excellent (90%+)</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {attendanceStats.excellent}
+                  </p>
+                </div>
+                <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+              </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Average Attendance</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                  {attendanceStats.average}%
-                </p>
-              </div>
-              <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">At Risk</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                  {attendanceStats.atRisk}
-                </p>
-              </div>
-              <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Excellent (90%+)</p>
-                <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                  {attendanceStats.excellent}
-                </p>
-              </div>
-              <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Students Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-          {loading ? (
+          {coursesLoading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              <span className="ml-3 text-gray-600">Loading your courses...</span>
+            </div>
+          ) : loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              <span className="ml-3 text-gray-600">Loading students...</span>
+            </div>
+          ) : !selectedCourse ? (
+            <div className="text-center py-12">
+              <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Please select a course to view students</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1402,11 +991,19 @@ const InstructorStudents: React.FC = () => {
                 </tbody>
               </table>
               
-              {filteredStudents.length === 0 && (
+              {filteredStudents.length === 0 && students.length > 0 && (
+                <div className="text-center py-12">
+                  <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg">No students match your search criteria</p>
+                </div>
+              )}
+              
+              {students.length === 0 && selectedCourse && (
                 <div className="text-center py-12">
                   <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg">
-                    {students.length === 0 ? 'No students found for this course' : 'No students match your search criteria'}
+                  <p className="text-gray-500 text-lg">No students found for this course</p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    Students will appear here once they are enrolled in this course
                   </p>
                 </div>
               )}

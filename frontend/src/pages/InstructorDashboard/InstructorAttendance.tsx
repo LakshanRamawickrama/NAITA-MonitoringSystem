@@ -1,7 +1,7 @@
-// InstructorAttendance.tsx - COMPLETE FIXED VERSION
+// InstructorAttendance.tsx - COMPLETE REAL DATA ONLY VERSION
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, CheckCircle, XCircle, Clock, Download, Search, BookOpen, Save, RefreshCw } from 'lucide-react';
-import { fetchCourses, fetchCourseStudents, bulkUpdateAttendance } from '../../api/api';
+import { fetchMyCourses, fetchCourseStudents, bulkUpdateAttendance } from '../../api/api';
 import type { CourseType, StudentAttendance } from '../../api/api';
 
 const InstructorAttendance: React.FC = () => {
@@ -14,6 +14,7 @@ const InstructorAttendance: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
+  const [coursesLoading, setCoursesLoading] = useState(true);
   const [summary, setSummary] = useState({
     total: 0,
     present: 0,
@@ -21,18 +22,29 @@ const InstructorAttendance: React.FC = () => {
     late: 0
   });
 
-  // Load instructor's courses
+  // Load ONLY instructor's assigned courses
   useEffect(() => {
     const loadCourses = async () => {
+      setCoursesLoading(true);
       try {
-        const instructorCourses = await fetchCourses();
-        setCourses(instructorCourses);
-        if (instructorCourses.length > 0) {
-          setSelectedCourse(instructorCourses[0].id);
+        const myCourses = await fetchMyCourses();
+        setCourses(myCourses);
+        if (myCourses.length > 0) {
+          setSelectedCourse(myCourses[0].id);
+        } else {
+          setSelectedCourse(null);
+          setStudents([]);
+          updateSummary([]);
         }
       } catch (error) {
-        console.error('Failed to load courses:', error);
+        console.error('Failed to load assigned courses:', error);
         showSaveStatus('error', 'Failed to load courses');
+        setCourses([]);
+        setSelectedCourse(null);
+        setStudents([]);
+        updateSummary([]);
+      } finally {
+        setCoursesLoading(false);
       }
     };
     loadCourses();
@@ -42,6 +54,9 @@ const InstructorAttendance: React.FC = () => {
   useEffect(() => {
     if (selectedCourse) {
       loadCourseStudents();
+    } else {
+      setStudents([]);
+      updateSummary([]);
     }
   }, [selectedCourse, selectedDate]);
 
@@ -56,54 +71,9 @@ const InstructorAttendance: React.FC = () => {
       showSaveStatus('success', 'Students loaded successfully');
     } catch (error) {
       console.error('Failed to load students:', error);
-      
-      // Fallback: Create mock students for testing if API fails
-      const mockStudents: StudentAttendance[] = [
-        {
-          id: 1,
-          name: 'Kamal Perera',
-          email: 'kamal@email.com',
-          phone: '0771234567',
-          nic: '123456789V',
-          attendance_status: null,
-          check_in_time: null,
-          remarks: null
-        },
-        {
-          id: 2,
-          name: 'Nimali Silva',
-          email: 'nimali@email.com',
-          phone: '0762345678',
-          nic: '987654321V',
-          attendance_status: null,
-          check_in_time: null,
-          remarks: null
-        },
-        {
-          id: 3,
-          name: 'Saman Kumara',
-          email: 'saman@email.com',
-          phone: '0753456789',
-          nic: '456789123V',
-          attendance_status: null,
-          check_in_time: null,
-          remarks: null
-        },
-        {
-          id: 4,
-          name: 'Priya Fernando',
-          email: 'priya@email.com',
-          phone: '0744567890',
-          nic: '789123456V',
-          attendance_status: null,
-          check_in_time: null,
-          remarks: null
-        },
-      ];
-      
-      setStudents(mockStudents);
-      updateSummary(mockStudents);
-      showSaveStatus('error', 'Using demo data - API connection failed');
+      setStudents([]);
+      updateSummary([]);
+      showSaveStatus('error', 'Failed to load students');
     } finally {
       setLoading(false);
     }
@@ -174,17 +144,6 @@ const InstructorAttendance: React.FC = () => {
     setSaveStatus('idle');
     
     try {
-      console.log('Saving attendance data:', {
-        courseId: selectedCourse,
-        date: selectedDate,
-        attendance: studentList.map(student => ({
-          student_id: student.id,
-          status: student.attendance_status || 'absent',
-          check_in_time: student.check_in_time || undefined,
-          remarks: student.remarks || undefined
-        }))
-      });
-
       const result = await bulkUpdateAttendance(selectedCourse, {
         date: selectedDate,
         attendance: studentList.map(student => ({
@@ -194,8 +153,6 @@ const InstructorAttendance: React.FC = () => {
           remarks: student.remarks || undefined
         }))
       });
-      
-      console.log('Attendance save response:', result);
       
       if (result.updated > 0) {
         showSaveStatus('success', `Successfully saved ${result.updated} attendance records`);
@@ -217,9 +174,6 @@ const InstructorAttendance: React.FC = () => {
                           'Failed to save attendance. Please check your connection and try again.';
       
       showSaveStatus('error', `Save failed: ${errorMessage}`);
-      
-      // Don't revert immediately - let user see the error and decide
-      // loadCourseStudents();
     } finally {
       setSaving(false);
     }
@@ -358,6 +312,13 @@ const InstructorAttendance: React.FC = () => {
             <p className="text-sm text-gray-500 mt-1">
               Course: <span className="font-medium">{getCourseName()}</span>
             </p>
+            {courses.length === 0 && !coursesLoading && (
+              <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-yellow-800 text-sm">
+                  No courses assigned to you yet. Please contact administrator to get assigned to courses.
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-4">
             {saveStatus !== 'idle' && (
@@ -368,6 +329,7 @@ const InstructorAttendance: React.FC = () => {
             <button 
               onClick={exportAttendance}
               className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition"
+              disabled={students.length === 0}
             >
               <Download className="w-4 h-4" />
               <span>Export Report</span>
@@ -381,20 +343,27 @@ const InstructorAttendance: React.FC = () => {
             <div className="flex items-center space-x-3">
               <BookOpen className="w-6 h-6 text-blue-600" />
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Course</label>
-                <select 
-                  value={selectedCourse || ''} 
-                  onChange={(e) => setSelectedCourse(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  disabled={loading}
-                >
-                  <option value="">Select a course</option>
-                  {courses.map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.name} - {course.code} ({course.status})
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Your Course</label>
+                {coursesLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
+                    <span className="text-gray-500 text-sm">Loading your courses...</span>
+                  </div>
+                ) : (
+                  <select 
+                    value={selectedCourse || ''} 
+                    onChange={(e) => setSelectedCourse(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={courses.length === 0}
+                  >
+                    <option value="">{courses.length === 0 ? 'No courses available' : 'Select a course'}</option>
+                    {courses.map(course => (
+                      <option key={course.id} value={course.id}>
+                        {course.name} - {course.code}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
           </div>
@@ -417,28 +386,30 @@ const InstructorAttendance: React.FC = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <Users className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600">Total</p>
-            <p className="text-2xl font-bold text-gray-900">{summary.total}</p>
+        {selectedCourse && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow-md p-4 text-center">
+              <Users className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-600">Total</p>
+              <p className="text-2xl font-bold text-gray-900">{summary.total}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-4 text-center">
+              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-600">Present</p>
+              <p className="text-2xl font-bold text-gray-900">{summary.present}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-4 text-center">
+              <XCircle className="w-8 h-8 text-red-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-600">Absent</p>
+              <p className="text-2xl font-bold text-gray-900">{summary.absent}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-4 text-center">
+              <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+              <p className="text-sm font-medium text-gray-600">Late</p>
+              <p className="text-2xl font-bold text-gray-900">{summary.late}</p>
+            </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600">Present</p>
-            <p className="text-2xl font-bold text-gray-900">{summary.present}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <XCircle className="w-8 h-8 text-red-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600">Absent</p>
-            <p className="text-2xl font-bold text-gray-900">{summary.absent}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-gray-600">Late</p>
-            <p className="text-2xl font-bold text-gray-900">{summary.late}</p>
-          </div>
-        </div>
+        )}
 
         {/* Search and Actions */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
@@ -451,14 +422,14 @@ const InstructorAttendance: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={loading}
+                disabled={loading || students.length === 0}
               />
             </div>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={markAllAsPresent}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition whitespace-nowrap flex items-center space-x-2"
-                disabled={loading || saving}
+                disabled={loading || saving || students.length === 0}
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Mark All Present</span>
@@ -466,7 +437,7 @@ const InstructorAttendance: React.FC = () => {
               <button
                 onClick={markAllAsAbsent}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition whitespace-nowrap flex items-center space-x-2"
-                disabled={loading || saving}
+                disabled={loading || saving || students.length === 0}
               >
                 <XCircle className="w-4 h-4" />
                 <span>Mark All Absent</span>
@@ -474,7 +445,7 @@ const InstructorAttendance: React.FC = () => {
               <button
                 onClick={clearAllAttendance}
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition whitespace-nowrap flex items-center space-x-2"
-                disabled={loading || saving}
+                disabled={loading || saving || students.length === 0}
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Clear All</span>
@@ -482,7 +453,7 @@ const InstructorAttendance: React.FC = () => {
               <button
                 onClick={() => saveAttendanceToBackend(students)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition whitespace-nowrap flex items-center space-x-2"
-                disabled={loading || saving}
+                disabled={loading || saving || students.length === 0}
               >
                 <Save className="w-4 h-4" />
                 <span>{saving ? 'Saving...' : 'Save All'}</span>
@@ -501,10 +472,20 @@ const InstructorAttendance: React.FC = () => {
 
         {/* Attendance Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {loading ? (
+          {coursesLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              <span className="ml-3 text-gray-600">Loading your courses...</span>
+            </div>
+          ) : loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
               <span className="ml-3 text-gray-600">Loading students...</span>
+            </div>
+          ) : !selectedCourse ? (
+            <div className="text-center py-12">
+              <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Please select a course to view students</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -603,22 +584,20 @@ const InstructorAttendance: React.FC = () => {
                 </tbody>
               </table>
               
-              {filteredStudents.length === 0 && (
+              {filteredStudents.length === 0 && students.length > 0 && (
+                <div className="text-center py-12">
+                  <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg">No students match your search</p>
+                </div>
+              )}
+              
+              {students.length === 0 && selectedCourse && (
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg">
-                    {students.length === 0 ? 'No students found for this course' : 'No students match your search'}
+                  <p className="text-gray-500 text-lg">No students found for this course</p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    Students will appear here once they are enrolled in this course
                   </p>
-                  {students.length === 0 && selectedCourse && (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-gray-400 text-sm">
-                        Make sure students are enrolled in this course through the student management system.
-                      </p>
-                      <p className="text-gray-400 text-sm">
-                        If this is a new course, you may need to wait for student enrollments.
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
