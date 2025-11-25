@@ -1,4 +1,3 @@
-// InstructorStudents.tsx - COMPLETE REAL DATA ONLY VERSION (PDF REMOVED)
 import React, { useState, useEffect } from 'react';
 import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, X, Eye, Send } from 'lucide-react';
 import { fetchMyCourses, fetchStudentAttendanceStats } from '../../api/api';

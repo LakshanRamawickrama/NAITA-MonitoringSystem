@@ -1,4 +1,4 @@
-// src/api/api.ts - COMPLETE UPDATED VERSION WITH FIXED ATTENDANCE REPORTS
+// src/api/api.ts - COMPLETE UPDATED VERSION WITH ALL FUNCTIONS
 import axios from "axios";
 
 const api = axios.create({
@@ -611,17 +611,60 @@ export interface DashboardStatsType {
 }
 
 export const fetchOverview = async (): Promise<OverviewDataType> => {
-  const res = await api.get("/api/overview/");
+  const res = await api.get("/api/overview/overview/");
   return res.data;
 };
 
 export const fetchDashboardStats = async (): Promise<DashboardStatsType> => {
-  const res = await api.get("/api/dashboard/stats/");
+  const res = await api.get("/api/overview/dashboard/stats/");
   return res.data;
 };
 
 export const fetchSystemReports = async (period: string, center: string) => {
   const res = await api.get(`/api/reports/?period=${period}&center=${center}`);
+  return res.data;
+};
+
+/* ========== INSTRUCTOR OVERVIEW API ========== */
+export interface InstructorStats {
+  weeklyHours: number;
+  totalStudents: number;
+  completedCourses: number;
+  upcomingClasses: number;
+  performance: number;
+  attendanceRate: number;
+}
+
+export interface UpcomingClass {
+  id: string;
+  course: string;
+  date: string;
+  time: string;
+  students: number;
+}
+
+export interface RecentActivity {
+  id: string;
+  action: string;
+  course: string;
+  time: string;
+}
+
+export interface InstructorOverviewData {
+  stats: InstructorStats;
+  upcomingClasses: UpcomingClass[];
+  recentActivity: RecentActivity[];
+}
+
+// Get real instructor overview data
+export const fetchInstructorOverview = async (): Promise<InstructorOverviewData> => {
+  const res = await api.get("/api/overview/instructor/overview/");
+  return res.data;
+};
+
+// Get instructor courses with real data
+export const fetchInstructorCourses = async (): Promise<CourseType[]> => {
+  const res = await api.get("/api/courses/my/");
   return res.data;
 };
 
