@@ -20,6 +20,7 @@ import DistrictManagerReports from "../DistrictManagerDashboard/DistrictManagerR
 import TrainingOfficerInstructor from "../TrainingOfficerDashboard/TrainingOfficerInstructor";
 import TrainingOfficerCourses from "../TrainingOfficerDashboard/TrainingOfficerCourses";
 import TrainingOfficeOverview from "../TrainingOfficerDashboard/TrainingOfficerOverview";
+import TrainingOfficerReports from "../TrainingOfficerDashboard/TrainingOfficerReports";
 
 import DataEntryStudents from "../DataEntryDashboard/DataEntryStudents";
 import DataEntryOverview from "../DataEntryDashboard/DataEntryOverview";
@@ -89,7 +90,7 @@ const Dashboard = () => {
         {role === "training_officer" && location.pathname === "/dashboard/training_officer/instructors" && <TrainingOfficerInstructor />}
         {role === "training_officer" && location.pathname === "/dashboard/training_officer" && <TrainingOfficeOverview />}
         {role === "training_officer" && location.pathname === "/dashboard/training_officer/courses" && <TrainingOfficerCourses />}
-
+        {role === "training_officer" && location.pathname === "/dashboard/training_officer/reports" && <TrainingOfficerReports />}
 
         {/* === DATA ENTRY === */}
         {role === "data_entry" && location.pathname === "/dashboard/data-entry" && <DataEntryStudents />}

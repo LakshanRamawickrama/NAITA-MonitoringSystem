@@ -1255,4 +1255,101 @@ export const deleteAttendanceReport = async (reportId: number): Promise<void> =>
   await api.delete(`/api/attendance/reports/${reportId}/`);
 };
 
+// Update your api.ts file
+
+/* ========== TRAINING OFFICER REPORTS API ========== */
+export interface TrainingOfficerReportType {
+  overall_stats: {
+    total_students: number;
+    total_centers: number;
+    total_instructors: number;
+    total_courses: number;
+    active_courses: number;
+    completion_rate: number;
+  };
+  training_programs: {
+    total_programs: number;
+    active_programs: number;
+    pending_approval: number;
+    approved_programs: number;
+    completed_programs: number;
+    inactive_programs: number;
+  };
+  training_progress: {
+    total_trained: number;
+    in_training: number;
+    completed_training: number;
+    awaiting_training: number;
+    dropped_training: number;
+  };
+  center_performance: Array<{
+    center_name: string;
+    total_students: number;
+    total_courses: number;
+    completion_rate: number;
+    attendance_rate: number;
+    performance: string;
+  }>;
+  instructor_metrics: Array<{
+    instructor_name: string;
+    email: string;
+    total_courses: number;
+    total_students: number;
+    completed_students: number;
+    completion_rate: number;
+    attendance_rate: number;
+    performance: string;
+  }>;
+  course_effectiveness: Array<{
+    course_name: string;
+    course_code: string;
+    category: string;
+    instructor: string;
+    status: string;
+    total_enrolled: number;
+    completion_rate: number;
+    attendance_rate: number;
+    duration: string;
+    schedule: string;
+  }>;
+  training_trends: Array<{
+    month: string;
+    new_students: number;
+    completed_training: number;
+    new_courses: number;
+  }>;
+  pending_approvals: {
+    course_approvals: number;
+    general_approvals: number;
+  };
+  user_district: string;
+  period: string;
+  report_generated_at: string;
+  generated_by: string;
+}
+
+export const fetchTrainingOfficerReports = async (period?: string): Promise<TrainingOfficerReportType> => {
+  const params = period ? { period } : {};
+  const res = await api.get("/api/reports/training-officer-reports/", { params });
+  return res.data;
+};
+
+export const exportTrainingReport = async (
+  format: 'pdf' | 'excel', 
+  period: string, 
+  reportType: string = 'comprehensive'
+): Promise<Blob> => {
+  const params = { 
+    format, 
+    period, 
+    report_type: reportType 
+  };
+  
+  const res = await api.get("/api/reports/export-training-report/", {
+    params,
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
 export default api;

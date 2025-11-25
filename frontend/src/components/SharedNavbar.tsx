@@ -37,7 +37,8 @@ const getNavItems = () => {
       return [
         { path: '/dashboard/training_officer', label: 'overview' },
         {path: '/dashboard/training_officer/courses', label: 'Courses' },
-        {path: '/dashboard/training_officer/instructors', label: 'Instructors' }  
+        {path: '/dashboard/training_officer/instructors', label: 'Instructors' },  
+        {path: '/dashboard/training_officer/reports', label: 'Reports' }
       ];
     case 'data_entry':
       return [
