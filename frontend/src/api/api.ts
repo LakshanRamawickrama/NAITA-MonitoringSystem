@@ -1,4 +1,4 @@
-// src/api/api.ts - COMPLETE FIXED VERSION
+// src/api/api.ts - COMPLETE UPDATED VERSION WITH FIXED ATTENDANCE REPORTS
 import axios from "axios";
 
 const api = axios.create({
@@ -1036,6 +1036,22 @@ export interface AttendanceSummary {
   attendance_rate: number;
 }
 
+export interface StudentAttendanceStats {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  nic: string;
+  attendance_percentage: number;
+  total_classes: number;
+  present_classes: number;
+  late_classes: number;
+  absent_classes: number;
+  status: 'active' | 'at-risk' | 'inactive';
+  last_active: string;
+  enrollment_status: string;
+}
+
 export const fetchAttendance = async (params?: {
   course?: number;
   date?: string;
@@ -1079,20 +1095,121 @@ export const fetchStudentAttendanceStats = async (courseId: number): Promise<Stu
   return res.data;
 };
 
-export interface StudentAttendanceStats {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  nic: string;
-  attendance_percentage: number;
-  total_classes: number;
-  present_classes: number;
-  late_classes: number;
-  absent_classes: number;
-  status: 'active' | 'at-risk' | 'inactive';
-  last_active: string;
-  enrollment_status: string;
+/* ========== ATTENDANCE REPORT API ========== */
+export interface ReportRequest {
+  course_id: number;
+  period: string; // 'daily' | 'weekly' | 'monthly' | 'custom'
+  format: 'excel' | 'pdf';
+  start_date?: string;
+  end_date?: string;
 }
+
+export interface ReportResponse {
+  success: boolean;
+  file_url: string;
+  file_name: string;
+  message: string;
+  report_id?: number;
+}
+
+export interface AttendanceReportType {
+  id: number;
+  course: number;
+  course_details?: CourseType;
+  period: string;
+  format: string;
+  start_date: string;
+  end_date: string;
+  file_url: string;
+  file_name: string;
+  generated_by: number;
+  generated_at: string;
+  status: 'processing' | 'completed' | 'failed';
+}
+
+// Generate attendance report - FIXED SIMPLIFIED VERSION
+export const generateAttendanceReport = async (reportData: ReportRequest): Promise<ReportResponse> => {
+  const res = await api.post("/api/attendance/reports/generate/", reportData, {
+    responseType: 'blob',
+    timeout: 60000
+  });
+
+  // Extract filename from headers
+  const contentDisposition = res.headers['content-disposition'];
+  let fileName = `attendance_report_${Date.now()}.${reportData.format}`;
+  
+  if (contentDisposition) {
+    const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+    if (fileNameMatch) {
+      fileName = fileNameMatch[1];
+    }
+  }
+  
+  // Create blob and download
+  const blob = new Blob([res.data], { 
+    type: reportData.format === 'excel' 
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      : 'application/pdf' 
+  });
+  const url = window.URL.createObjectURL(blob);
+  
+  // Trigger download
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+  
+  return {
+    success: true,
+    file_url: url,
+    file_name: fileName,
+    message: 'Report downloaded successfully'
+  };
+};
+
+// Download report file by URL
+export const downloadReportFile = async (fileUrl: string, fileName: string): Promise<void> => {
+  const res = await api.get(fileUrl, {
+    responseType: 'blob'
+  });
+  
+  const blob = new Blob([res.data]);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
+// Download report by ID
+export const downloadAttendanceReport = async (reportId: number): Promise<Blob> => {
+  const res = await api.get(`/api/attendance/reports/${reportId}/download/`, {
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+// Get report status
+export const getReportStatus = async (reportId: number): Promise<AttendanceReportType> => {
+  const res = await api.get(`/api/attendance/reports/${reportId}/status/`);
+  return res.data;
+};
+
+// Get user's generated reports
+export const fetchMyAttendanceReports = async (): Promise<AttendanceReportType[]> => {
+  const res = await api.get("/api/attendance/reports/my/");
+  return res.data;
+};
+
+// Delete report
+export const deleteAttendanceReport = async (reportId: number): Promise<void> => {
+  await api.delete(`/api/attendance/reports/${reportId}/`);
+};
 
 export default api;

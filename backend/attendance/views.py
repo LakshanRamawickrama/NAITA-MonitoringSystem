@@ -1,4 +1,4 @@
-# attendance/views.py - COMPLETE UPDATED WITH CENTER FILTERING
+# attendance/views.py - FIXED EXCEL GENERATION
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -6,11 +6,22 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from django.db.models import Q, Count, Case, When, IntegerField
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
+from datetime import datetime, timedelta
+import pandas as pd
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+import io
+import logging
+
 from .models import Attendance, AttendanceSummary
 from .serializers import AttendanceSerializer, AttendanceSummarySerializer
 from students.models import Student
 from courses.models import Course
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -456,3 +467,334 @@ def get_student_attendance_stats(request, course_id):
             {'error': 'Failed to load student statistics'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+# ========== ATTENDANCE REPORT FUNCTIONS ==========
+
+def generate_report_data(course, period, start_date, end_date):
+    """Generate attendance report data"""
+    # Calculate date range based on period
+    today = timezone.now().date()
+    
+    if period == 'daily':
+        start_date = today
+        end_date = today
+    elif period == 'weekly':
+        start_date = today - timedelta(days=today.weekday())
+        end_date = today
+    elif period == 'monthly':
+        start_date = today.replace(day=1)
+        end_date = today
+    
+    # Fetch attendance data
+    attendance_records = Attendance.objects.filter(
+        course=course,
+        date__range=[start_date, end_date]
+    ).select_related('student', 'recorded_by')
+    
+    # Prepare report data
+    report_data = {
+        'course': course,
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'records': [],
+        'summary': {
+            'total_students': Student.objects.filter(course=course, enrollment_status='Enrolled').count(),
+            'total_records': attendance_records.count(),
+            'present_count': attendance_records.filter(status='present').count(),
+            'absent_count': attendance_records.filter(status='absent').count(),
+            'late_count': attendance_records.filter(status='late').count(),
+        }
+    }
+    
+    # Add individual records
+    for record in attendance_records:
+        report_data['records'].append({
+            'student_name': record.student.full_name_english,
+            'student_nic': record.student.nic_id,
+            'student_email': record.student.email,
+            'date': record.date,
+            'status': record.status,
+            'check_in_time': record.check_in_time,
+            'remarks': record.remarks,
+            'recorded_by': f"{record.recorded_by.first_name} {record.recorded_by.last_name}",
+            'recorded_at': record.recorded_at
+        })
+    
+    return report_data
+
+def generate_excel_report(report_data, course, period):
+    """Generate Excel report - SIMPLIFIED VERSION"""
+    try:
+        # Create DataFrame with basic data
+        df_data = []
+        for record in report_data['records']:
+            df_data.append({
+                'Student Name': record['student_name'],
+                'NIC': record['student_nic'],
+                'Email': record['student_email'],
+                'Date': record['date'].strftime('%Y-%m-%d'),
+                'Status': record['status'].title(),
+                'Check-in Time': record['check_in_time'] or '-',
+                'Remarks': record['remarks'] or '-',
+                'Recorded By': record['recorded_by'],
+                'Recorded At': record['recorded_at'].strftime('%Y-%m-%d %H:%M')
+            })
+        
+        df = pd.DataFrame(df_data)
+        
+        # Create Excel file in memory - SIMPLIFIED APPROACH
+        output = io.BytesIO()
+        
+        # Use openpyxl which is more reliable and commonly available
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Main data sheet
+            df.to_excel(writer, sheet_name='Attendance Data', index=False)
+            
+            # Summary sheet
+            summary_data = {
+                'Metric': ['Total Students', 'Total Records', 'Present', 'Absent', 'Late', 'Attendance Rate'],
+                'Count': [
+                    report_data['summary']['total_students'],
+                    report_data['summary']['total_records'],
+                    report_data['summary']['present_count'],
+                    report_data['summary']['absent_count'],
+                    report_data['summary']['late_count'],
+                    f"{(report_data['summary']['present_count'] + report_data['summary']['late_count'] * 0.8) / report_data['summary']['total_records'] * 100:.1f}%" if report_data['summary']['total_records'] > 0 else '0%'
+                ]
+            }
+            summary_df = pd.DataFrame(summary_data)
+            summary_df.to_excel(writer, sheet_name='Summary', index=False)
+            
+            # Get the workbook and worksheets for basic formatting
+            workbook = writer.book
+            worksheet_data = writer.sheets['Attendance Data']
+            worksheet_summary = writer.sheets['Summary']
+            
+            # Basic column width adjustment
+            for col in worksheet_data.columns:
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)  # Cap at 50
+                worksheet_data.column_dimensions[column].width = adjusted_width
+            
+            for col in worksheet_summary.columns:
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 30)
+                worksheet_summary.column_dimensions[column].width = adjusted_width
+        
+        # Get the file content
+        file_content = output.getvalue()
+        output.close()
+        
+        file_name = f"attendance_report_{course.code}_{period}_{timezone.now().strftime('%Y%m%d_%H%M')}.xlsx"
+        
+        return file_content, file_name
+        
+    except Exception as e:
+        logger.error(f"Error generating Excel report: {str(e)}")
+        # Fallback: Create a very basic Excel file
+        try:
+            output = io.BytesIO()
+            
+            # Create a simple DataFrame with just the essential data
+            simple_data = []
+            for record in report_data['records'][:100]:  # Limit to 100 records for fallback
+                simple_data.append({
+                    'Student': record['student_name'],
+                    'NIC': record['student_nic'],
+                    'Date': record['date'].strftime('%Y-%m-%d'),
+                    'Status': record['status'].title()
+                })
+            
+            df_simple = pd.DataFrame(simple_data)
+            df_simple.to_excel(output, index=False, engine='openpyxl')
+            
+            file_content = output.getvalue()
+            output.close()
+            
+            file_name = f"attendance_report_{course.code}_{period}_{timezone.now().strftime('%Y%m%d_%H%M')}.xlsx"
+            
+            return file_content, file_name
+        except Exception as fallback_error:
+            logger.error(f"Fallback Excel generation also failed: {str(fallback_error)}")
+            raise e
+
+def generate_pdf_report(report_data, course, period):
+    """Generate PDF report"""
+    try:
+        # Create PDF in memory
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=1*inch)
+        
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Center
+        )
+        
+        # Content
+        content = []
+        
+        # Title
+        content.append(Paragraph(f"Attendance Report - {course.name}", title_style))
+        content.append(Paragraph(f"Course: {course.code} | Period: {period.title()}", styles['Heading2']))
+        content.append(Paragraph(f"Date Range: {report_data['start_date']} to {report_data['end_date']}", styles['Heading3']))
+        content.append(Spacer(1, 20))
+        
+        # Summary table
+        summary_data = [
+            ['Total Students', 'Total Records', 'Present', 'Absent', 'Late', 'Attendance Rate'],
+            [
+                str(report_data['summary']['total_students']),
+                str(report_data['summary']['total_records']),
+                str(report_data['summary']['present_count']),
+                str(report_data['summary']['absent_count']),
+                str(report_data['summary']['late_count']),
+                f"{(report_data['summary']['present_count'] + report_data['summary']['late_count'] * 0.8) / report_data['summary']['total_records'] * 100:.1f}%" if report_data['summary']['total_records'] > 0 else '0%'
+            ]
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[1.2*inch]*6)
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, 1), colors.beige),
+            ('FONTSIZE', (0, 1), (-1, 1), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        content.append(summary_table)
+        content.append(Spacer(1, 20))
+        
+        # Attendance data table
+        if report_data['records']:
+            data = [['Student Name', 'NIC', 'Date', 'Status', 'Check-in', 'Remarks']]
+            for record in report_data['records'][:50]:  # Limit to first 50 records
+                data.append([
+                    record['student_name'],
+                    record['student_nic'],
+                    record['date'].strftime('%Y-%m-%d'),
+                    record['status'].title(),
+                    record['check_in_time'] or '-',
+                    record['remarks'] or '-'
+                ])
+            
+            attendance_table = Table(data, repeatRows=1)
+            attendance_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('FONTSIZE', (0, 1), (-1, -1), 7),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            content.append(attendance_table)
+        
+        # Build PDF
+        doc.build(content)
+        
+        # Get file content from buffer
+        file_content = buffer.getvalue()
+        buffer.close()
+        
+        file_name = f"attendance_report_{course.code}_{period}_{timezone.now().strftime('%Y%m%d_%H%M')}.pdf"
+        
+        return file_content, file_name
+        
+    except Exception as e:
+        logger.error(f"Error generating PDF report: {str(e)}")
+        raise
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_attendance_report(request):
+    """Generate attendance report in Excel or PDF format"""
+    try:
+        data = request.data
+        course_id = data.get('course_id')
+        period = data.get('period')
+        format_type = data.get('format')
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        
+        # Validate input
+        if not all([course_id, period, format_type]):
+            return Response({
+                'success': False,
+                'message': 'Missing required fields: course_id, period, format'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if user has access to this course
+        course = get_object_or_404(Course, id=course_id)
+        if request.user.role != 'admin' and course.instructor != request.user:
+            return Response({
+                'success': False,
+                'message': 'Access denied - You are not assigned to this course'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Generate report data
+        report_data = generate_report_data(course, period, start_date, end_date)
+        
+        # Generate file based on format
+        if format_type == 'excel':
+            file_content, file_name = generate_excel_report(report_data, course, period)
+            content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        else:  # pdf
+            file_content, file_name = generate_pdf_report(report_data, course, period)
+            content_type = 'application/pdf'
+        
+        # Create response with file
+        response = HttpResponse(file_content, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        response['Content-Length'] = len(file_content)
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Failed to generate report: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Failed to generate report: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_attendance_report(request, report_id):
+    """Download a previously generated report"""
+    try:
+        # This would typically retrieve a saved report from database
+        # For now, we'll generate on-demand
+        return Response({
+            'success': False,
+            'message': 'Report download not implemented yet'
+        }, status=status.HTTP_501_NOT_IMPLEMENTED)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Failed to download report: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

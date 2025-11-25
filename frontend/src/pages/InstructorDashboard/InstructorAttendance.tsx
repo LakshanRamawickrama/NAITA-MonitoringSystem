@@ -1,9 +1,281 @@
-// InstructorAttendance.tsx - COMPLETE UPDATED WITH CENTER INFORMATION
+// InstructorAttendance.tsx - COMPLETE FIXED VERSION
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, CheckCircle, XCircle, Clock, Download, Search, BookOpen, Save, RefreshCw, Building, MapPin } from 'lucide-react';
-import { fetchMyCourses, fetchCourseStudents, bulkUpdateAttendance } from '../../api/api';
+import { Calendar, Users, CheckCircle, XCircle, Clock, Download, Search, BookOpen, Save, RefreshCw, Building, MapPin, FileText, X } from 'lucide-react';
+import { fetchMyCourses, fetchCourseStudents, bulkUpdateAttendance, generateAttendanceReport, type ReportRequest } from '../../api/api';
 import type { CourseType, StudentAttendance } from '../../api/api';
 
+// Report Modal Component
+interface ReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onGenerateReport: (reportData: ReportRequest) => void;
+  selectedCourse: number | null;
+  courses: CourseType[];
+  generating: boolean;
+}
+
+const ReportModal: React.FC<ReportModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onGenerateReport, 
+  selectedCourse, 
+  courses,
+  generating 
+}) => {
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('monthly');
+  const [selectedFormat, setSelectedFormat] = useState<string>('excel');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  useEffect(() => {
+    // Set default dates
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - today.getDay());
+    
+    setStartDate(firstDayOfMonth.toISOString().split('T')[0]);
+    setEndDate(today.toISOString().split('T')[0]);
+  }, []);
+
+  const reportPeriods = [
+    { id: 'daily', name: 'Daily Report', description: 'Attendance for a specific day' },
+    { id: 'weekly', name: 'Weekly Report', description: 'Attendance for a week' },
+    { id: 'monthly', name: 'Monthly Report', description: 'Attendance for a month' },
+    { id: 'custom', name: 'Custom Range', description: 'Attendance for a custom date range' }
+  ];
+
+  const exportFormats = [
+    { 
+      id: 'excel', 
+      name: 'Excel (.xlsx)', 
+      description: 'Download as Excel spreadsheet',
+      icon: <Download className="w-5 h-5" />
+    },
+    { 
+      id: 'pdf', 
+      name: 'PDF (.pdf)', 
+      description: 'Download as PDF document',
+      icon: <FileText className="w-5 h-5" />
+    }
+  ];
+
+  const handleGenerateReport = () => {
+    if (!selectedCourse) {
+      alert('Please select a course first');
+      return;
+    }
+
+    let period = selectedPeriod;
+    let startDateParam = startDate;
+    let endDateParam = endDate;
+
+    // Adjust dates based on period selection
+    const today = new Date();
+    
+    if (selectedPeriod === 'daily') {
+      startDateParam = today.toISOString().split('T')[0];
+      endDateParam = today.toISOString().split('T')[0];
+    } else if (selectedPeriod === 'weekly') {
+      const firstDayOfWeek = new Date(today);
+      firstDayOfWeek.setDate(today.getDate() - today.getDay());
+      startDateParam = firstDayOfWeek.toISOString().split('T')[0];
+      endDateParam = today.toISOString().split('T')[0];
+    } else if (selectedPeriod === 'monthly') {
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      startDateParam = firstDayOfMonth.toISOString().split('T')[0];
+      endDateParam = today.toISOString().split('T')[0];
+    }
+
+    if (selectedPeriod === 'custom') {
+      if (!startDate || !endDate) {
+        alert('Please select both start and end dates for custom range');
+        return;
+      }
+      if (new Date(startDate) > new Date(endDate)) {
+        alert('Start date cannot be after end date');
+        return;
+      }
+    }
+
+    const reportData: ReportRequest = {
+      course_id: selectedCourse,
+      period: period as 'daily' | 'weekly' | 'monthly' | 'custom',
+      format: selectedFormat as 'excel' | 'pdf',
+      start_date: startDateParam,
+      end_date: endDateParam
+    };
+
+    onGenerateReport(reportData);
+  };
+
+  const getSelectedCourseName = () => {
+    const course = courses.find(c => c.id === selectedCourse);
+    return course ? `${course.name} - ${course.code}` : 'No course selected';
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Generate Attendance Report</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Course: <span className="font-medium">{getSelectedCourseName()}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            disabled={generating}
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Report Period Selection */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Select Report Period</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reportPeriods.map((period) => (
+                <div
+                  key={period.id}
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                    selectedPeriod === period.id
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${generating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => !generating && setSelectedPeriod(period.id)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-gray-900">{period.name}</span>
+                    <div className={`w-4 h-4 rounded-full border-2 ${
+                      selectedPeriod === period.id ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                    }`} />
+                  </div>
+                  <p className="text-sm text-gray-600">{period.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom Date Range */}
+          {selectedPeriod === 'custom' && (
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <h4 className="font-medium text-gray-900 mb-3">Select Date Range</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={generating}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={generating}
+                    max={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Period Preview */}
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h4 className="font-medium text-blue-900 mb-2">Report Preview</h4>
+            <p className="text-sm text-blue-800">
+              {selectedPeriod === 'daily' && `Daily report for ${new Date().toLocaleDateString()}`}
+              {selectedPeriod === 'weekly' && `Weekly report from ${new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toLocaleDateString()} to ${new Date().toLocaleDateString()}`}
+              {selectedPeriod === 'monthly' && `Monthly report for ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
+              {selectedPeriod === 'custom' && `Custom report from ${startDate} to ${endDate}`}
+            </p>
+          </div>
+
+          {/* Export Format Selection */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Select Export Format</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {exportFormats.map((format) => (
+                <div
+                  key={format.id}
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                    selectedFormat === format.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  } ${generating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => !generating && setSelectedFormat(format.id)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded ${
+                        selectedFormat === format.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {format.icon}
+                      </div>
+                      <span className="font-medium text-gray-900">{format.name}</span>
+                    </div>
+                    <div className={`w-4 h-4 rounded-full border-2 ${
+                      selectedFormat === format.id ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
+                    }`} />
+                  </div>
+                  <p className="text-sm text-gray-600 ml-11">{format.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition"
+            disabled={generating}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleGenerateReport}
+            disabled={generating || !selectedCourse}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Generating...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Generate Report</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Component
 const InstructorAttendance: React.FC = () => {
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
@@ -12,9 +284,11 @@ const InstructorAttendance: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [saveMessage, setSaveMessage] = useState('');
   const [coursesLoading, setCoursesLoading] = useState(true);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [summary, setSummary] = useState({
     total: 0,
     present: 0,
@@ -22,7 +296,7 @@ const InstructorAttendance: React.FC = () => {
     late: 0
   });
 
-  // Load ONLY instructor's assigned courses
+  // Load instructor's assigned courses
   useEffect(() => {
     const loadCourses = async () => {
       setCoursesLoading(true);
@@ -106,8 +380,6 @@ const InstructorAttendance: React.FC = () => {
     
     setStudents(updatedStudents);
     updateSummary(updatedStudents);
-
-    // Auto-save after status change
     await saveAttendanceToBackend(updatedStudents);
   };
 
@@ -130,7 +402,6 @@ const InstructorAttendance: React.FC = () => {
   const saveRemarks = async (studentId: number) => {
     const student = students.find(s => s.id === studentId);
     if (!student || !selectedCourse) return;
-
     await saveAttendanceToBackend(students);
   };
 
@@ -167,15 +438,41 @@ const InstructorAttendance: React.FC = () => {
       
     } catch (error: any) {
       console.error('Failed to save attendance:', error);
-      
       const errorMessage = error.response?.data?.error || 
                           error.response?.data?.message || 
                           error.message || 
                           'Failed to save attendance. Please check your connection and try again.';
-      
       showSaveStatus('error', `Save failed: ${errorMessage}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // FIXED: Handle report generation with simplified error handling
+  const handleGenerateReport = async (reportData: ReportRequest) => {
+    setGeneratingReport(true);
+    setShowReportModal(false);
+    
+    try {
+      showSaveStatus('success', `Generating ${reportData.format.toUpperCase()} report...`);
+      
+      // Call the backend API
+      const result = await generateAttendanceReport(reportData);
+      
+      if (result.success) {
+        showSaveStatus('success', `Report "${result.file_name}" downloaded successfully!`);
+      }
+      
+    } catch (error: any) {
+      console.error('Failed to generate report:', error);
+      
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Failed to generate report. Please try again.';
+      
+      showSaveStatus('error', `Report generation failed: ${errorMessage}`);
+    } finally {
+      setGeneratingReport(false);
     }
   };
 
@@ -183,12 +480,11 @@ const InstructorAttendance: React.FC = () => {
     setSaveStatus(status);
     setSaveMessage(message);
     
-    // Auto-clear success messages after 3 seconds
     if (status === 'success') {
       setTimeout(() => {
         setSaveStatus('idle');
         setSaveMessage('');
-      }, 3000);
+      }, 5000);
     }
   };
 
@@ -263,39 +559,6 @@ const InstructorAttendance: React.FC = () => {
     }
   };
 
-  const exportAttendance = () => {
-    if (students.length === 0) {
-      showSaveStatus('error', 'No attendance data to export');
-      return;
-    }
-
-    const headers = ['Student Name', 'NIC', 'Email', 'Phone', 'Status', 'Check-in Time', 'Remarks', 'Date'];
-    const csvData = students.map(student => [
-      student.name,
-      student.nic,
-      student.email,
-      student.phone,
-      student.attendance_status || 'Not marked',
-      student.check_in_time || '-',
-      student.remarks || '-',
-      selectedDate
-    ]);
-    
-    const csvContent = [headers, ...csvData]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `attendance-${selectedCourse}-${selectedDate}.csv`;
-    link.click();
-    window.URL.revokeObjectURL(url);
-    
-    showSaveStatus('success', 'Attendance data exported successfully');
-  };
-
   const getCourseName = () => {
     const course = courses.find(c => c.id === selectedCourse);
     return course ? `${course.name} - ${course.code}` : 'Select a course';
@@ -349,12 +612,12 @@ const InstructorAttendance: React.FC = () => {
               </div>
             )}
             <button 
-              onClick={exportAttendance}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition"
-              disabled={students.length === 0}
+              onClick={() => setShowReportModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={courses.length === 0 || generatingReport}
             >
-              <Download className="w-4 h-4" />
-              <span>Export Report</span>
+              <FileText className="w-4 h-4" />
+              <span>Attendance Report</span>
             </button>
           </div>
         </div>
@@ -626,6 +889,16 @@ const InstructorAttendance: React.FC = () => {
           )}
         </div>
 
+        {/* Report Modal */}
+        <ReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          onGenerateReport={handleGenerateReport}
+          selectedCourse={selectedCourse}
+          courses={courses}
+          generating={generatingReport}
+        />
+
         {/* Help Section */}
         <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">How to Use</h3>
@@ -639,11 +912,11 @@ const InstructorAttendance: React.FC = () => {
               </ul>
             </div>
             <div>
-              <p className="font-medium">Auto-Save Feature:</p>
+              <p className="font-medium">Reports Feature:</p>
               <ul className="list-disc list-inside space-y-1 mt-1">
-                <li>Attendance is automatically saved when you change status</li>
-                <li>Use <span className="font-semibold">Save All</span> to manually save all changes</li>
-                <li>Export data anytime using the <span className="font-semibold">Export Report</span> button</li>
+                <li>Generate <span className="font-semibold">Daily, Weekly, Monthly, or Custom</span> reports</li>
+                <li>Export in <span className="font-semibold">Excel or PDF</span> format</li>
+                <li>Reports include all attendance data with summaries</li>
               </ul>
             </div>
           </div>
