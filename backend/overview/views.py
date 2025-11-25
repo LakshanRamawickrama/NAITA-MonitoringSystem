@@ -1,4 +1,4 @@
-# overview/views.py - COMPLETE UPDATED VERSION
+# overview/views.py - COMPLETE FIXED VERSION
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -27,9 +27,9 @@ class OverviewView(APIView):
             # Check user role and permissions
             user = request.user
             
-            # District managers can only view their district data
-            if user.role == 'district_manager':
-                data = self.get_district_manager_data(user)
+            # District managers and training officers can view their district data
+            if user.role in ['district_manager', 'training_officer']:
+                data = self.get_district_data(user)
             elif user.role in ['admin', 'head_office']:
                 data = self.get_admin_data()
             else:
@@ -41,13 +41,14 @@ class OverviewView(APIView):
             return Response(data)
             
         except Exception as e:
+            logger.error(f"Error in overview view: {str(e)}")
             return Response(
                 {'error': f'Error loading overview data: {str(e)}'}, 
                 status=500
             )
 
-    def get_district_manager_data(self, user):
-        """Get data specific to district manager's district"""
+    def get_district_data(self, user):
+        """Get data specific to user's district"""
         if not user.district:
             return {
                 'error': 'No district assigned to your account'
@@ -426,7 +427,12 @@ class DashboardStatsView(APIView):
         try:
             user = request.user
             
-            if user.role == 'district_manager':
+            if user.role in ['district_manager', 'training_officer']:
+                if not user.district:
+                    return Response(
+                        {'error': 'No district assigned to your account'}, 
+                        status=400
+                    )
                 data = self.get_district_dashboard_stats(user.district)
             else:
                 data = self.get_system_dashboard_stats()
@@ -434,6 +440,7 @@ class DashboardStatsView(APIView):
             return Response(data)
             
         except Exception as e:
+            logger.error(f"Error in dashboard stats: {str(e)}")
             return Response(
                 {'error': f'Error loading dashboard stats: {str(e)}'}, 
                 status=500
