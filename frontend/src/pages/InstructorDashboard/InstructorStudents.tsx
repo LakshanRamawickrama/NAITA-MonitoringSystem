@@ -1,6 +1,6 @@
-// InstructorStudents.tsx - COMPLETE REAL DATA ONLY VERSION
+// InstructorStudents.tsx - COMPLETE REAL DATA ONLY VERSION (PDF REMOVED)
 import React, { useState, useEffect } from 'react';
-import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, FileText, X, Eye, Send, DownloadCloud } from 'lucide-react';
+import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, X, Eye, Send } from 'lucide-react';
 import { fetchMyCourses, fetchStudentAttendanceStats } from '../../api/api';
 import type { StudentAttendanceStats, CourseType } from '../../api/api';
 
@@ -18,13 +18,6 @@ interface MessagePopupProps {
   onSend: (message: string, students: StudentAttendanceStats[]) => void;
   students: StudentAttendanceStats[];
   type: 'individual' | 'bulk';
-}
-
-interface ReportPopupProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onGenerate: (reportType: string, students: StudentAttendanceStats[]) => void;
-  students: StudentAttendanceStats[];
 }
 
 // Student Details Popup Component
@@ -392,156 +385,6 @@ const MessagePopup: React.FC<MessagePopupProps> = ({
   );
 };
 
-// Report Popup Component
-const ReportPopup: React.FC<ReportPopupProps> = ({ 
-  isOpen, 
-  onClose, 
-  onGenerate, 
-  students 
-}) => {
-  const [reportType, setReportType] = useState('attendance');
-  const [generating, setGenerating] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleGenerate = async () => {
-    setGenerating(true);
-    try {
-      await onGenerate(reportType, students);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const getReportDescription = (type: string) => {
-    switch (type) {
-      case 'attendance':
-        return 'Detailed attendance analysis with statistics and trends';
-      case 'performance':
-        return 'Performance metrics and academic progress analysis';
-      case 'detailed':
-        return 'Comprehensive student profiles with full details';
-      case 'summary':
-        return 'Course overview with key metrics and insights';
-      default:
-        return 'Student data report';
-    }
-  };
-
-  const getReportIncludes = (type: string) => {
-    switch (type) {
-      case 'attendance':
-        return [
-          '• Daily attendance records',
-          '• Attendance percentage trends',
-          '• Late and absent statistics',
-          '• Attendance recommendations'
-        ];
-      case 'performance':
-        return [
-          '• Performance scores and ratings',
-          '• Progress indicators',
-          '• Comparative analysis',
-          '• Improvement recommendations'
-        ];
-      case 'detailed':
-        return [
-          '• Complete student profiles',
-          '• Contact information',
-          '• Academic performance',
-          '• Attendance history',
-          '• Status analysis'
-        ];
-      case 'summary':
-        return [
-          '• Course overview',
-          '• Class statistics',
-          '• Performance summary',
-          '• Key insights and trends',
-          '• Instructor recommendations'
-        ];
-      default:
-        return ['• Student data analysis'];
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full">
-        <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl font-bold text-gray-900">Generate Report</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Report Type
-            </label>
-            <select
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              <option value="attendance">Attendance Report</option>
-              <option value="performance">Performance Report</option>
-              <option value="detailed">Detailed Student Report</option>
-              <option value="summary">Class Summary Report</option>
-            </select>
-            <p className="text-sm text-gray-600 mt-1">
-              {getReportDescription(reportType)}
-            </p>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              This {reportType} report will include data for {students.length} student{students.length !== 1 ? 's' : ''}.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-900">Report Includes:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              {getReportIncludes(reportType).map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            disabled={generating}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {generating ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Generating...</span>
-              </>
-            ) : (
-              <>
-                <DownloadCloud className="w-4 h-4" />
-                <span>Generate PDF</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Main Component - REAL DATA ONLY
 const InstructorStudents: React.FC = () => {
   const [courses, setCourses] = useState<CourseType[]>([]);
@@ -556,7 +399,6 @@ const InstructorStudents: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceStats | null>(null);
   const [showStudentPopup, setShowStudentPopup] = useState(false);
   const [showMessagePopup, setShowMessagePopup] = useState(false);
-  const [showReportPopup, setShowReportPopup] = useState(false);
   const [messageType, setMessageType] = useState<'individual' | 'bulk'>('individual');
   const [messageStudents, setMessageStudents] = useState<StudentAttendanceStats[]>([]);
 
@@ -651,10 +493,6 @@ const InstructorStudents: React.FC = () => {
     setShowMessagePopup(true);
   };
 
-  const openReportPopup = () => {
-    setShowReportPopup(true);
-  };
-
   // Action handlers
   const handleSendMessage = (message: string, students: StudentAttendanceStats[]) => {
     const studentNames = students.map(s => s.name).join(', ');
@@ -664,52 +502,6 @@ const InstructorStudents: React.FC = () => {
 
   const handleSendIndividualMessage = (student: StudentAttendanceStats, message: string) => {
     alert(`✅ Message sent to ${student.name}:\n\n${message}`);
-  };
-
-  // PDF Generation Functions
-  const generatePDFReport = async (reportType: string, students: StudentAttendanceStats[]) => {
-    try {
-      const { jsPDF } = await import('jspdf');
-      
-      const doc = new jsPDF();
-      const course = courses.find(c => c.id === selectedCourse);
-      
-      // Add basic content
-      doc.setFontSize(20);
-      doc.text(`${reportType.toUpperCase()} REPORT`, 105, 20, { align: 'center' });
-      
-      doc.setFontSize(12);
-      doc.text(`Course: ${course?.name || 'N/A'}`, 20, 40);
-      doc.text(`Course Code: ${course?.code || 'N/A'}`, 20, 50);
-      doc.text(`Report Date: ${new Date().toLocaleDateString()}`, 20, 60);
-      doc.text(`Total Students: ${students.length}`, 20, 70);
-      
-      let yPosition = 90;
-      
-      // Add student data
-      doc.setFontSize(10);
-      students.forEach((student, index) => {
-        if (yPosition > 270) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        
-        doc.text(`${index + 1}. ${student.name}`, 20, yPosition);
-        doc.text(`Attendance: ${student.attendance_percentage}%`, 120, yPosition);
-        doc.text(`Status: ${student.status}`, 160, yPosition);
-        yPosition += 10;
-      });
-      
-      const fileName = `${reportType}-report-${course?.code || 'course'}.pdf`;
-      doc.save(fileName);
-      alert(`✅ ${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report has been downloaded successfully!`);
-      
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('❌ Error generating PDF report. Please try again.');
-    } finally {
-      setShowReportPopup(false);
-    }
   };
 
   const filteredStudents = students.filter(student => {
@@ -1013,7 +805,7 @@ const InstructorStudents: React.FC = () => {
 
         {/* Quick Actions */}
         {filteredStudents.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="mt-6">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
@@ -1024,17 +816,10 @@ const InstructorStudents: React.FC = () => {
                   <MessageCircle className="w-4 h-4" />
                   <span>Send Bulk Message to All Students</span>
                 </button>
-                <button 
-                  onClick={openReportPopup}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Generate PDF Report</span>
-                </button>
               </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="bg-white rounded-lg shadow-md p-6 mt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Summary</h3>
               <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex justify-between">
@@ -1074,13 +859,6 @@ const InstructorStudents: React.FC = () => {
           onSend={handleSendMessage}
           students={messageStudents}
           type={messageType}
-        />
-
-        <ReportPopup
-          isOpen={showReportPopup}
-          onClose={() => setShowReportPopup(false)}
-          onGenerate={generatePDFReport}
-          students={students}
         />
       </div>
     </div>
