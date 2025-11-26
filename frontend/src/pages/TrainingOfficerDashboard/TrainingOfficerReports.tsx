@@ -1,19 +1,102 @@
-// TrainingOfficerReports.tsx - COMPLETE SINGLE FILE
+// TrainingOfficerReports.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
-import { Download, Filter, Calendar, Users, BookOpen, GraduationCap, TrendingUp, BarChart3, Building2, X, FileText, Table } from 'lucide-react';
-import { fetchTrainingOfficerReports, exportTrainingReport, type TrainingOfficerReportType } from '../../api/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { 
+  Download, 
+  Users, 
+  BookOpen, 
+  TrendingUp, 
+  X,
+  FileText,
+  Table,
+  RefreshCw,
+  AlertCircle
+} from 'lucide-react'; // REMOVED: TrendingDown (unused)
+import { 
+  exportTrainingReport, 
+  fetchTrainingOfficerReports,
+  canAccessTrainingOfficerReports, // NOW AVAILABLE
+  getUserRole,
+  getUserDistrict,
+  type TrainingOfficerReportType 
+} from '../../api/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-// Export Modal Component (Internal)
+// Loading Spinner Component
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600 text-lg">Loading training reports...</p>
+    </div>
+  </div>
+);
+
+// Permission Denied Component
+const PermissionDenied = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center max-w-md">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+        <div className="text-red-800 font-semibold text-lg mb-2">Access Denied</div>
+        <p className="text-red-600 mb-4">Training Officer Reports are only accessible to Training Officers. Your role: {getUserRole()}.</p>
+        <button
+          onClick={() => window.history.back()}
+          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
+        >
+          Go Back
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// Error Display Component
+const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center max-w-md">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+        <div className="text-red-800 font-semibold text-lg mb-2">Error Loading Reports</div>
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={onRetry}
+          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 flex items-center justify-center mx-auto"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Retry
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// Export Modal Component
 const ExportModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onExport: (format: 'pdf' | 'excel', period: string, reportType: string) => void;
-  currentPeriod: string;
-}> = ({ isOpen, onClose, onExport, currentPeriod }) => {
+  onExport: (options: {
+    format: 'pdf' | 'excel';
+    period: 'weekly' | 'monthly' | 'quarterly' | 'custom';
+    reportType: 'summary' | 'detailed' | 'performance';
+    startDate?: string;
+    endDate?: string;
+    includeCourses: boolean;
+    includeInstructors: boolean;
+    includeCharts: boolean;
+  }) => void;
+}> = ({ isOpen, onClose, onExport }) => {
   const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
-  const [period, setPeriod] = useState(currentPeriod);
-  const [reportType, setReportType] = useState('comprehensive');
+  const [period, setPeriod] = useState<'weekly' | 'monthly' | 'quarterly' | 'custom'>('monthly');
+  const [reportType, setReportType] = useState<'summary' | 'detailed' | 'performance'>('detailed');
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [includeOptions, setIncludeOptions] = useState({
+    includeCourses: true,
+    includeInstructors: true,
+    includeCharts: true
+  });
   const [isExporting, setIsExporting] = useState(false);
 
   if (!isOpen) return null;
@@ -21,7 +104,14 @@ const ExportModal: React.FC<{
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      await onExport(format, period, reportType);
+      await onExport({
+        format,
+        period,
+        reportType,
+        startDate: period === 'custom' ? dateRange.start : undefined,
+        endDate: period === 'custom' ? dateRange.end : undefined,
+        ...includeOptions
+      });
       onClose();
     } catch (error) {
       console.error('Export failed:', error);
@@ -32,12 +122,12 @@ const ExportModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <Download className="w-6 h-6 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Export Report</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Generate Training Report</h3>
           </div>
           <button
             onClick={onClose}
@@ -52,7 +142,7 @@ const ExportModal: React.FC<{
           {/* Format Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Export Format
+              Report Format
             </label>
             <div className="grid grid-cols-2 gap-4">
               <button
@@ -95,23 +185,6 @@ const ExportModal: React.FC<{
             </div>
           </div>
 
-          {/* Period Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Report Period
-            </label>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-          </div>
-
           {/* Report Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -119,24 +192,111 @@ const ExportModal: React.FC<{
             </label>
             <select
               value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
+              onChange={(e) => setReportType(e.target.value as any)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="summary">Summary Report</option>
-              <option value="comprehensive">Comprehensive Report</option>
+              <option value="detailed">Detailed Report</option>
               <option value="performance">Performance Report</option>
             </select>
+          </div>
+
+          {/* Period Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Time Period
+            </label>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as any)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            >
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="custom">Custom Date Range</option>
+            </select>
+
+            {period === 'custom' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Include Options */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Include in Report
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={includeOptions.includeCourses}
+                  onChange={(e) => setIncludeOptions(prev => ({ 
+                    ...prev, 
+                    includeCourses: e.target.checked 
+                  }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Courses Summary</span>
+              </label>
+              
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={includeOptions.includeInstructors}
+                  onChange={(e) => setIncludeOptions(prev => ({ 
+                    ...prev, 
+                    includeInstructors: e.target.checked 
+                  }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Instructors Summary</span>
+              </label>
+              
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={includeOptions.includeCharts}
+                  onChange={(e) => setIncludeOptions(prev => ({ 
+                    ...prev, 
+                    includeCharts: e.target.checked 
+                  }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Charts & Graphs</span>
+              </label>
+            </div>
           </div>
 
           {/* Format Info */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">
-              {format === 'pdf' ? 'PDF Export' : 'Excel Export'}
+              {format === 'pdf' ? 'PDF Training Report' : 'Excel Training Report'}
             </h4>
             <p className="text-sm text-gray-600">
               {format === 'pdf' 
-                ? 'Download as printable document with charts and summaries.'
-                : 'Download as spreadsheet with multiple sheets for detailed analysis.'
+                ? 'Professional training report with comprehensive analysis of courses, instructors, and student performance.'
+                : 'Detailed spreadsheet with training data for further analysis and management.'
               }
             </p>
           </div>
@@ -164,12 +324,12 @@ const ExportModal: React.FC<{
             {isExporting ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Exporting...</span>
+                <span>Generating...</span>
               </>
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>Export {format.toUpperCase()}</span>
+                <span>Generate Report</span>
               </>
             )}
           </button>
@@ -184,229 +344,178 @@ const TrainingOfficerReports: React.FC = () => {
   const [reportData, setReportData] = useState<TrainingOfficerReportType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<string>('monthly');
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Check permissions
+  if (!canAccessTrainingOfficerReports()) {
+    return <PermissionDenied />;
+  }
 
   useEffect(() => {
     loadReportData();
-  }, [period]);
+  }, []);
 
   const loadReportData = async () => {
     try {
       setLoading(true);
-      const data = await fetchTrainingOfficerReports(period);
+      setError(null);
+      setRefreshing(true);
+      
+      const data = await fetchTrainingOfficerReports();
       setReportData(data);
-    } catch (err) {
-      setError('Failed to load report data');
-      console.error('Error loading reports:', err);
+    } catch (err: any) {
+      console.error('Failed to load training reports:', err);
+      setError(err.response?.data?.error || 'Failed to load training reports. Please try again.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleExportReport = async (format: 'pdf' | 'excel', period: string, reportType: string) => {
+  const handleExport = async (options: {
+    format: 'pdf' | 'excel';
+    period: 'weekly' | 'monthly' | 'quarterly' | 'custom';
+    reportType: 'summary' | 'detailed' | 'performance';
+    startDate?: string;
+    endDate?: string;
+    includeCourses: boolean;
+    includeInstructors: boolean;
+    includeCharts: boolean;
+  }) => {
     try {
-      const blob = await exportTrainingReport(format, period, reportType);
-      
-      // Create download link
+      const blob = await exportTrainingReport(options.format, options.period, options.reportType);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.style.display = 'none';
       a.href = url;
       
-      // Set filename based on format and period
-      const timestamp = new Date().toISOString().split('T')[0];
-      const extension = format === 'pdf' ? 'pdf' : 'xlsx';
-      a.download = `training_report_${period}_${timestamp}.${extension}`;
-      
+      const periodText = options.period === 'custom' 
+        ? `${options.startDate}_to_${options.endDate}`
+        : options.period;
+        
+      a.download = `training_report_${getUserDistrict()}_${periodText}_${new Date().toISOString().split('T')[0]}.${options.format === 'pdf' ? 'pdf' : 'xlsx'}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
-    } catch (err) {
+    } catch (err: any) {
       console.error('Export failed:', err);
-      throw new Error('Failed to export report');
+      throw new Error(err.response?.data?.error || 'Failed to export training report');
     }
   };
 
-  const getPerformanceColor = (performance: string) => {
-    switch (performance) {
-      case 'Excellent': return 'bg-green-100 text-green-800';
-      case 'Good': return 'bg-blue-100 text-blue-800';
-      case 'Average': return 'bg-yellow-100 text-yellow-800';
-      case 'Needs Improvement': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading report data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 text-xl mb-4">Error</div>
-          <p className="text-gray-600">{error}</p>
-          <button 
-            onClick={loadReportData}
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!reportData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">No report data available</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Prepare chart data from real data
-  const trainingProgramsChart = [
-    { name: 'Active', value: reportData.training_programs.active_programs, color: '#10b981' },
-    { name: 'Pending', value: reportData.training_programs.pending_approval, color: '#f59e0b' },
-    { name: 'Approved', value: reportData.training_programs.approved_programs, color: '#3b82f6' },
-    { name: 'Completed', value: reportData.training_programs.completed_programs, color: '#8b5cf6' },
-    { name: 'Inactive', value: reportData.training_programs.inactive_programs, color: '#6b7280' }
-  ];
-
-  const trainingProgressChart = [
-    { name: 'Trained', value: reportData.training_progress.total_trained, color: '#10b981' },
-    { name: 'In Training', value: reportData.training_progress.in_training, color: '#3b82f6' },
-    { name: 'Completed', value: reportData.training_progress.completed_training, color: '#8b5cf6' },
-    { name: 'Awaiting', value: reportData.training_progress.awaiting_training, color: '#f59e0b' },
-    { name: 'Dropped', value: reportData.training_progress.dropped_training, color: '#ef4444' }
-  ];
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorDisplay error={error} onRetry={loadReportData} />;
+  if (!reportData) return <div>No data available</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Export Modal */}
       <ExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        onExport={handleExportReport}
-        currentPeriod={period}
+        onExport={handleExport}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Training Analysis Report</h1>
-              <p className="text-gray-600 mt-2">
-                {reportData.user_district} District - Comprehensive Training Performance Analysis
-              </p>
-            </div>
-            <div className="flex space-x-4">
-              <div className="flex items-center space-x-2">
-                <Filter className="w-5 h-5 text-gray-400" />
-                <select 
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-              <button
-                onClick={() => setExportModalOpen(true)}
-                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download className="w-5 h-5" />
-                <span>Export Report</span>
-              </button>
-            </div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Training Officer Reports</h1>
+            <p className="text-gray-600 mt-1">Comprehensive overview of training programs and performance metrics</p>
+            <p className="text-sm text-blue-600 mt-1">District: {reportData.user_district}</p>
           </div>
-          <div className="mt-4 text-sm text-gray-500">
-            Report generated: {new Date(reportData.report_generated_at).toLocaleString()}
-            {reportData.generated_by && ` • Generated by: ${reportData.generated_by}`}
+          <div className="flex space-x-3">
+            <button
+              onClick={loadReportData}
+              disabled={refreshing}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                refreshing ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-gray-600 text-white hover:bg-gray-700'
+              }`}
+            >
+              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
+            </button>
+            <button
+              onClick={() => setExportModalOpen(true)}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              <span>Export Training Report</span>
+            </button>
           </div>
         </div>
 
-        {/* Overall Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        {/* Overall Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Students</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {reportData.overall_stats.total_students}
-                </p>
+                <p className="text-sm text-gray-600">Total Students</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.overall_stats.total_students}</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
+              <Users className="w-8 h-8 text-blue-500" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Training Centers</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {reportData.overall_stats.total_centers}
-                </p>
+                <p className="text-sm text-gray-600">Total Centers</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.overall_stats.total_centers}</p>
               </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Building2 className="w-6 h-6 text-green-600" />
-              </div>
+              <BookOpen className="w-8 h-8 text-green-500" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Instructors</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {reportData.overall_stats.total_instructors}
-                </p>
+                <p className="text-sm text-gray-600">Completion Rate</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.overall_stats.completion_rate}%</p>
               </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <GraduationCap className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {reportData.overall_stats.completion_rate}%
-                </p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-orange-600" />
-              </div>
+              <TrendingUp className="w-8 h-8 text-orange-500" />
             </div>
           </div>
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Training Programs Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Active Programs</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.training_programs.active_programs}</p>
+                <p className="text-xs text-gray-500">of {reportData.training_programs.total_programs} total</p>
+              </div>
+              <BookOpen className="w-8 h-8 text-purple-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Pending Approval</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.training_programs.pending_approval}</p>
+              </div>
+              <AlertCircle className="w-8 h-8 text-yellow-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Completed Training</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.training_progress.completed_training}</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Training Trends */}
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Training Trends</h3>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={reportData.training_trends}>
@@ -428,89 +537,54 @@ const TrainingOfficerReports: React.FC = () => {
                   strokeWidth={2}
                   name="Completed Training"
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="new_courses" 
-                  stroke="#8b5cf6" 
-                  strokeWidth={2}
-                  name="New Courses"
-                />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Training Programs Distribution */}
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Training Programs</h3>
+          {/* Course Effectiveness */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Effectiveness</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={trainingProgramsChart}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {trainingProgramsChart.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
+              <BarChart data={reportData.course_effectiveness.slice(0, 5)}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="course_name" angle={-45} textAnchor="end" height={80} />
+                <YAxis />
                 <Tooltip />
-              </PieChart>
+                <Bar dataKey="completion_rate" fill="#10b981" name="Completion Rate %" />
+                <Bar dataKey="attendance_rate" fill="#3b82f6" name="Attendance Rate %" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Center Performance */}
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-8">
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Center Performance</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Center
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Students
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Courses
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Completion Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Attendance Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Performance
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Center Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Students</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Courses</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completion Rate</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {reportData.center_performance.map((center, index) => (
+              <tbody className="divide-y divide-gray-200">
+                {reportData.center_performance.map((center: any, index: number) => (
                   <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {center.center_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {center.total_students}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {center.total_courses}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {center.completion_rate}%
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {center.attendance_rate}%
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPerformanceColor(center.performance)}`}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{center.center_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{center.total_students}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{center.total_courses}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{center.completion_rate}%</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        center.performance === 'Excellent' ? 'bg-green-100 text-green-800' :
+                        center.performance === 'Good' ? 'bg-blue-100 text-blue-800' :
+                        center.performance === 'Average' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
                         {center.performance}
                       </span>
                     </td>
@@ -521,59 +595,36 @@ const TrainingOfficerReports: React.FC = () => {
           </div>
         </div>
 
-        {/* Instructor Performance */}
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-8">
+        {/* Instructor Metrics */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Instructor Performance</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Instructor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Courses
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Students
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Completion Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Attendance Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Performance
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Courses</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Students</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completion Rate</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {reportData.instructor_metrics.map((instructor, index) => (
+              <tbody className="divide-y divide-gray-200">
+                {reportData.instructor_metrics.slice(0, 5).map((instructor: any, index: number) => (
                   <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {instructor.instructor_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {instructor.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {instructor.total_courses}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {instructor.total_students}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {instructor.completion_rate}%
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {instructor.attendance_rate}%
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPerformanceColor(instructor.performance)}`}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{instructor.instructor_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{instructor.email}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{instructor.total_courses}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{instructor.total_students}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{instructor.completion_rate}%</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        instructor.performance === 'Excellent' ? 'bg-green-100 text-green-800' :
+                        instructor.performance === 'Good' ? 'bg-blue-100 text-blue-800' :
+                        instructor.performance === 'Average' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
                         {instructor.performance}
                       </span>
                     </td>
@@ -585,71 +636,36 @@ const TrainingOfficerReports: React.FC = () => {
         </div>
 
         {/* Course Effectiveness */}
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Effectiveness</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Course
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Code
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Instructor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Enrolled
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Completion Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Attendance Rate
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enrolled</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completion Rate</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {reportData.course_effectiveness.map((course, index) => (
+              <tbody className="divide-y divide-gray-200">
+                {reportData.course_effectiveness.slice(0, 6).map((course: any, index: number) => (
                   <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {course.course_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {course.course_code}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {course.category}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {course.instructor}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{course.course_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{course.category}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{course.instructor}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{course.total_enrolled}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{course.completion_rate}%</td>
+                    <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         course.status === 'Active' ? 'bg-green-100 text-green-800' :
-                        course.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
                         course.status === 'Completed' ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {course.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {course.total_enrolled}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {course.completion_rate}%
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {course.attendance_rate}%
                     </td>
                   </tr>
                 ))}

@@ -1,20 +1,52 @@
+# reports/models.py
 from django.db import models
-from centers.models import Center  # Import from centers app
+from django.contrib.auth import get_user_model
 
-class Enrollment(models.Model):
-    center = models.ForeignKey(Center, on_delete=models.CASCADE, related_name='enrollments')
-    month = models.DateField()  # e.g., first day of month
-    students = models.IntegerField(default=0)
-    completed_students = models.IntegerField(default=0)  # For completion rates
+User = get_user_model()
 
+class HeadOfficeReport(models.Model):
+    REPORT_TYPE_CHOICES = [
+        ('island', 'Island Performance'),
+        ('districts', 'District Comparison'),
+        ('centers', 'Centers Analysis'),
+        ('comprehensive', 'Island-Wide Comprehensive'),
+        ('instructors', 'Instructors Summary'),
+    ]
+    
+    PERIOD_CHOICES = [
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+        ('custom', 'Custom Date Range'),
+    ]
+    
+    FORMAT_CHOICES = [
+        ('pdf', 'PDF'),
+        ('excel', 'Excel'),
+    ]
+    
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES)
+    period = models.CharField(max_length=20, choices=PERIOD_CHOICES)
+    format = models.CharField(max_length=10, choices=FORMAT_CHOICES)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    include_districts = models.BooleanField(default=True)
+    include_centers = models.BooleanField(default=True)
+    include_courses = models.BooleanField(default=True)
+    include_instructors = models.BooleanField(default=True)
+    generated_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    file_path = models.CharField(max_length=500, blank=True, null=True)
+    file_name = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=20, default='processing', choices=[
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
     class Meta:
-        unique_together = ('center', 'month')
-        ordering = ['-month']
-
-class Course(models.Model):
-    name = models.CharField(max_length=100)
-    center = models.ForeignKey(Center, on_delete=models.CASCADE, related_name='courses')
-    students = models.IntegerField(default=0)  # Enrolled in this course
-
-    class Meta:
-        ordering = ['name']
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Head Office Report - {self.report_type} - {self.created_at.strftime('%Y-%m-%d')}"

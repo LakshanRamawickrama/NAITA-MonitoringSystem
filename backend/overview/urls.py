@@ -1,9 +1,9 @@
-# overview/urls.py - COMPLETE UPDATED VERSION
+# overview/urls.py - UPDATED VERSION
 from django.urls import path
 from .views import OverviewView, DashboardStatsView, InstructorOverviewView
 
 urlpatterns = [
-    path('overview/', OverviewView.as_view(), name='overview'),
-    path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
-    path('instructor/overview/', InstructorOverviewView.as_view(), name='instructor-overview'),
+    path('', OverviewView.as_view(), name='overview'),
+    path('stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('instructor/', InstructorOverviewView.as_view(), name='instructor-overview'),
 ]

@@ -1,388 +1,581 @@
+// DistrictManagerReports.tsx - FIXED TS ERRORS + REAL INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { 
   Download, 
-  FileText, 
-  Filter, 
   Users, 
   BookOpen, 
-  TrendingUp,
-  BarChart3,
-  PieChart as PieChartIcon
+  TrendingUp, 
+  Building2,
+  CheckCircle,
+  RefreshCw,
+  AlertCircle,
+  FileText, 
+  Table 
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { 
-  fetchSystemReports, 
-  generateReport, 
-  downloadReport,
-  fetchOverview,
-  fetchDashboardStats,
-  type ReportType,
-  type OverviewDataType,
-  type DashboardStatsType
+  fetchDistrictReports, 
+  exportDistrictReport, 
+  canAccessDistrictReports,
+  getUserRole,
+  getUserDistrict,
+  type DistrictReportType 
 } from '../../api/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const DistrictManagerReports: React.FC = () => {
-  const [reports, setReports] = useState<ReportType[]>([]);
-  const [overviewData, setOverviewData] = useState<OverviewDataType | null>(null);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStatsType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [filters, setFilters] = useState({
-    period: 'monthly',
-    reportType: 'enrollment',
-    center: 'all'
+// ExportModal Component - FIXED RETURN TYPE
+const ExportModal = ({
+  isOpen,
+  onClose,
+  onExport
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onExport: (options: {
+    format: 'pdf' | 'excel';
+    period: 'weekly' | 'monthly' | 'quarterly' | 'custom';
+    reportType: 'centers' | 'courses' | 'users' | 'approvals' | 'comprehensive';
+    startDate?: string;
+    endDate?: string;
+    includeCenters: boolean;
+    includeCourses: boolean;
+    includeUsers: boolean;
+    includeApprovals: boolean;
+  }) => void;
+}): React.ReactElement | null => { // FIXED: Changed from ReactNode to ReactElement | null
+  const [format, setFormat] = useState<'pdf' | 'excel'>('pdf');
+  const [period, setPeriod] = useState<'weekly' | 'monthly' | 'quarterly' | 'custom'>('monthly');
+  const [reportType, setReportType] = useState<'centers' | 'courses' | 'users' | 'approvals' | 'comprehensive'>('comprehensive');
+  const [dateRange, setDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
   });
+  const [includeOptions, setIncludeOptions] = useState({
+    includeCenters: true,
+    includeCourses: true,
+    includeUsers: true,
+    includeApprovals: true
+  });
+  const [isExporting, setIsExporting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await onExport({
+        format,
+        period,
+        reportType,
+        startDate: period === 'custom' ? dateRange.start : undefined,
+        endDate: period === 'custom' ? dateRange.end : undefined,
+        ...includeOptions
+      });
+      onClose();
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <Download className="w-6 h-6 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Generate District Report</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Format Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Report Format
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setFormat('pdf')}
+                className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                  format === 'pdf'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <FileText className={`w-8 h-8 mb-2 ${
+                  format === 'pdf' ? 'text-blue-600' : 'text-gray-400'
+                }`} />
+                <span className={`font-medium ${
+                  format === 'pdf' ? 'text-blue-900' : 'text-gray-700'
+                }`}>
+                  PDF
+                </span>
+                <span className="text-xs text-gray-500 mt-1">Document</span>
+              </button>
+
+              <button
+                onClick={() => setFormat('excel')}
+                className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                  format === 'excel'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <Table className={`w-8 h-8 mb-2 ${
+                  format === 'excel' ? 'text-green-600' : 'text-gray-400'
+                }`} />
+                <span className={`font-medium ${
+                  format === 'excel' ? 'text-green-900' : 'text-gray-700'
+                }`}>
+                  Excel
+                </span>
+                <span className="text-xs text-gray-500 mt-1">Spreadsheet</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Report Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Report Type
+            </label>
+            <select
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value as any)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="comprehensive">Comprehensive Report</option>
+              <option value="centers">Centers Report</option>
+              <option value="courses">Courses Report</option>
+              <option value="users">Users Report</option>
+              <option value="approvals">Approvals Report</option>
+            </select>
+          </div>
+
+          {/* Period Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Time Period
+            </label>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as any)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+            >
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="custom">Custom Date Range</option>
+            </select>
+
+            {period === 'custom' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Include Options */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Include in Report
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={includeOptions.includeCenters}
+                  onChange={(e) => setIncludeOptions(prev => ({ ...prev, includeCenters: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Centers Data</span>
+              </label>
+              
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={includeOptions.includeCourses}
+                  onChange={(e) => setIncludeOptions(prev => ({ ...prev, includeCourses: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Courses Data</span>
+              </label>
+              
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={includeOptions.includeUsers}
+                  onChange={(e) => setIncludeOptions(prev => ({ ...prev, includeUsers: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Users Data</span>
+              </label>
+              
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={includeOptions.includeApprovals}
+                  onChange={(e) => setIncludeOptions(prev => ({ ...prev, includeApprovals: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Approvals Data</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Format Info */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              {format === 'pdf' ? 'PDF District Report' : 'Excel District Report'}
+            </h4>
+            <p className="text-sm text-gray-600">
+              {format === 'pdf' 
+                ? 'Comprehensive district report with centers, courses, users, and approvals data. Suitable for district-level analysis.'
+                : 'Detailed spreadsheet with district data for further analysis and management.'
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+              isExporting
+                ? 'bg-gray-400 cursor-not-allowed'
+                : format === 'pdf'
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
+          >
+            {isExporting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Generating...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Generate Report</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// LoadingSpinner, PermissionDenied, ErrorDisplay
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600 text-lg">Loading district reports...</p>
+    </div>
+  </div>
+);
+
+const PermissionDenied = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center max-w-md">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+        <div className="text-red-800 font-semibold text-lg mb-2">Access Denied</div>
+        <p className="text-red-600 mb-4">District Reports are only accessible to District Managers. Your role: {getUserRole()}.</p>
+        <button
+          onClick={() => window.history.back()}
+          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
+        >
+          Go Back
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const ErrorDisplay = ({ error, onRetry }: { error: string; onRetry: () => void }) => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="text-center max-w-md">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+        <div className="text-red-800 font-semibold text-lg mb-2">Error Loading Reports</div>
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={onRetry}
+          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 flex items-center justify-center mx-auto"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Retry
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// Main Component
+const DistrictManagerReports: React.FC = () => {
+  const [reportData, setReportData] = useState<DistrictReportType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  if (!canAccessDistrictReports()) {
+    return <PermissionDenied />;
+  }
 
   useEffect(() => {
-    loadReportsData();
+    loadReportData();
   }, []);
 
-  const loadReportsData = async () => {
+  const loadReportData = async () => {
     try {
       setLoading(true);
-      const [reportsResponse, overviewResponse, statsResponse] = await Promise.all([
-        fetchSystemReports(filters.period, filters.center),
-        fetchOverview(),
-        fetchDashboardStats()
-      ]);
-      setReports(reportsResponse);
-      setOverviewData(overviewResponse);
-      setDashboardStats(statsResponse);
-    } catch (err) {
-      console.error('Error loading reports:', err);
+      setError(null);
+      setRefreshing(true);
+      
+      const data = await fetchDistrictReports();
+      setReportData(data);
+    } catch (err: any) {
+      console.error('Failed to load district reports:', err);
+      setError(err.response?.data?.error || 'Failed to load district reports. Please try again.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleGenerateReport = async (type: string) => {
+  const handleExport = async (options: {
+    format: 'pdf' | 'excel';
+    period: 'weekly' | 'monthly' | 'quarterly' | 'custom';
+    reportType: 'centers' | 'courses' | 'users' | 'approvals' | 'comprehensive';
+    startDate?: string;
+    endDate?: string;
+    includeCenters: boolean;
+    includeCourses: boolean;
+    includeUsers: boolean;
+    includeApprovals: boolean;
+  }) => {
     try {
-      setGenerating(true);
-      const result = await generateReport(type, {
-        district: localStorage.getItem('user_district'),
-        center: filters.center,
-        reportType: type
-      });
-      console.log('Report generated:', result);
-      await loadReportsData(); // Reload reports list
-    } catch (err) {
-      console.error('Error generating report:', err);
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleDownloadReport = async (reportId: number) => {
-    try {
-      const blob = await downloadReport(reportId);
+      const blob = await exportDistrictReport(
+        options.format, 
+        options.period, 
+        options.reportType,
+        {
+          start_date: options.startDate,
+          end_date: options.endDate,
+          include_centers: options.includeCenters,
+          include_courses: options.includeCourses,
+          include_users: options.includeUsers,
+          include_approvals: options.includeApprovals
+        }
+      );
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-${reportId}.pdf`;
+      
+      const periodText = options.period === 'custom' 
+        ? `${options.startDate}_to_${options.endDate}`
+        : options.period;
+        
+      a.download = `district_report_${getUserDistrict()}_${periodText}_${new Date().toISOString().split('T')[0]}.${options.format === 'pdf' ? 'pdf' : 'xlsx'}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (err) {
-      console.error('Error downloading report:', err);
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      throw new Error(err.response?.data?.error || 'Failed to export district report');
     }
   };
 
-  // Use real data from overview and dashboard stats
-  const enrollmentData = overviewData?.enrollment_data || [
-    { month: 'Jan', students: 65 },
-    { month: 'Feb', students: 78 },
-    { month: 'Mar', students: 90 },
-    { month: 'Apr', students: 81 },
-    { month: 'May', students: 56 },
-    { month: 'Jun', students: 55 }
-  ];
-
-  const centerPerformanceData = overviewData?.center_performance_data || [
-    { name: 'Excellent', value: 3, color: '#16a34a' },
-    { name: 'Good', value: 5, color: '#eab308' },
-    { name: 'Average', value: 2, color: '#38bdf8' },
-    { name: 'Needs Improvement', value: 1, color: '#ef4444' }
-  ];
-
-  // Mock course completion data - replace with real data from your backend
-  const courseCompletionData = [
-    { course: 'IT Basics', completion: overviewData?.completion_rate || 85 },
-    { course: 'Welding', completion: 92 },
-    { course: 'Auto Repair', completion: 78 },
-    { course: 'Electrical', completion: 88 }
-  ];
-
-  // Real metrics from dashboard stats
-  const realMetrics = {
-    pendingApprovals: dashboardStats?.pending_approvals || 0,
-    activeCourses: dashboardStats?.active_courses || 0,
-    completedTrainings: dashboardStats?.enrollment_stats?.completed || 0,
-    newStudents: dashboardStats?.recent_activity?.new_students || 0,
-    totalStudents: dashboardStats?.total_students || 0,
-    totalCenters: dashboardStats?.total_centers || 0
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading reports...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorDisplay error={error} onRetry={loadReportData} />;
+  if (!reportData) return <div>No data available</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={handleExport}
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">District Reports</h1>
-          <p className="text-gray-600 mt-2">
-            {localStorage.getItem('user_district') ? 
-              `${localStorage.getItem('user_district')} District - Analytics and Reports` : 
-              'District Analytics and Reports'
-            }
-          </p>
-        </div>
-
-        {/* Real Metrics Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Students</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {realMetrics.totalStudents}
-                </p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">District Manager Reports</h1>
+            <p className="text-gray-600 mt-1">Comprehensive overview of centers, courses, users, and approvals</p>
           </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Centers</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {realMetrics.totalCenters}
-                </p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <BarChart3 className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Completed Trainings</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {realMetrics.completedTrainings}
-                </p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <BookOpen className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {realMetrics.pendingApprovals}
-                </p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <FileText className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Filter className="w-5 h-5 mr-2" />
-              Report Filters
-            </h3>
-            <button 
-              onClick={loadReportsData}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+          <div className="flex space-x-3">
+            <button
+              onClick={loadReportData}
+              disabled={refreshing}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                refreshing ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-gray-600 text-white hover:bg-gray-700'
+              }`}
             >
-              <Filter className="w-4 h-4 mr-2" />
-              Apply Filters
+              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
+            </button>
+            <button
+              onClick={() => setExportModalOpen(true)}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download className="w-5 h-5" />
+              <span>Export District Report</span>
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Period</label>
-              <select 
-                value={filters.period}
-                onChange={(e) => setFilters({...filters, period: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Centers</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.summary.totalCenters.current}</p>
+              </div>
+              <Building2 className="w-8 h-8 text-blue-500" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
-              <select 
-                value={filters.reportType}
-                onChange={(e) => setFilters({...filters, reportType: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="enrollment">Enrollment</option>
-                <option value="performance">Performance</option>
-                <option value="completion">Completion</option>
-                <option value="financial">Financial</option>
-              </select>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Active Courses</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.summary.totalCourses.current}</p>
+              </div>
+              <BookOpen className="w-8 h-8 text-green-500" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Center</label>
-              <select 
-                value={filters.center}
-                onChange={(e) => setFilters({...filters, center: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Centers</option>
-                <option value="center1">Center 1</option>
-                <option value="center2">Center 2</option>
-              </select>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Users</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.summary.totalUsers.current}</p>
+              </div>
+              <Users className="w-8 h-8 text-purple-500" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Pending Approvals</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.summary.pendingApprovals.current}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-orange-500" />
             </div>
           </div>
         </div>
 
-        {/* Quick Report Generation */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <button 
-            onClick={() => handleGenerateReport('enrollment')}
-            disabled={generating}
-            className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+        {/* Additional Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Enrollment Report</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {generating ? 'Generating...' : 'Generate'}
-                </p>
+                <p className="text-sm text-gray-600">Active Students</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.summary.activeStudents.current}</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
+              <Users className="w-8 h-8 text-indigo-500" />
             </div>
-          </button>
+          </div>
 
-          <button 
-            onClick={() => handleGenerateReport('performance')}
-            disabled={generating}
-            className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:border-green-300 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Performance Report</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {generating ? 'Generating...' : 'Generate'}
-                </p>
+                <p className="text-sm text-gray-600">Completion Rate</p>
+                <p className="text-2xl font-bold text-gray-900">{reportData.summary.completionRate.current}%</p>
               </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-green-600" />
-              </div>
+              <TrendingUp className="w-8 h-8 text-teal-500" />
             </div>
-          </button>
-
-          <button 
-            onClick={() => handleGenerateReport('completion')}
-            disabled={generating}
-            className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Completion Report</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {generating ? 'Generating...' : 'Generate'}
-                </p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <BookOpen className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </button>
-
-          <button 
-            onClick={() => handleGenerateReport('financial')}
-            disabled={generating}
-            className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:border-orange-300 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Financial Report</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {generating ? 'Generating...' : 'Generate'}
-                </p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <FileText className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </button>
+          </div>
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Enrollment Trends */}
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2" />
-              Enrollment Trends
-            </h3>
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Enrollment & Approvals Trend */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Enrollment & Approvals Trend</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={enrollmentData}>
+              <LineChart data={reportData.enrollmentTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
+                <XAxis dataKey="period" />
                 <YAxis />
                 <Tooltip />
                 <Line 
                   type="monotone" 
-                  dataKey="students" 
+                  dataKey="enrollment" 
                   stroke="#3b82f6" 
-                  strokeWidth={2} 
-                  dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                  strokeWidth={2}
+                  name="Enrollment"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="approvals" 
+                  stroke="#10b981" 
+                  strokeWidth={2}
+                  name="Approvals"
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Center Performance */}
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <PieChartIcon className="w-5 h-5 mr-2" />
-              Center Performance Distribution
-            </h3>
+          {/* Course Distribution */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution</h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={centerPerformanceData}
+                  data={reportData.courseDistribution}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  label={({ name, value }) => `${name}: ${value}`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {centerPerformanceData.map((entry, index) => (
+                  {reportData.courseDistribution.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -392,81 +585,64 @@ const DistrictManagerReports: React.FC = () => {
           </div>
         </div>
 
-        {/* Course Completion */}
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2" />
-            Course Completion Rates
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={courseCompletionData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="course" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="completion" fill="#10b981" />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Center Performance */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Center Performance</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Center Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Students</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Courses</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completion Rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {reportData.centerPerformance.map((center: any, index: number) => (
+                  <tr key={index}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{center.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{center.students}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{center.courses}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{center.completion}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Generated Reports List */}
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <FileText className="w-5 h-5 mr-2" />
-              Generated Reports
-            </h3>
-            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              {reports.length} reports
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            {reports.length > 0 ? (
-              reports.map((report) => (
-                <div key={report.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  <div className="flex items-center space-x-4">
-                    <div className={`p-2 rounded-full ${
-                      report.status === 'completed' ? 'bg-green-100 text-green-600' :
-                      report.status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
-                      'bg-red-100 text-red-600'
-                    }`}>
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{report.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {report.type} • Generated {report.generated_at}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      report.status === 'completed' ? 'bg-green-50 text-green-700' :
-                      report.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
-                      'bg-red-50 text-red-700'
-                    }`}>
-                      {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-                    </span>
-                    {report.status === 'completed' && (
-                      <button
-                        onClick={() => handleDownloadReport(report.id)}
-                        className="flex items-center text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Download
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No reports generated yet</p>
-                <p className="text-sm mt-1">Generate your first report using the buttons above</p>
-              </div>
-            )}
+        {/* Recent Approvals */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Approvals</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {reportData.recentApprovals.map((approval: any) => (
+                  <tr key={approval.id}>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{approval.type}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{approval.name}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        approval.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {approval.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{approval.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

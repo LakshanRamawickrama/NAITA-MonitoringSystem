@@ -1,4 +1,4 @@
-// src/api/api.ts - COMPLETE UPDATED VERSION WITH ALL FUNCTIONS
+// src/api/api.ts - CORRECTED VERSION (NO DUPLICATES)
 import axios from "axios";
 
 const api = axios.create({
@@ -100,6 +100,12 @@ export const getCenterId = (): string => {
 
 export const getCenterName = (): string => {
   return localStorage.getItem("center_name") || "";
+};
+
+// Check if user can access head office reports
+export const canAccessHeadOfficeReports = (): boolean => {
+  const role = getUserRole();
+  return role === 'admin'; // Only admin can access head office reports
 };
 
 /* ========== USER API ========== */
@@ -1182,7 +1188,7 @@ export const generateAttendanceReport = async (reportData: ReportRequest): Promi
   let fileName = `attendance_report_${Date.now()}.${reportData.format}`;
   
   if (contentDisposition) {
-    const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+    const fileNameMatch = contentDisposition.match(/filename=\"(.+)\"/);
     if (fileNameMatch) {
       fileName = fileNameMatch[1];
     }
@@ -1254,8 +1260,6 @@ export const fetchMyAttendanceReports = async (): Promise<AttendanceReportType[]
 export const deleteAttendanceReport = async (reportId: number): Promise<void> => {
   await api.delete(`/api/attendance/reports/${reportId}/`);
 };
-
-// Update your api.ts file
 
 /* ========== TRAINING OFFICER REPORTS API ========== */
 export interface TrainingOfficerReportType {
@@ -1350,6 +1354,166 @@ export const exportTrainingReport = async (
     responseType: 'blob'
   });
   return res.data;
+};
+
+/* ========== HEAD OFFICE REPORTS API ========== */
+export interface HeadOfficeReportType {
+  summary: {
+    total_districts: number;
+    total_centers: number;
+    total_students: number;
+    total_courses: number;
+    total_instructors: number;
+    completion_rate: number;
+    pending_approvals: number;
+  };
+  district_performance: Array<{
+    name: string;
+    centers: number;
+    students: number;
+    instructors: number;
+    completion: number;
+    growth: number;
+  }>;
+  island_trends: Array<{
+    period: string;
+    enrollment: number;
+    completions: number;
+    new_instructors: number;
+  }>;
+  course_distribution: Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>;
+  top_performing_centers: Array<{
+    name: string;
+    district: string;
+    students: number;
+    instructors: number;
+    completion: number;
+  }>;
+  instructor_summary: Array<{
+    district: string;
+    total: number;
+    active: number;
+    avg_rating: number;
+  }>;
+}
+
+// Fetch head office reports data
+export const fetchHeadOfficeReports = async (): Promise<HeadOfficeReportType> => {
+  const res = await api.get("/api/reports/head-office/");
+  return res.data;
+};
+
+// Export head office report
+export const exportHeadOfficeReport = async (
+  format: 'pdf' | 'excel',
+  period: 'weekly' | 'monthly' | 'quarterly' | 'custom',
+  report_type: 'island' | 'districts' | 'centers' | 'comprehensive' | 'instructors',
+  options?: {
+    start_date?: string;
+    end_date?: string;
+    include_districts?: boolean;
+    include_centers?: boolean;
+    include_courses?: boolean;
+    include_instructors?: boolean;
+  }
+): Promise<Blob> => {
+  const params = {
+    format,
+    period,
+    report_type,
+    ...options
+  };
+  
+  const res = await api.get("/api/reports/export-head-office/", {
+    params,
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+
+/* ========== DISTRICT MANAGER REPORTS API ========== */
+export interface DistrictReportType {
+  summary: {
+    totalCenters: { current: number };
+    totalCourses: { current: number };
+    totalUsers: { current: number };
+    pendingApprovals: { current: number };
+    activeStudents: { current: number };
+    completionRate: { current: number };
+  };
+  centerPerformance: Array<{
+    name: string;
+    students: number;
+    courses: number;
+    completion: number;
+  }>;
+  enrollmentTrend: Array<{
+    period: string;
+    enrollment: number;
+    approvals: number;
+  }>;
+  courseDistribution: Array<{
+    name: string;
+    value: number;
+    color: string;
+  }>;
+  recentApprovals: Array<{
+    id: number;
+    type: string;
+    name: string;
+    status: string;
+    date: string;
+  }>;
+}
+
+// Fetch district reports data
+export const fetchDistrictReports = async (): Promise<DistrictReportType> => {
+  const res = await api.get("/api/reports/district/");
+  return res.data;
+};
+
+// Export district report
+export const exportDistrictReport = async (
+  format: 'pdf' | 'excel',
+  period: 'weekly' | 'monthly' | 'quarterly' | 'custom',
+  report_type: 'centers' | 'courses' | 'users' | 'approvals' | 'comprehensive',
+  options?: {
+    start_date?: string;
+    end_date?: string;
+    include_centers?: boolean;
+    include_courses?: boolean;
+    include_users?: boolean;
+    include_approvals?: boolean;
+  }
+): Promise<Blob> => {
+  const params = {
+    format,
+    period,
+    report_type,
+    ...options
+  };
+  
+  const res = await api.get("/api/reports/export-district/", {
+    params,
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+// Permission check
+export const canAccessDistrictReports = (): boolean => {
+  const role = getUserRole();
+  return role === 'district_manager';
+};
+
+export const canAccessTrainingOfficerReports = (): boolean => {
+  const role = getUserRole();
+  return role === 'training_officer'; 
 };
 
 export default api;
