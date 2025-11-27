@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Mail, Phone, Edit, Trash2, User } from 'lucide-react';
 
-const ManagerInstructors: React.FC = () => {
+const Instructors: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const instructorsData = [
@@ -148,4 +148,4 @@ const ManagerInstructors: React.FC = () => {
   );
 };
 
-export default ManagerInstructors;
+export default Instructors;

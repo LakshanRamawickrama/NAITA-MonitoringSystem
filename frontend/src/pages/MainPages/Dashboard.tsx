@@ -1,36 +1,37 @@
+// src/pages/Dashboard.tsx
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import SharedNavbar from "../../components/SharedNavbar";
 
-// === Import ALL your pages ===
+// ADMIN
 import Centers from "./Centers";
 import Users from "./Users";
-
-
+import Instructor from "./Instructor";
 import HeadOfficeOverview from "../HeadOfficeDashboard/HeadOfficeOverview";
 import HeadOfficeCourses from "../HeadOfficeDashboard/HeadOfficeCourses";
 import HeadOfficeApprovals from "../HeadOfficeDashboard/HeadOfficeApprovals";
 import HeadOfficeReports from "../HeadOfficeDashboard/HeadOfficeReports";
 
+// DISTRICT MANAGER
 import DistrictManagerOverview from "../DistrictManagerDashboard/DistrictManagerOverview";
 import DistrictManagerCourses from "../DistrictManagerDashboard/DistrictManagerCourses";
 import DistrictManagerApprovals from "../DistrictManagerDashboard/DistrictManagerApprovals";
 import DistrictManagerReports from "../DistrictManagerDashboard/DistrictManagerReports";
 
-import TrainingOfficerInstructor from "../TrainingOfficerDashboard/TrainingOfficerInstructor";
+// TRAINING OFFICER
 import TrainingOfficerCourses from "../TrainingOfficerDashboard/TrainingOfficerCourses";
-import TrainingOfficeOverview from "../TrainingOfficerDashboard/TrainingOfficerOverview";
+import TrainingOfficerOverview from "../TrainingOfficerDashboard/TrainingOfficerOverview";
 import TrainingOfficerReports from "../TrainingOfficerDashboard/TrainingOfficerReports";
 
+// DATA ENTRY
 import DataEntryStudents from "../DataEntryDashboard/DataEntryStudents";
 import DataEntryOverview from "../DataEntryDashboard/DataEntryOverview";
 
-
+// INSTRUCTOR
 import InstructorOverview from "../InstructorDashboard/InstructorOverview";
 import InstructorCourses from "../InstructorDashboard/InstructorCourses";
 import InstructorStudents from "../InstructorDashboard/InstructorStudents";
 import InstructorAttendance from "../InstructorDashboard/InstructorAttendance";
-
 
 const Dashboard = () => {
   const location = useLocation();
@@ -39,71 +40,84 @@ const Dashboard = () => {
   const [userName, setUserName] = useState("User");
 
   useEffect(() => {
-    const r = localStorage.getItem("user_role") as any;
+    const r = localStorage.getItem("user_role") || "";
     const first = localStorage.getItem("user_first_name") || "";
     const last = localStorage.getItem("user_last_name") || "";
+
     setRole(r);
     setUserName(`${first} ${last}`.trim() || "User");
 
-    // Auto-redirect to default tab
     if (location.pathname === "/dashboard") {
-      const defaultPath = getDefaultPath(r);
-      navigate(defaultPath, { replace: true });
+      navigate(getDefaultPath(r), { replace: true });
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname]);
 
-  const getDefaultPath = (role: string) => {
-    const map: Record<string, string> = {
+  const getDefaultPath = (r: string) => {
+    const paths: any = {
       admin: "/dashboard/admin",
       district_manager: "/dashboard/manager",
       training_officer: "/dashboard/training_officer",
       data_entry: "/dashboard/data-entry",
-      instructor: "/dashboard/instructor"
+      instructor: "/dashboard/instructor",
     };
-    return map[role] || "/dashboard/admin";
+    return paths[r] || "/dashboard/admin";
   };
 
-  if (!role) return <div className="p-8 text-center">Logging in...</div>;
+  if (!role) return <div className="p-10 text-center">Loading Dashboard...</div>;
+
+  const renderContent = () => {
+    const p = location.pathname;
+
+    // ADMIN
+    if (role === "admin") {
+      if (p === "/dashboard/admin") return <HeadOfficeOverview />;
+      if (p === "/dashboard/admin/centers") return <Centers />;
+      if (p === "/dashboard/admin/users") return <Users />;
+      if (p === "/dashboard/admin/instructors") return <Instructor />;
+      if (p === "/dashboard/admin/courses") return <HeadOfficeCourses />;
+      if (p === "/dashboard/admin/approvals") return <HeadOfficeApprovals />;
+      if (p === "/dashboard/admin/reports") return <HeadOfficeReports />;
+    }
+
+    // DISTRICT MANAGER
+    if (role === "district_manager") {
+      if (p === "/dashboard/manager") return <DistrictManagerOverview />;
+      if (p === "/dashboard/manager/centers") return <Centers />;
+      if (p === "/dashboard/manager/users") return <Users />;
+      if (p === "/dashboard/manager/courses") return <DistrictManagerCourses />;
+      if (p === "/dashboard/manager/approvals_dm") return <DistrictManagerApprovals />;
+      if (p === "/dashboard/manager/reports") return <DistrictManagerReports />;
+    }
+
+    // TRAINING OFFICER
+    if (role === "training_officer") {
+      if (p === "/dashboard/training_officer") return <TrainingOfficerOverview />;
+      if (p === "/dashboard/training_officer/courses") return <TrainingOfficerCourses />;
+      if (p === "/dashboard/training_officer/instructors") return <Instructor />;
+      if (p === "/dashboard/training_officer/reports") return <TrainingOfficerReports />;
+    }
+
+    // DATA ENTRY
+    if (role === "data_entry") {
+      if (p === "/dashboard/data-entry") return <DataEntryStudents />;
+      if (p === "/dashboard/data-entry/overview") return <DataEntryOverview />;
+    }
+
+    // INSTRUCTOR
+    if (role === "instructor") {
+      if (p === "/dashboard/instructor") return <InstructorOverview />;
+      if (p === "/dashboard/instructor/courses") return <InstructorCourses />;
+      if (p === "/dashboard/instructor/student") return <InstructorStudents />;
+      if (p === "/dashboard/instructor/attendance") return <InstructorAttendance />;
+    }
+
+    return <div className="p-10">Page Not Found</div>;
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <SharedNavbar userRole={role as any} userName={userName} />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* === ADMIN === */}
-        {role === "admin" && location.pathname === "/dashboard/admin" && <HeadOfficeOverview />}
-        {role === "admin" && location.pathname === "/dashboard/admin/centers" && <Centers />}
-        {role === "admin" && location.pathname === "/dashboard/admin/users" && <Users />}
-        {role === "admin" && location.pathname === "/dashboard/admin/approvals" && <HeadOfficeApprovals />}
-        {role === "admin" && location.pathname === "/dashboard/admin/courses" && <HeadOfficeCourses />}
-        {role === "admin" && location.pathname === "/dashboard/admin/reports" && <HeadOfficeReports />}
-
-        {/* === District MANAGER === */}
-        {role === "district_manager" && location.pathname === "/dashboard/manager" && <DistrictManagerOverview />}
-        {role === "district_manager" && location.pathname === "/dashboard/manager/centers" && <Centers />}
-        {role === "district_manager" && location.pathname === "/dashboard/manager/users" && <Users />}
-        {role === "district_manager" && location.pathname === "/dashboard/manager/courses" && <DistrictManagerCourses />}
-        {role === "district_manager" && location.pathname === "/dashboard/manager/approvals_dm" && <DistrictManagerApprovals />}
-        {role === "district_manager" && location.pathname === "/dashboard/manager/reports" && <DistrictManagerReports />}
-
-        {/* === TRAINING OFFICER === */}
-        {role === "training_officer" && location.pathname === "/dashboard/training_officer/instructors" && <TrainingOfficerInstructor />}
-        {role === "training_officer" && location.pathname === "/dashboard/training_officer" && <TrainingOfficeOverview />}
-        {role === "training_officer" && location.pathname === "/dashboard/training_officer/courses" && <TrainingOfficerCourses />}
-        {role === "training_officer" && location.pathname === "/dashboard/training_officer/reports" && <TrainingOfficerReports />}
-
-        {/* === DATA ENTRY === */}
-        {role === "data_entry" && location.pathname === "/dashboard/data-entry" && <DataEntryStudents />}
-        {role === "data_entry" && location.pathname === "/dashboard/data-entry/overview" && <DataEntryOverview />}
-        
-
-        {/* === INSTRUCTOR === */}
-        {role === "instructor" && location.pathname === "/dashboard/instructor" && <InstructorOverview />}
-        {role === "instructor" && location.pathname === "/dashboard/instructor/courses" && <InstructorCourses />}
-        {role === "instructor" && location.pathname === "/dashboard/instructor/student" && <InstructorStudents />}
-        {role === "instructor" && location.pathname === "/dashboard/instructor/attendance" && <InstructorAttendance />}
-      </div>
-    </div>
+    <SharedNavbar userRole={role as any} userName={userName}>
+      {renderContent()}
+    </SharedNavbar>
   );
 };
 

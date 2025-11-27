@@ -44,8 +44,20 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">N</span>
+              <div className="w-10 h-10 bg-transparent rounded-full flex items-center justify-center flex-shrink-0">
+                <img 
+                  src="/naita-logo.png" 
+                  alt="NAITA Logo" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.nextSibling && ((target.nextSibling as HTMLElement).style.display = 'flex');
+                  }}
+                />
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center hidden">
+                  <span className="text-red-600 font-bold text-lg">N</span>
+                </div>
               </div>
               <span className="text-xl font-bold text-gray-900">NAITA MIS</span>
             </div>

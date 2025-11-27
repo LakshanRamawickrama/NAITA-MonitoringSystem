@@ -35,8 +35,20 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         {/* Logo & Title */}
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-green-600 rounded-xl flex items-center justify-center mb-4 shadow-md">
-            <span className="text-white font-bold text-2xl">N</span>
+          <div className="mx-auto w-24 h-24 bg-transparent rounded-full flex items-center justify-center mb-4 shadow-md">
+            <img 
+              src="/naita-logo.png" 
+              alt="NAITA Logo" 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.nextSibling && ((target.nextSibling as HTMLElement).style.display = 'flex');
+              }}
+            />
+            <div className="w-full h-full bg-white rounded-full flex items-center justify-center hidden">
+              <span className="text-red-600 font-bold text-4xl">N</span>
+            </div>
           </div>
           <h2 className="text-3xl font-bold text-gray-900">NAITA MIS</h2>
           <p className="mt-2 text-gray-600">Digital Monitoring System</p>

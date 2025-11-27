@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, X, Eye, Send } from 'lucide-react';
+import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, X, Eye, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchMyCourses, fetchStudentAttendanceStats } from '../../api/api';
 import type { StudentAttendanceStats, CourseType } from '../../api/api';
 
@@ -19,7 +19,132 @@ interface MessagePopupProps {
   type: 'individual' | 'bulk';
 }
 
-// Student Details Popup Component
+// Mobile Student Card Component
+interface MobileStudentCardProps {
+  student: StudentAttendanceStats;
+  onViewDetails: (student: StudentAttendanceStats) => void;
+  onSendMessage: (student: StudentAttendanceStats) => void;
+}
+
+const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
+  student,
+  onViewDetails,
+  onSendMessage
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'at-risk': return 'bg-yellow-100 text-yellow-800';
+      case 'inactive': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getAttendanceColor = (attendance: number) => {
+    if (attendance >= 80) return 'bg-green-600';
+    if (attendance >= 60) return 'bg-yellow-600';
+    return 'bg-red-600';
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3 shadow-sm">
+      {/* Student Header */}
+      <div className="flex justify-between items-start">
+        <div className="flex items-start space-x-3 flex-1 min-w-0">
+          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <User className="w-5 h-5 text-green-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-medium text-gray-900 text-sm break-words">{student.name}</h3>
+            <p className="text-gray-500 text-xs mt-1 break-words">{student.email}</p>
+            <p className="text-gray-500 text-xs">NIC: {student.nic}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="ml-2 p-1 text-gray-400 hover:text-gray-600 flex-shrink-0"
+        >
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="w-12 bg-gray-200 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full ${getAttendanceColor(student.attendance_percentage)}`}
+              style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
+            ></div>
+          </div>
+          <span className="text-xs font-medium text-gray-700">{student.attendance_percentage}%</span>
+        </div>
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(student.status)}`}
+        >
+          {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+        </span>
+      </div>
+
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+          {/* Contact Info */}
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2 text-xs text-gray-600">
+              <Phone className="w-3 h-3" />
+              <span>{student.phone}</span>
+            </div>
+          </div>
+
+          {/* Class Summary */}
+          <div className="bg-gray-50 rounded p-2">
+            <div className="grid grid-cols-4 gap-1 text-center">
+              <div>
+                <div className="text-xs font-bold text-gray-900">{student.total_classes}</div>
+                <div className="text-[10px] text-gray-600">Total</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-green-600">{student.present_classes}</div>
+                <div className="text-[10px] text-gray-600">Present</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-yellow-600">{student.late_classes}</div>
+                <div className="text-[10px] text-gray-600">Late</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-red-600">{student.absent_classes}</div>
+                <div className="text-[10px] text-gray-600">Absent</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex space-x-2">
+            <button
+              onClick={() => onViewDetails(student)}
+              className="flex-1 bg-blue-600 text-white py-2 px-3 rounded text-xs font-medium hover:bg-blue-700 transition flex items-center justify-center space-x-1"
+            >
+              <Eye className="w-3 h-3" />
+              <span>Details</span>
+            </button>
+            <button
+              onClick={() => onSendMessage(student)}
+              className="flex-1 bg-green-600 text-white py-2 px-3 rounded text-xs font-medium hover:bg-green-700 transition flex items-center justify-center space-x-1"
+            >
+              <MessageCircle className="w-3 h-3" />
+              <span>Message</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Student Details Popup Component (Improved for Mobile)
 const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({ 
   student, 
   isOpen, 
@@ -39,29 +164,31 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col mx-2">
-        <div className="flex justify-between items-start border-b border-gray-200 px-4 py-4">
-          <div className="flex items-start space-x-3 flex-1 min-w-0">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-              <User className="w-5 h-5 text-green-600" />
+        {/* Header */}
+        <div className="flex justify-between items-start border-b border-gray-200 px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex items-start space-x-2 sm:space-x-3 flex-1 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-bold text-gray-900 break-words">{student.name}</h2>
-              <p className="text-gray-600 text-sm break-words">{student.email}</p>
-              <p className="text-gray-600 text-sm">{student.phone}</p>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 break-words">{student.name}</h2>
+              <p className="text-gray-600 text-xs sm:text-sm break-words">{student.email}</p>
+              <p className="text-gray-600 text-xs sm:text-sm">{student.phone}</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 ml-2"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
+        {/* Tabs */}
         <div className="border-b border-gray-200">
-          <div className="flex px-2">
+          <div className="flex px-1 sm:px-2">
             {[
               { id: 'details', label: 'Details', icon: User },
               { id: 'attendance', label: 'Attendance', icon: Calendar },
@@ -70,62 +197,59 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 flex flex-col items-center py-3 px-1 border-b-2 font-medium text-xs ${
+                className={`flex-1 flex flex-col items-center py-2 sm:py-3 px-1 border-b-2 font-medium text-xs ${
                   activeTab === tab.id
                     ? 'border-green-500 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <tab.icon className="w-4 h-4 mb-1" />
-                <span>{tab.label}</span>
+                <tab.icon className="w-3 h-3 sm:w-4 sm:h-4 mb-1" />
+                <span className="text-xs">{tab.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4">
           {activeTab === 'details' && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Personal Information</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600 text-sm">Full Name:</span>
-                    <span className="font-medium text-sm text-right">{student.name}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600 text-sm">NIC Number:</span>
-                    <span className="font-medium text-sm">{student.nic}</span>
-                  </div>
-                  <div className="flex justify-between items-start py-2 border-b border-gray-200">
-                    <span className="text-gray-600 text-sm">Email:</span>
-                    <span className="font-medium text-sm text-right break-all ml-2">{student.email}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600 text-sm">Phone:</span>
-                    <span className="font-medium text-sm">{student.phone}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-600 text-sm">Enrollment:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800' :
-                      student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                      student.enrollment_status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {student.enrollment_status}
-                    </span>
-                  </div>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Personal Information</h3>
+                <div className="space-y-2 sm:space-y-3">
+                  {[
+                    { label: 'Full Name', value: student.name },
+                    { label: 'NIC Number', value: student.nic },
+                    { label: 'Email', value: student.email },
+                    { label: 'Phone', value: student.phone },
+                    { label: 'Enrollment', value: student.enrollment_status, isStatus: true }
+                  ].map((item, index) => (
+                    <div key={index} className="flex justify-between items-center py-1 sm:py-2 border-b border-gray-200 last:border-b-0">
+                      <span className="text-gray-600 text-xs sm:text-sm">{item.label}:</span>
+                      {item.isStatus ? (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.value === 'Enrolled' ? 'bg-green-100 text-green-800' :
+                          item.value === 'Completed' ? 'bg-blue-100 text-blue-800' :
+                          item.value === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {item.value}
+                        </span>
+                      ) : (
+                        <span className="font-medium text-xs sm:text-sm text-right break-all ml-2">{item.value}</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Academic Information</h3>
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Academic Information</h3>
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600 text-sm">Attendance:</span>
+                  <div className="flex justify-between items-center py-1 sm:py-2 border-b border-gray-200">
+                    <span className="text-gray-600 text-xs sm:text-sm">Attendance:</span>
                     <div className="flex items-center space-x-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                      <div className="w-12 sm:w-16 bg-gray-200 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full ${
                             student.attendance_percentage >= 80 ? 'bg-green-600' :
@@ -134,11 +258,11 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                           style={{ width: `${student.attendance_percentage}%` }}
                         ></div>
                       </div>
-                      <span className="font-medium text-sm w-12 text-right">{student.attendance_percentage}%</span>
+                      <span className="font-medium text-xs sm:text-sm w-8 sm:w-12 text-right">{student.attendance_percentage}%</span>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                    <span className="text-gray-600 text-sm">Status:</span>
+                  <div className="flex justify-between items-center py-1 sm:py-2 border-b border-gray-200">
+                    <span className="text-gray-600 text-xs sm:text-sm">Status:</span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       student.status === 'active' ? 'bg-green-100 text-green-800' :
                       student.status === 'at-risk' ? 'bg-yellow-100 text-yellow-800' :
@@ -147,21 +271,21 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                       {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 py-2">
+                  <div className="grid grid-cols-2 gap-2 py-1 sm:py-2">
                     <div className="text-center bg-white rounded p-2">
-                      <div className="text-lg font-bold text-gray-900">{student.total_classes}</div>
+                      <div className="text-sm sm:text-lg font-bold text-gray-900">{student.total_classes}</div>
                       <div className="text-xs text-gray-600">Total Classes</div>
                     </div>
                     <div className="text-center bg-white rounded p-2">
-                      <div className="text-lg font-bold text-green-600">{student.present_classes}</div>
+                      <div className="text-sm sm:text-lg font-bold text-green-600">{student.present_classes}</div>
                       <div className="text-xs text-gray-600">Present</div>
                     </div>
                     <div className="text-center bg-white rounded p-2">
-                      <div className="text-lg font-bold text-yellow-600">{student.late_classes}</div>
+                      <div className="text-sm sm:text-lg font-bold text-yellow-600">{student.late_classes}</div>
                       <div className="text-xs text-gray-600">Late</div>
                     </div>
                     <div className="text-center bg-white rounded p-2">
-                      <div className="text-lg font-bold text-red-600">{student.absent_classes}</div>
+                      <div className="text-sm sm:text-lg font-bold text-red-600">{student.absent_classes}</div>
                       <div className="text-xs text-gray-600">Absent</div>
                     </div>
                   </div>
@@ -171,37 +295,37 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
           )}
 
           {activeTab === 'attendance' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Attendance Summary</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="bg-green-100 rounded-lg p-3">
-                    <div className="text-xl font-bold text-green-800">{student.present_classes}</div>
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Attendance Summary</h3>
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 text-center">
+                  <div className="bg-green-100 rounded-lg p-2 sm:p-3">
+                    <div className="text-lg sm:text-xl font-bold text-green-800">{student.present_classes}</div>
                     <div className="text-xs text-green-600">Present</div>
                   </div>
-                  <div className="bg-yellow-100 rounded-lg p-3">
-                    <div className="text-xl font-bold text-yellow-800">{student.late_classes}</div>
+                  <div className="bg-yellow-100 rounded-lg p-2 sm:p-3">
+                    <div className="text-lg sm:text-xl font-bold text-yellow-800">{student.late_classes}</div>
                     <div className="text-xs text-yellow-600">Late</div>
                   </div>
-                  <div className="bg-red-100 rounded-lg p-3">
-                    <div className="text-xl font-bold text-red-800">{student.absent_classes}</div>
+                  <div className="bg-red-100 rounded-lg p-2 sm:p-3">
+                    <div className="text-lg sm:text-xl font-bold text-red-800">{student.absent_classes}</div>
                     <div className="text-xs text-red-600">Absent</div>
                   </div>
-                  <div className="bg-blue-100 rounded-lg p-3">
-                    <div className="text-xl font-bold text-blue-800">{student.total_classes}</div>
+                  <div className="bg-blue-100 rounded-lg p-2 sm:p-3">
+                    <div className="text-lg sm:text-xl font-bold text-blue-800">{student.total_classes}</div>
                     <div className="text-xs text-blue-600">Total</div>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Attendance Trend</h4>
+              <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
+                <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Attendance Trend</h4>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span>Current Rate:</span>
                     <span className="font-medium">{student.attendance_percentage}%</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span>Recommendation:</span>
                     <span className={`font-medium ${
                       student.attendance_percentage >= 80 ? 'text-green-600' :
@@ -217,17 +341,17 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
           )}
 
           {activeTab === 'performance' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Performance Analysis</h3>
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Performance Analysis</h3>
               
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Attendance Performance</h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
+              <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
+                <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Attendance Performance</h4>
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span>Overall Score:</span>
                     <span className="font-medium">{student.attendance_percentage}/100</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs sm:text-sm">
                     <span>Class Participation:</span>
                     <span className="font-medium">
                       {student.present_classes > 0 ? Math.round((student.present_classes / student.total_classes) * 100) : 0}%
@@ -236,11 +360,11 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                 </div>
               </div>
               
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Progress Indicators</h4>
-                <div className="space-y-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
+                <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Progress Indicators</h4>
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <div className="flex justify-between text-sm mb-2">
+                    <div className="flex justify-between text-xs sm:text-sm mb-2">
                       <span>Attendance Goal (80%):</span>
                       <span>{student.attendance_percentage >= 80 ? '✅ Achieved' : '❌ Not Met'}</span>
                     </div>
@@ -252,7 +376,7 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                     </div>
                   </div>
                   <div>
-                    <div className="flex justify-between text-sm mb-2">
+                    <div className="flex justify-between text-xs sm:text-sm mb-2">
                       <span>Minimum Requirement (60%):</span>
                       <span>{student.attendance_percentage >= 60 ? '✅ Met' : '❌ Below'}</span>
                     </div>
@@ -269,22 +393,23 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
           )}
         </div>
 
-        <div className="border-t border-gray-200 px-4 py-4 bg-gray-50">
+        {/* Message Input */}
+        <div className="border-t border-gray-200 px-3 sm:px-4 py-3 sm:py-4 bg-gray-50">
           <div className="flex flex-col space-y-2">
             <input
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type a message to this student..."
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             />
             <button
               onClick={sendMessage}
               disabled={!message.trim()}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-xs sm:text-sm"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Send Message</span>
             </button>
           </div>
@@ -294,7 +419,7 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
   );
 };
 
-// Message Popup Component
+// Message Popup Component (Improved for Mobile)
 const MessagePopup: React.FC<MessagePopupProps> = ({ 
   isOpen, 
   onClose, 
@@ -316,20 +441,20 @@ const MessagePopup: React.FC<MessagePopupProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            {type === 'individual' ? 'Send Message to Student' : 'Send Bulk Message'}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col mx-2">
+        <div className="flex justify-between items-center border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+            {type === 'individual' ? 'Send Message' : 'Bulk Message'}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Subject
             </label>
             <input
@@ -337,45 +462,45 @@ const MessagePopup: React.FC<MessagePopupProps> = ({
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Message subject..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Message
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Type your message here..."
-              rows={6}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              rows={4}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
             />
           </div>
 
           {type === 'bulk' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 sm:p-3">
+              <p className="text-xs sm:text-sm text-yellow-800">
                 This message will be sent to {students.length} student{students.length !== 1 ? 's' : ''}.
               </p>
             </div>
           )}
         </div>
 
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+        <div className="border-t border-gray-200 px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors order-2 sm:order-1"
+            className="px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors text-xs sm:text-sm order-2 sm:order-1"
           >
             Cancel
           </button>
           <button
             onClick={handleSend}
             disabled={!message.trim()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 order-1 sm:order-2"
+            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-xs sm:text-sm order-1 sm:order-2"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>Send Message</span>
           </button>
         </div>
@@ -514,32 +639,17 @@ const InstructorStudents: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'at-risk': return 'bg-yellow-100 text-yellow-800';
-      case 'inactive': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getAttendanceColor = (attendance: number) => {
-    if (attendance >= 80) return 'bg-green-600';
-    if (attendance >= 60) return 'bg-yellow-600';
-    return 'bg-red-600';
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="flex justify-between items-start sm:items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Students</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">My Students</h1>
             <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage and monitor your students' progress and attendance</p>
             {courses.length === 0 && !coursesLoading && (
-              <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-yellow-800 text-sm">
+              <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2 sm:p-3">
+                <p className="text-yellow-800 text-xs sm:text-sm">
                   No courses assigned to you yet. Please contact administrator to get assigned to courses.
                 </p>
               </div>
@@ -548,23 +658,23 @@ const InstructorStudents: React.FC = () => {
         </div>
 
         {/* Course Selection */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <BookOpen className="w-4 h-4 inline mr-1" />
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                 Select Your Course
               </label>
               {coursesLoading ? (
                 <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
-                  <span className="text-gray-500 text-sm">Loading your courses...</span>
+                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-green-600"></div>
+                  <span className="text-gray-500 text-xs sm:text-sm">Loading your courses...</span>
                 </div>
               ) : (
                 <select 
                   value={selectedCourse || ''} 
                   onChange={(e) => setSelectedCourse(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:ring-1 sm:focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   disabled={courses.length === 0}
                 >
                   <option value="">{courses.length === 0 ? 'No courses available' : 'Select a course'}</option>
@@ -576,7 +686,7 @@ const InstructorStudents: React.FC = () => {
                 </select>
               )}
               {selectedCourse && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
                   {courses.find(c => c.id === selectedCourse)?.center_details?.district || 'No district info'} • 
                   {courses.find(c => c.id === selectedCourse)?.center_details?.name || 'No center info'}
                 </p>
@@ -584,11 +694,11 @@ const InstructorStudents: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Status</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Filter by Status</label>
               <select 
                 value={statusFilter} 
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:ring-1 sm:focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 disabled={students.length === 0}
               >
                 <option value="all">All Students</option>
@@ -601,15 +711,15 @@ const InstructorStudents: React.FC = () => {
         </div>
 
         {/* Search */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="relative">
-            <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
+            <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-2.5 sm:top-3 text-gray-400" />
             <input
               type="text"
               placeholder="Search students by name, email or NIC..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full pl-9 sm:pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-1 sm:focus:ring-2 focus:ring-green-500 focus:border-transparent text-xs sm:text-sm"
               disabled={students.length === 0}
             />
           </div>
@@ -617,200 +727,237 @@ const InstructorStudents: React.FC = () => {
 
         {/* Stats */}
         {selectedCourse && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
-            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 lg:p-6 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Students</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900">{attendanceStats.total}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Total Students</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{attendanceStats.total}</p>
                 </div>
-                <User className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+                <User className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600" />
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 lg:p-6 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Average Attendance</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Average Attendance</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                     {attendanceStats.average}%
                   </p>
                 </div>
-                <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-blue-600" />
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 lg:p-6 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">At Risk</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">At Risk</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                     {attendanceStats.atRisk}
                   </p>
                 </div>
-                <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
+                <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-yellow-600" />
               </div>
             </div>
-            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 lg:p-6 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Excellent (90%+)</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Excellent (90%+)</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                     {attendanceStats.excellent}
                   </p>
                 </div>
-                <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-purple-600" />
               </div>
             </div>
           </div>
         )}
 
-        {/* Students Table */}
+        {/* Students List */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
           {coursesLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-              <span className="ml-3 text-gray-600">Loading your courses...</span>
+            <div className="flex justify-center items-center py-8 sm:py-12">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-green-600"></div>
+              <span className="ml-3 text-gray-600 text-sm sm:text-base">Loading your courses...</span>
             </div>
           ) : loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-              <span className="ml-3 text-gray-600">Loading students...</span>
+            <div className="flex justify-center items-center py-8 sm:py-12">
+              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-green-600"></div>
+              <span className="ml-3 text-gray-600 text-sm sm:text-base">Loading students...</span>
             </div>
           ) : !selectedCourse ? (
-            <div className="text-center py-12">
-              <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">Please select a course to view students</p>
+            <div className="text-center py-8 sm:py-12">
+              <BookOpen className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+              <p className="text-gray-500 text-base sm:text-lg">Please select a course to view students</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student
-                    </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Attendance
-                    </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Classes
-                    </th>
-                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                            <User className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">{student.name}</div>
-                            <div className="text-xs text-gray-500 truncate">
-                              NIC: {student.nic}
+            <>
+              {/* Mobile View - Cards */}
+              <div className="md:hidden p-3 sm:p-4">
+                {filteredStudents.map((student) => (
+                  <MobileStudentCard
+                    key={student.id}
+                    student={student}
+                    onViewDetails={openStudentDetails}
+                    onSendMessage={(student) => openMessagePopup('individual', student)}
+                  />
+                ))}
+                
+                {filteredStudents.length === 0 && students.length > 0 && (
+                  <div className="text-center py-8">
+                    <Search className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-gray-500 text-base sm:text-lg">No students match your search criteria</p>
+                  </div>
+                )}
+                
+                {students.length === 0 && selectedCourse && (
+                  <div className="text-center py-8">
+                    <User className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-gray-500 text-base sm:text-lg">No students found for this course</p>
+                    <p className="text-gray-400 text-xs sm:text-sm mt-2">
+                      Students will appear here once they are enrolled in this course
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop View - Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Student
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contact
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Attendance
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Classes
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredStudents.map((student) => (
+                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                              <User className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{student.name}</div>
+                              <div className="text-xs text-gray-500 truncate">
+                                NIC: {student.nic}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
-                          <Mail className="w-4 h-4" />
-                          <span className="truncate max-w-[120px] sm:max-w-xs">{student.email}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-500">
-                          <Phone className="w-4 h-4" />
-                          <span className="truncate">{student.phone}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2 mr-2">
-                            <div
-                              className={`h-2 rounded-full ${getAttendanceColor(student.attendance_percentage)}`}
-                              style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
-                            ></div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
+                            <Mail className="w-4 h-4" />
+                            <span className="truncate max-w-[120px] sm:max-w-xs">{student.email}</span>
                           </div>
-                          <span className="text-sm font-medium text-gray-700 w-12 text-right">{student.attendance_percentage}%</span>
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                            student.status
-                          )}`}
-                        >
-                          {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {student.total_classes}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          P:{student.present_classes} L:{student.late_classes} A:{student.absent_classes}
-                        </div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-1 sm:space-x-2">
-                          <button
-                            onClick={() => openStudentDetails(student)}
-                            className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
-                            title="View details"
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Phone className="w-4 h-4" />
+                            <span className="truncate">{student.phone}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2 mr-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  student.attendance_percentage >= 80 ? 'bg-green-600' :
+                                  student.attendance_percentage >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                                }`}
+                                style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700 w-12 text-right">{student.attendance_percentage}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              student.status === 'active' ? 'bg-green-100 text-green-800' :
+                              student.status === 'at-risk' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}
                           >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openMessagePopup('individual', student)}
-                            className="text-green-600 hover:text-green-900 transition-colors p-1 rounded hover:bg-green-50"
-                            title="Send message"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              
-              {filteredStudents.length === 0 && students.length > 0 && (
-                <div className="text-center py-12">
-                  <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg">No students match your search criteria</p>
-                </div>
-              )}
-              
-              {students.length === 0 && selectedCourse && (
-                <div className="text-center py-12">
-                  <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg">No students found for this course</p>
-                  <p className="text-gray-400 text-sm mt-2">
-                    Students will appear here once they are enrolled in this course
-                  </p>
-                </div>
-              )}
-            </div>
+                            {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {student.total_classes}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            P:{student.present_classes} L:{student.late_classes} A:{student.absent_classes}
+                          </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-1 sm:space-x-2">
+                            <button
+                              onClick={() => openStudentDetails(student)}
+                              className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
+                              title="View details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => openMessagePopup('individual', student)}
+                              className="text-green-600 hover:text-green-900 transition-colors p-1 rounded hover:bg-green-50"
+                              title="Send message"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                {filteredStudents.length === 0 && students.length > 0 && (
+                  <div className="text-center py-12">
+                    <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No students match your search criteria</p>
+                  </div>
+                )}
+                
+                {students.length === 0 && selectedCourse && (
+                  <div className="text-center py-12">
+                    <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No students found for this course</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      Students will appear here once they are enrolled in this course
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
 
         {/* Quick Actions */}
         {filteredStudents.length > 0 && (
-          <div className="mt-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <div className="mt-4 sm:mt-6">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <button 
                   onClick={() => openMessagePopup('bulk')}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
                 >
                   <MessageCircle className="w-4 h-4" />
                   <span>Send Bulk Message to All Students</span>
@@ -818,9 +965,9 @@ const InstructorStudents: React.FC = () => {
               </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow-md p-6 mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Summary</h3>
-              <div className="space-y-2 text-sm text-gray-600">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-4 sm:mt-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Course Summary</h3>
+              <div className="space-y-2 text-xs sm:text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>Total Enrolled:</span>
                   <span className="font-medium">{attendanceStats.total} students</span>

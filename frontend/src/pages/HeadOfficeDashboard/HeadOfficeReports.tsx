@@ -1,4 +1,4 @@
-// HeadOfficeReports.tsx - COMPLETE WITH REAL BACKEND INTEGRATION
+// HeadOfficeReports.tsx - COMPLETE WITH REAL BACKEND INTEGRATION AND IMPROVED MOBILE RESPONSIVENESS
 import React, { useState, useEffect } from 'react';
 import { 
   Download, 
@@ -22,9 +22,9 @@ import {
   canAccessHeadOfficeReports,
   getUserRole 
 } from '../../api/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
-// Export Modal Component
+// Export Modal Component (Improved for mobile: full width on small screens, better spacing)
 const ExportModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -79,41 +79,41 @@ const ExportModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md sm:max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <Download className="w-6 h-6 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Generate Head Office Report</h3>
+            <Download className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Generate Head Office Report</h3>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Format Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
               Report Format
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <button
                 onClick={() => setFormat('pdf')}
-                className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                className={`flex flex-col items-center p-3 sm:p-4 border-2 rounded-lg transition-all ${
                   format === 'pdf'
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <FileText className={`w-8 h-8 mb-2 ${
+                <FileText className={`w-6 h-6 sm:w-8 sm:h-8 mb-2 ${
                   format === 'pdf' ? 'text-blue-600' : 'text-gray-400'
                 }`} />
-                <span className={`font-medium ${
+                <span className={`font-medium text-sm sm:text-base ${
                   format === 'pdf' ? 'text-blue-900' : 'text-gray-700'
                 }`}>
                   PDF
@@ -123,16 +123,16 @@ const ExportModal: React.FC<{
 
               <button
                 onClick={() => setFormat('excel')}
-                className={`flex flex-col items-center p-4 border-2 rounded-lg transition-all ${
+                className={`flex flex-col items-center p-3 sm:p-4 border-2 rounded-lg transition-all ${
                   format === 'excel'
                     ? 'border-green-500 bg-green-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <Table className={`w-8 h-8 mb-2 ${
+                <Table className={`w-6 h-6 sm:w-8 sm:h-8 mb-2 ${
                   format === 'excel' ? 'text-green-600' : 'text-gray-400'
                 }`} />
-                <span className={`font-medium ${
+                <span className={`font-medium text-sm sm:text-base ${
                   format === 'excel' ? 'text-green-900' : 'text-gray-700'
                 }`}>
                   Excel
@@ -150,7 +150,7 @@ const ExportModal: React.FC<{
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value as any)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             >
               <option value="comprehensive">Island-Wide Comprehensive</option>
               <option value="island">Island Performance</option>
@@ -168,7 +168,7 @@ const ExportModal: React.FC<{
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as any)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3 text-sm"
             >
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
@@ -177,7 +177,7 @@ const ExportModal: React.FC<{
             </select>
 
             {period === 'custom' && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Start Date</label>
                   <input
@@ -202,7 +202,7 @@ const ExportModal: React.FC<{
 
           {/* Include Options */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
               Include in Report
             </label>
             <div className="space-y-2">
@@ -261,11 +261,11 @@ const ExportModal: React.FC<{
           </div>
 
           {/* Format Info */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">
               {format === 'pdf' ? 'PDF Head Office Report' : 'Excel Head Office Report'}
             </h4>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs sm:text-sm text-gray-600">
               {format === 'pdf' 
                 ? 'Comprehensive island-wide report with district comparisons, center performance, and instructor analysis.'
                 : 'Detailed spreadsheet with island-wide data for strategic analysis and decision making.'
@@ -275,17 +275,17 @@ const ExportModal: React.FC<{
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
+        <div className="flex justify-end space-x-3 p-4 sm:p-6 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+            className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleExport}
             disabled={isExporting}
-            className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+            className={`flex items-center space-x-2 px-3 sm:px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
               isExporting
                 ? 'bg-gray-400 cursor-not-allowed'
                 : format === 'pdf'
@@ -311,31 +311,31 @@ const ExportModal: React.FC<{
   );
 };
 
-// Loading Component
+// Loading Component (Improved: smaller text on mobile)
 const LoadingSpinner: React.FC = () => (
   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
     <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-      <p className="mt-4 text-gray-600 text-lg">Loading island-wide reports...</p>
-      <p className="text-gray-500 text-sm">This may take a few moments</p>
+      <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="mt-4 text-base sm:text-lg text-gray-600">Loading island-wide reports...</p>
+      <p className="text-sm text-gray-500">This may take a few moments</p>
     </div>
   </div>
 );
 
-// Permission Denied Component
+// Permission Denied Component (Improved: responsive width and padding)
 const PermissionDenied: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="text-center max-w-md">
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <Shield className="w-12 h-12 text-red-600 mx-auto mb-4" />
-        <div className="text-red-800 font-semibold text-lg mb-2">Access Denied</div>
-        <p className="text-red-600 mb-4">
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="text-center w-full max-w-md">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6">
+        <Shield className="w-10 h-10 sm:w-12 sm:h-12 text-red-600 mx-auto mb-4" />
+        <div className="text-red-800 font-semibold text-base sm:text-lg mb-2">Access Denied</div>
+        <p className="text-red-600 text-sm sm:text-base mb-4">
           Head Office Reports are only accessible to administrators. 
           Your current role ({getUserRole()}) does not have permission to view this section.
         </p>
         <button
           onClick={() => window.history.back()}
-          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          className="bg-red-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
         >
           Go Back
         </button>
@@ -344,17 +344,17 @@ const PermissionDenied: React.FC = () => (
   </div>
 );
 
-// Error Component
+// Error Component (Improved: responsive)
 const ErrorDisplay: React.FC<{ error: string; onRetry: () => void }> = ({ error, onRetry }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="text-center max-w-md">
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-        <div className="text-red-800 font-semibold text-lg mb-2">Error Loading Reports</div>
-        <p className="text-red-600 mb-4">{error}</p>
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="text-center w-full max-w-md">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6">
+        <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-red-600 mx-auto mb-4" />
+        <div className="text-red-800 font-semibold text-base sm:text-lg mb-2">Error Loading Reports</div>
+        <p className="text-red-600 text-sm sm:text-base mb-4">{error}</p>
         <button
           onClick={onRetry}
-          className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center mx-auto"
+          className="bg-red-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center mx-auto text-sm sm:text-base"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Try Again
@@ -364,17 +364,17 @@ const ErrorDisplay: React.FC<{ error: string; onRetry: () => void }> = ({ error,
   </div>
 );
 
-// Empty State Component
+// Empty State Component (Improved: responsive)
 const EmptyState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="text-center max-w-md">
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-        <AlertCircle className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
-        <div className="text-yellow-800 font-semibold text-lg mb-2">No Data Available</div>
-        <p className="text-yellow-600 mb-4">Unable to load report data. The system may be initializing or there might be connectivity issues.</p>
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="text-center w-full max-w-md">
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6">
+        <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-600 mx-auto mb-4" />
+        <div className="text-yellow-800 font-semibold text-base sm:text-lg mb-2">No Data Available</div>
+        <p className="text-yellow-600 text-sm sm:text-base mb-4">Unable to load report data. The system may be initializing or there might be connectivity issues.</p>
         <button
           onClick={onRetry}
-          className="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center justify-center mx-auto"
+          className="bg-yellow-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center justify-center mx-auto text-sm sm:text-base"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Retry
@@ -384,7 +384,7 @@ const EmptyState: React.FC<{ onRetry: () => void }> = ({ onRetry }) => (
   </div>
 );
 
-// Main Head Office Reports Component
+// Main Head Office Reports Component (Improved mobile: tables converted to cards on small screens, responsive heights, flex wrapping)
 const HeadOfficeReports: React.FC = () => {
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -468,27 +468,18 @@ const HeadOfficeReports: React.FC = () => {
     }
   };
 
-  // Custom label for pie chart
-  const renderCustomizedLabel = ({
-    cx, cy, midAngle, innerRadius, outerRadius, name
-  }: any) => {
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.6;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
+  // Custom Legend for pie chart
+  const CustomLegend = (props: any) => {
+    const { payload } = props;
     return (
-      <text 
-        x={x} 
-        y={y} 
-        fill="white" 
-        textAnchor={x > cx ? 'start' : 'end'} 
-        dominantBaseline="central"
-        fontSize={11}
-        fontWeight="bold"
-      >
-        {name}
-      </text>
+      <div className="flex flex-wrap justify-center mt-4 space-x-4 space-y-2">
+        {payload.map((entry: any, index: number) => (
+          <div key={`item-${index}`} className="flex items-center">
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: entry.color }} />
+            <span className="text-sm text-gray-700">{entry.value} - {entry.payload.value}%</span>
+          </div>
+        ))}
+      </div>
     );
   };
 
@@ -521,46 +512,46 @@ const HeadOfficeReports: React.FC = () => {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        {/* Header (Improved: flex-col on small screens for better stacking) */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
           <div>
             <div className="flex items-center space-x-3">
-              <Shield className="w-8 h-8 text-blue-600" />
+              <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Head Office Reports</h1>
-                <p className="text-gray-600 mt-1">Island-wide performance overview and strategic analytics</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Head Office Reports</h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">Island-wide performance overview and strategic analytics</p>
               </div>
             </div>
-            <p className="text-gray-500 text-sm mt-2">
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">
               Last updated: {new Date().toLocaleString()}
               {refreshing && <span className="ml-2 text-blue-600">Refreshing...</span>}
             </p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
             <button
               onClick={loadReportData}
               disabled={refreshing}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex items-center justify-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                 refreshing
                   ? 'bg-gray-400 text-white cursor-not-allowed'
                   : 'bg-gray-600 text-white hover:bg-gray-700'
               }`}
             >
-              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
+              <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="text-sm">{refreshing ? 'Refreshing...' : 'Refresh Data'}</span>
             </button>
             <button
               onClick={() => setExportModalOpen(true)}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <Download className="w-5 h-5" />
-              <span>Export Island Report</span>
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm">Export Island Report</span>
             </button>
           </div>
         </div>
 
-        {/* Island Overview Cards - USING REAL DATA */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Island Overview Cards - USING REAL DATA (Already responsive, added gap adjustments) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
@@ -568,8 +559,8 @@ const HeadOfficeReports: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">{reportData.summary.total_districts}</p>
                 <p className="text-xs text-gray-500 mt-1">Active regions</p>
               </div>
-              <div className="bg-blue-50 p-3 rounded-full">
-                <MapPin className="w-6 h-6 text-blue-600" />
+              <div className="bg-blue-50 p-2 sm:p-3 rounded-full">
+                <MapPin className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
             </div>
           </div>
@@ -581,8 +572,8 @@ const HeadOfficeReports: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">{reportData.summary.total_centers}</p>
                 <p className="text-xs text-gray-500 mt-1">Training locations</p>
               </div>
-              <div className="bg-green-50 p-3 rounded-full">
-                <Building2 className="w-6 h-6 text-green-600" />
+              <div className="bg-green-50 p-2 sm:p-3 rounded-full">
+                <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
               </div>
             </div>
           </div>
@@ -594,8 +585,8 @@ const HeadOfficeReports: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">{reportData.summary.total_students.toLocaleString()}</p>
                 <p className="text-xs text-gray-500 mt-1">Registered learners</p>
               </div>
-              <div className="bg-purple-50 p-3 rounded-full">
-                <Users className="w-6 h-6 text-purple-600" />
+              <div className="bg-purple-50 p-2 sm:p-3 rounded-full">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
               </div>
             </div>
           </div>
@@ -607,15 +598,15 @@ const HeadOfficeReports: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">{reportData.summary.total_instructors}</p>
                 <p className="text-xs text-gray-500 mt-1">Teaching staff</p>
               </div>
-              <div className="bg-orange-50 p-3 rounded-full">
-                <GraduationCap className="w-6 h-6 text-orange-600" />
+              <div className="bg-orange-50 p-2 sm:p-3 rounded-full">
+                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Additional Island Metrics - USING REAL DATA */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
@@ -623,8 +614,8 @@ const HeadOfficeReports: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">{reportData.summary.total_courses}</p>
                 <p className="text-xs text-gray-500 mt-1">Running programs</p>
               </div>
-              <div className="bg-indigo-50 p-3 rounded-full">
-                <BookOpen className="w-6 h-6 text-indigo-600" />
+              <div className="bg-indigo-50 p-2 sm:p-3 rounded-full">
+                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />
               </div>
             </div>
           </div>
@@ -636,8 +627,8 @@ const HeadOfficeReports: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">{reportData.summary.completion_rate}%</p>
                 <p className="text-xs text-gray-500 mt-1">Overall success rate</p>
               </div>
-              <div className="bg-teal-50 p-3 rounded-full">
-                <TrendingUp className="w-6 h-6 text-teal-600" />
+              <div className="bg-teal-50 p-2 sm:p-3 rounded-full">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" />
               </div>
             </div>
           </div>
@@ -649,32 +640,35 @@ const HeadOfficeReports: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">{reportData.summary.pending_approvals}</p>
                 <p className="text-xs text-gray-500 mt-1">Awaiting review</p>
               </div>
-              <div className="bg-red-50 p-3 rounded-full">
-                <CheckCircle className="w-6 h-6 text-red-600" />
+              <div className="bg-red-50 p-2 sm:p-3 rounded-full">
+                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Charts - USING REAL DATA */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Charts - USING REAL DATA (Improved: dynamic height based on screen size) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
           {/* Island Trends */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Island-Wide Trends</h3>
-              <span className="text-sm text-gray-500">Last 6 months</span>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Island-Wide Trends</h3>
+              <span className="text-xs sm:text-sm text-gray-500">Last 6 months</span>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
               <LineChart data={reportData.island_trends}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis 
                   dataKey="period" 
                   stroke="#6b7280"
-                  fontSize={12}
+                  fontSize={10}
+                  angle={-45}
+                  textAnchor="end"
+                  height={70}
                 />
                 <YAxis 
                   stroke="#6b7280"
-                  fontSize={12}
+                  fontSize={10}
                 />
                 <Tooltip 
                   contentStyle={{
@@ -716,22 +710,23 @@ const HeadOfficeReports: React.FC = () => {
           </div>
 
           {/* Course Distribution */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Course Distribution</h3>
-              <span className="text-sm text-gray-500">By category</span>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Course Distribution</h3>
+              <span className="text-xs sm:text-sm text-gray-500">By category</span>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 300}>
               <PieChart>
                 <Pie
                   data={reportData.course_distribution}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={renderCustomizedLabel}
-                  outerRadius={100}
+                  innerRadius={window.innerWidth < 640 ? 40 : 60}
+                  outerRadius={window.innerWidth < 640 ? 80 : 100}
                   fill="#8884d8"
                   dataKey="value"
+                  paddingAngle={5}
+                  isAnimationActive={true}
                 >
                   {reportData.course_distribution.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -746,30 +741,60 @@ const HeadOfficeReports: React.FC = () => {
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                   }}
                 />
+                <Legend content={<CustomLegend />} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {reportData.course_distribution.map((category: any, index: number) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: category.color }}
-                  ></div>
-                  <span className="text-sm text-gray-600">{category.name}</span>
-                  <span className="text-sm font-medium text-gray-900">{category.value}%</span>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 
-        {/* District Performance - USING REAL DATA */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm mb-6">
+        {/* District Performance - USING REAL DATA (Improved: cards on mobile, table on sm+) */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">District Performance Comparison</h3>
-            <span className="text-sm text-gray-500">{reportData.district_performance.length} districts</span>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">District Performance Comparison</h3>
+            <span className="text-xs sm:text-sm text-gray-500">{reportData.district_performance.length} districts</span>
           </div>
-          <div className="overflow-x-auto">
+          
+          {/* Mobile View: Cards */}
+          <div className="sm:hidden space-y-4">
+            {reportData.district_performance.map((district: any, index: number) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <div className="text-sm font-medium text-gray-900 mb-2">{district.name}</div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div>Centers:</div><div className="font-medium">{district.centers}</div>
+                  <div>Students:</div><div className="font-medium">{district.students.toLocaleString()}</div>
+                  <div>Instructors:</div><div className="font-medium">{district.instructors}</div>
+                  <div>Completion:</div>
+                  <div className="flex items-center">
+                    <span className="font-medium">{district.completion}%</span>
+                    <div className={`ml-2 w-2 h-2 rounded-full ${
+                      district.completion >= 80 ? 'bg-green-500' :
+                      district.completion >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}></div>
+                  </div>
+                  <div>Growth:</div>
+                  <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    district.growth > 10 
+                      ? 'bg-green-100 text-green-800'
+                      : district.growth > 0
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    <TrendingUp className={`w-3 h-3 mr-1 ${
+                      district.growth > 10 
+                        ? 'text-green-600'
+                        : district.growth > 0
+                        ? 'text-yellow-600'
+                        : 'text-red-600'
+                    }`} />
+                    {district.growth > 0 ? '+' : ''}{district.growth}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">
@@ -830,13 +855,37 @@ const HeadOfficeReports: React.FC = () => {
           </div>
         </div>
 
-        {/* Top Performing Centers - USING REAL DATA */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm mb-6">
+        {/* Top Performing Centers - USING REAL DATA (Improved: cards on mobile) */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Top Performing Centers Island-Wide</h3>
-            <span className="text-sm text-gray-500">By student completion rate</span>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Top Performing Centers Island-Wide</h3>
+            <span className="text-xs sm:text-sm text-gray-500">By student completion rate</span>
           </div>
-          <div className="overflow-x-auto">
+          
+          {/* Mobile View: Cards */}
+          <div className="sm:hidden space-y-4">
+            {reportData.top_performing_centers.map((center: any, index: number) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <div className="text-sm font-medium text-gray-900 mb-2">{center.name}</div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div>District:</div><div className="font-medium">{center.district}</div>
+                  <div>Students:</div><div className="font-medium">{center.students}</div>
+                  <div>Instructors:</div><div className="font-medium">{center.instructors}</div>
+                  <div>Completion:</div>
+                  <div className="flex items-center">
+                    <span className="font-medium">{center.completion}%</span>
+                    <div className={`ml-2 w-2 h-2 rounded-full ${
+                      center.completion >= 90 ? 'bg-green-500' :
+                      center.completion >= 80 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">
@@ -878,13 +927,51 @@ const HeadOfficeReports: React.FC = () => {
           </div>
         </div>
 
-        {/* Instructor Summary - USING REAL DATA */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+        {/* Instructor Summary - USING REAL DATA (Improved: cards on mobile) */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Instructor Summary by District</h3>
-            <span className="text-sm text-gray-500">Teaching staff overview</span>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">Instructor Summary by District</h3>
+            <span className="text-xs sm:text-sm text-gray-500">Teaching staff overview</span>
           </div>
-          <div className="overflow-x-auto">
+          
+          {/* Mobile View: Cards */}
+          <div className="sm:hidden space-y-4">
+            {reportData.instructor_summary.map((instructor: any, index: number) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+                <div className="text-sm font-medium text-gray-900 mb-2">{instructor.district}</div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div>Total:</div><div className="font-medium">{instructor.total}</div>
+                  <div>Active:</div>
+                  <div className="font-medium">
+                    {instructor.active} ({Math.round((instructor.active / instructor.total) * 100)}%)
+                  </div>
+                  <div>Avg Rating:</div>
+                  <div className="flex items-center">
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <span
+                          key={i}
+                          className={`text-xs ${
+                            i < Math.floor(instructor.avg_rating)
+                              ? 'text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    <span className="ml-1 font-medium">
+                      {instructor.avg_rating.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">
@@ -939,13 +1026,13 @@ const HeadOfficeReports: React.FC = () => {
           </div>
         </div>
 
-        {/* System Information */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm mt-6">
+        {/* System Information (Improved: grid-cols-1 on mobile) */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6 shadow-sm mt-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">System Information</h3>
-            <span className="text-sm text-gray-500">Report generated for administrative use</span>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900">System Information</h3>
+            <span className="text-xs sm:text-sm text-gray-500">Report generated for administrative use</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-gray-600">Generated By</p>
               <p className="font-medium text-gray-900">Head Office Administrator</p>

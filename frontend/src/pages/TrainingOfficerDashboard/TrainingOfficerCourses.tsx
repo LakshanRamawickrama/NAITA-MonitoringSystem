@@ -1,4 +1,4 @@
-// TrainingOfficerCourses.tsx - COMPLETE WORKING VERSION
+// TrainingOfficerCourses.tsx - COMPLETE WORKING VERSION WITH IMPROVED MOBILE RESPONSIVENESS
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Filter, Eye, Edit, Trash2, BookOpen, X, MapPin, Loader2, Users, User, AlertCircle, Building, Calendar, Clock } from 'lucide-react';
 import { type CourseType, fetchCourses, createCourse, updateCourse, deleteCourse, fetchInstructors, fetchUsers } from '../../api/api';
@@ -174,18 +174,18 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-screen overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md sm:max-w-2xl p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-400 hover:text-gray-600"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 sm:w-5 h-4 sm:h-5" />
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Course</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Add New Course</h2>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="md:col-span-2">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 sm:gap-5">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Course Name <span className="text-red-500">*</span>
             </label>
@@ -194,7 +194,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="Web Development Fundamentals"
             />
           </div>
@@ -208,7 +208,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
               required
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="WD101"
             />
           </div>
@@ -220,7 +220,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="">Select Category</option>
               <option value="Web Development">Web Development</option>
@@ -241,7 +241,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
             <select
               value={formData.duration}
               onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="">Select Duration</option>
               <option value="3 months">3 months</option>
@@ -255,7 +255,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Users className="w-4 h-4 inline mr-1" />
+              <Users className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Student Count
             </label>
             <input
@@ -263,14 +263,14 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
               min="0"
               value={formData.students}
               onChange={(e) => setFormData({ ...formData, students: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="0"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Building className="w-4 h-4 inline mr-1" />
+              <Building className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Center <span className="text-red-500">*</span>
               {formData.district && (
                 <span className="text-xs text-gray-500 ml-1">
@@ -279,12 +279,12 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
               )}
             </label>
             <div className="relative">
-              <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 sm:w-4 h-3 sm:h-4" />
               <select
                 required
                 value={formData.center}
                 onChange={(e) => setFormData({ ...formData, center: e.target.value })}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
                 disabled={!formData.district}
               >
                 <option value="">
@@ -298,13 +298,13 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <svg className="fill-current h-3 w-3 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
             </div>
             {formData.district && filteredCenters.length === 0 && (
-              <p className="text-sm text-yellow-600 mt-1">
+              <p className="text-xs text-yellow-600 mt-1">
                 No centers found in {formData.district} district
               </p>
             )}
@@ -312,7 +312,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <User className="w-4 h-4 inline mr-1" />
+              <User className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Instructor {formData.district && (
                 <span className="text-xs text-gray-500 ml-1">
                   (in {formData.district})
@@ -320,11 +320,11 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
               )}
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 sm:w-4 h-3 sm:h-4" />
               <select
                 value={formData.instructor}
                 onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
                 disabled={!formData.district || instructorsError}
               >
                 <option value="">
@@ -339,36 +339,36 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <svg className="fill-current h-3 w-3 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
             </div>
             {instructorsError && (
-              <p className="text-sm text-yellow-600 mt-1 flex items-center">
-                <AlertCircle className="w-4 h-4 mr-1" />
+              <p className="text-xs text-yellow-600 mt-1 flex items-center">
+                <AlertCircle className="w-3 sm:w-4 h-3 sm:h-4 mr-1" />
                 Using demo instructor data. Contact admin for real instructor access.
               </p>
             )}
             {formData.district && filteredInstructors.length === 0 && !instructorsError && (
-              <p className="text-sm text-yellow-600 mt-1">
+              <p className="text-xs text-yellow-600 mt-1">
                 No instructors found in {formData.district} district
               </p>
             )}
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               District <span className="text-red-500">*</span>
               {userDistrict && <span className="text-green-600 ml-2">(Auto-filled)</span>}
             </label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 sm:w-4 h-3 sm:h-4" />
               <select
                 required
                 value={formData.district}
                 onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
                 disabled={!!userDistrict}
               >
                 <option value="">Select District</option>
@@ -379,36 +379,36 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <svg className="fill-current h-3 w-3 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                   <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                 </svg>
               </div>
             </div>
             {userDistrict && (
-              <p className="text-sm text-green-600 mt-1">
+              <p className="text-xs text-green-600 mt-1">
                 Your assigned district: <strong>{userDistrict}</strong>
               </p>
             )}
           </div>
 
-          <div className="md:col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Description
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              rows={3}
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
               placeholder="Enter course description, objectives, and requirements..."
             />
           </div>
 
-          <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
+          <div className="sm:col-span-2 flex justify-end space-x-3 pt-2 sm:pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              className="px-3 sm:px-5 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
               disabled={submitting}
             >
               Cancel
@@ -416,11 +416,11 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
+              className="px-3 sm:px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3 sm:w-4 h-3 sm:h-4 animate-spin" />
                   <span>Saving...</span>
                 </>
               ) : (
@@ -536,18 +536,18 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-screen overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md sm:max-w-2xl p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-400 hover:text-gray-600"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 sm:w-5 h-4 sm:h-5" />
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Course</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Edit Course</h2>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="md:col-span-2">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 sm:gap-5">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Course Name <span className="text-red-500">*</span>
             </label>
@@ -556,7 +556,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
 
@@ -569,7 +569,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
               required
               value={formData.code}
               onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
 
@@ -580,7 +580,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="">Select Category</option>
               <option value="Web Development">Web Development</option>
@@ -601,7 +601,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
             <select
               value={formData.duration}
               onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="">Select Duration</option>
               <option value="3 months">3 months</option>
@@ -615,7 +615,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Users className="w-4 h-4 inline mr-1" />
+              <Users className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Student Count
             </label>
             <input
@@ -623,50 +623,50 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
               min="0"
               value={formData.students}
               onChange={(e) => setFormData({ ...formData, students: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Calendar className="w-4 h-4 inline mr-1" />
+              <Calendar className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Schedule
             </label>
             <input
               type="text"
               value={formData.schedule}
               onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="e.g., Mon-Wed-Fri 9:00-11:00"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Clock className="w-4 h-4 inline mr-1" />
+              <Clock className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Next Session
             </label>
             <input
               type="text"
               value={formData.next_session}
               onChange={(e) => setFormData({ ...formData, next_session: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="e.g., December 15, 2024"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Building className="w-4 h-4 inline mr-1" />
+              <Building className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Center <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 sm:w-4 h-3 sm:h-4" />
               <select
                 required
                 value={formData.center}
                 onChange={(e) => setFormData({ ...formData, center: e.target.value })}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
               >
                 <option value="">Select Center</option>
                 {filteredCenters.map((center) => (
@@ -681,15 +681,15 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              <User className="w-4 h-4 inline mr-1" />
+              <User className="w-3 sm:w-4 h-3 sm:h-4 inline mr-1" />
               Instructor
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 sm:w-4 h-3 sm:h-4" />
               <select
                 value={formData.instructor}
                 onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
                 disabled={instructorsError}
               >
                 <option value="">Select Instructor</option>
@@ -703,17 +703,17 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
             </div>
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               District <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 sm:w-4 h-3 sm:h-4" />
               <select
                 required
                 value={formData.district}
                 onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+                className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
               >
                 <option value="">Select District</option>
                 {districts.map((district) => (
@@ -725,23 +725,23 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
             </div>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Description
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              rows={3}
+              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
             />
           </div>
 
-          <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
+          <div className="sm:col-span-2 flex justify-end space-x-3 pt-2 sm:pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              className="px-3 sm:px-5 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
               disabled={updating}
             >
               Cancel
@@ -749,11 +749,11 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({
             <button
               type="submit"
               disabled={updating}
-              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
+              className="px-3 sm:px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-70 flex items-center space-x-2"
             >
               {updating ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3 sm:w-4 h-3 sm:h-4 animate-spin" />
                   <span>Updating...</span>
                 </>
               ) : (
@@ -783,61 +783,61 @@ const ViewCourseModal: React.FC<ViewCourseModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6 relative max-h-screen overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md sm:max-w-2xl p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-400 hover:text-gray-600"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 sm:w-5 h-4 sm:h-5" />
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Course Details</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Course Details</h2>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Basic Information</h3>
-              <div className="space-y-3">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Basic Information</h3>
+              <div className="space-y-3 text-xs sm:text-sm">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Course Name</label>
-                  <p className="mt-1 text-sm text-gray-900">{course.name}</p>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Course Name</label>
+                  <p className="mt-1 text-gray-900">{course.name}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Course Code</label>
-                  <p className="mt-1 text-sm text-gray-900 font-mono">{course.code}</p>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Course Code</label>
+                  <p className="mt-1 text-gray-900 font-mono">{course.code}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Category</label>
-                  <p className="mt-1 text-sm text-gray-900">{course.category || 'Not specified'}</p>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Category</label>
+                  <p className="mt-1 text-gray-900">{course.category || 'Not specified'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Duration</label>
-                  <p className="mt-1 text-sm text-gray-900">{course.duration || 'Not specified'}</p>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Duration</label>
+                  <p className="mt-1 text-gray-900">{course.duration || 'Not specified'}</p>
                 </div>
               </div>
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Location & Instructor</h3>
-              <div className="space-y-3">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Location & Instructor</h3>
+              <div className="space-y-3 text-xs sm:text-sm">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">District</label>
-                  <p className="mt-1 text-sm text-gray-900 flex items-center">
-                    <MapPin className="w-4 h-4 mr-1 text-gray-400" />
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">District</label>
+                  <p className="mt-1 text-gray-900 flex items-center">
+                    <MapPin className="w-3 sm:w-4 h-3 sm:h-4 mr-1 text-gray-400" />
                     {course.district}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Center</label>
-                  <p className="mt-1 text-sm text-gray-900 flex items-center">
-                    <Building className="w-4 h-4 mr-1 text-gray-400" />
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Center</label>
+                  <p className="mt-1 text-gray-900 flex items-center">
+                    <Building className="w-3 sm:w-4 h-3 sm:h-4 mr-1 text-gray-400" />
                     {course.center_details?.name || 'Not assigned'}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Instructor</label>
-                  <p className="mt-1 text-sm text-gray-900 flex items-center">
-                    <User className="w-4 h-4 mr-1 text-gray-400" />
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Instructor</label>
+                  <p className="mt-1 text-gray-900 flex items-center">
+                    <User className="w-3 sm:w-4 h-3 sm:h-4 mr-1 text-gray-400" />
                     {course.instructor_details 
                       ? `${course.instructor_details.first_name} ${course.instructor_details.last_name}`
                       : 'Not assigned'
@@ -845,9 +845,9 @@ const ViewCourseModal: React.FC<ViewCourseModalProps> = ({
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Students</label>
-                  <p className="mt-1 text-sm text-gray-900 flex items-center">
-                    <Users className="w-4 h-4 mr-1 text-gray-400" />
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700">Students</label>
+                  <p className="mt-1 text-gray-900 flex items-center">
+                    <Users className="w-3 sm:w-4 h-3 sm:h-4 mr-1 text-gray-400" />
                     {course.students} enrolled
                   </p>
                 </div>
@@ -857,9 +857,9 @@ const ViewCourseModal: React.FC<ViewCourseModalProps> = ({
 
           {course.schedule && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Schedule</label>
-              <p className="mt-1 text-sm text-gray-900 flex items-center">
-                <Calendar className="w-4 h-4 mr-1 text-gray-400" />
+              <label className="block text-xs sm:text-sm font-medium text-gray-700">Schedule</label>
+              <p className="mt-1 text-xs sm:text-sm text-gray-900 flex items-center">
+                <Calendar className="w-3 sm:w-4 h-3 sm:h-4 mr-1 text-gray-400" />
                 {course.schedule}
               </p>
             </div>
@@ -867,9 +867,9 @@ const ViewCourseModal: React.FC<ViewCourseModalProps> = ({
 
           {course.next_session && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Next Session</label>
-              <p className="mt-1 text-sm text-gray-900 flex items-center">
-                <Clock className="w-4 h-4 mr-1 text-gray-400" />
+              <label className="block text-xs sm:text-sm font-medium text-gray-700">Next Session</label>
+              <p className="mt-1 text-xs sm:text-sm text-gray-900 flex items-center">
+                <Clock className="w-3 sm:w-4 h-3 sm:h-4 mr-1 text-gray-400" />
                 {course.next_session}
               </p>
             </div>
@@ -877,14 +877,14 @@ const ViewCourseModal: React.FC<ViewCourseModalProps> = ({
 
           {course.description && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Description</label>
-              <p className="mt-1 text-sm text-gray-900">{course.description}</p>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700">Description</label>
+              <p className="mt-1 text-xs sm:text-sm text-gray-900">{course.description}</p>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4 pt-4 border-t">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700">Status</label>
               <span className={`inline-flex mt-1 px-2 py-1 text-xs font-semibold rounded-full ${
                 course.status === 'Approved' ? 'bg-green-100 text-green-800' :
                 course.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -895,7 +895,7 @@ const ViewCourseModal: React.FC<ViewCourseModalProps> = ({
               </span>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Priority</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700">Priority</label>
               <span className={`inline-flex mt-1 px-2 py-1 text-xs font-semibold rounded-full ${
                 course.priority === 'High' ? 'bg-red-100 text-red-800' :
                 course.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -1099,12 +1099,12 @@ const TrainingOfficerCourses: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Courses</h1>
-              <p className="text-gray-600 mt-2">Add and manage courses pending approval</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Courses</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-2">Add and manage courses pending approval</p>
               {isTrainingOfficer && userDistrict && (
-                <p className="text-sm text-green-600 mt-1">
+                <p className="text-xs sm:text-sm text-green-600 mt-1">
                   Managing courses in: <strong>{userDistrict}</strong> district
                 </p>
               )}
@@ -1112,7 +1112,7 @@ const TrainingOfficerCourses: React.FC = () => {
             <button 
               onClick={() => setIsAddModalOpen(true)}
               disabled={centersLoading || instructorsLoading}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
               <span>Add Course</span>
@@ -1133,15 +1133,104 @@ const TrainingOfficerCourses: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
-            <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+            <button className="flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
               <Filter className="w-4 h-4" />
               <span>Filter</span>
             </button>
           </div>
         </div>
 
-        {/* Courses Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+        {/* Courses List - Mobile Cards */}
+        <div className="sm:hidden space-y-4 mb-6">
+          {filteredCourses.map((course) => (
+            <div key={course.id} className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <BookOpen className="w-4 h-4 text-green-700" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{course.name}</div>
+                    <div className="text-xs text-gray-500">{course.category}</div>
+                  </div>
+                </div>
+                <span
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    course.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                    course.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                    course.status === 'Active' ? 'bg-blue-100 text-blue-800' :
+                    'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {course.status}
+                </span>
+              </div>
+              <div className="space-y-2 text-xs text-gray-600">
+                <div className="flex justify-between">
+                  <span>Code:</span>
+                  <span className="font-mono">{course.code}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Duration:</span>
+                  <span>{course.duration || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Center:</span>
+                  <span>{course.center_details?.name || 'Not assigned'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Instructor:</span>
+                  <span>
+                    {course.instructor_details 
+                      ? `${course.instructor_details.first_name} ${course.instructor_details.last_name}`
+                      : 'Not assigned'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Students:</span>
+                  <span>{course.students}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>District:</span>
+                  <span>{course.district}</span>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 mt-4">
+                <button 
+                  onClick={() => handleViewCourse(course)}
+                  className="text-blue-600 hover:text-blue-900" 
+                  title="View Details"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handleEditCourse(course)}
+                  className="text-green-600 hover:text-green-900" 
+                  title="Edit Course"
+                  disabled={course.status !== 'Pending'}
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handleDelete(course.id)} 
+                  className="text-red-600 hover:text-red-900"
+                  disabled={actionLoading === course.id || course.status !== 'Pending'}
+                  title="Delete Course"
+                >
+                  {actionLoading === course.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Courses Table - Desktop */}
+        <div className="hidden sm:block bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 mb-6">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -1277,28 +1366,28 @@ const TrainingOfficerCourses: React.FC = () => {
         </div>
 
         {/* Stats Summary */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-green-600">{courses.length}</div>
-            <div className="text-sm text-gray-600">Total Courses</div>
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{courses.length}</div>
+            <div className="text-xs sm:text-sm text-gray-600">Total Courses</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-yellow-500">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+            <div className="text-xl sm:text-2xl font-bold text-yellow-500">
               {courses.filter(c => c.status === 'Pending').length}
             </div>
-            <div className="text-sm text-gray-600">Pending Courses</div>
+            <div className="text-xs sm:text-sm text-gray-600">Pending Courses</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-sky-500">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+            <div className="text-xl sm:text-2xl font-bold text-sky-500">
               {courses.filter(c => c.status === 'Approved').length}
             </div>
-            <div className="text-sm text-gray-600">Approved Courses</div>
+            <div className="text-xs sm:text-sm text-gray-600">Approved Courses</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <div className="text-2xl font-bold text-lime-800">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+            <div className="text-xl sm:text-2xl font-bold text-lime-800">
               {courses.reduce((acc, course) => acc + course.students, 0)}
             </div>
-            <div className="text-sm text-gray-600">Total Students</div>
+            <div className="text-xs sm:text-sm text-gray-600">Total Students</div>
           </div>
         </div>
 
