@@ -1,4 +1,4 @@
-# students/views.py
+# students/views.py - COMPLETE FIXED VERSION
 from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,51 +12,15 @@ import csv
 from django.utils import timezone
 from datetime import datetime
 
-from .models import Student, EducationalQualification, DistrictCode, CourseCode, BatchYear
+from .models import Student, EducationalQualification, DistrictCode, CourseCode, Batch, BatchYear
 from .serializers import (
     StudentSerializer, StudentImportSerializer, 
-    DistrictCodeSerializer, CourseCodeSerializer, BatchYearSerializer,
+    DistrictCodeSerializer, CourseCodeSerializer, BatchSerializer, BatchYearSerializer,
     RegistrationNumberPreviewSerializer
 )
 from centers.models import Center
 from courses.models import Course
-
-class StudentPermission:
-    """
-    Custom permission class for student operations
-    """
-    
-    def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
-        
-        # All authenticated users can view students (with district restrictions)
-        if request.method in ['GET', 'HEAD', 'OPTIONS']:
-            return True
-            
-        # Only specific roles can create/update/delete
-        if request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            return request.user.role in ['admin', 'district_manager', 'training_officer', 'data_entry']
-        
-        return False
-    
-    def has_object_permission(self, request, view, obj):
-        if not request.user.is_authenticated:
-            return False
-            
-        # Admin can do anything
-        if request.user.role == 'admin':
-            return True
-            
-        # District managers, training officers, and data entry can only manage their district students
-        if request.user.role in ['district_manager', 'training_officer', 'data_entry']:
-            return obj.district == request.user.district
-            
-        # Instructors can only view (handled in get_queryset)
-        if request.user.role == 'instructor':
-            return request.method in ['GET', 'HEAD', 'OPTIONS']
-            
-        return False
+from .permissions import StudentPermission
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
@@ -66,20 +30,18 @@ class StudentViewSet(viewsets.ModelViewSet):
     search_fields = [
         'registration_no', 'full_name_english', 'full_name_sinhala',
         'name_with_initials', 'nic_id', 'district', 'email',
-        'district_code', 'course_code', 'batch_year'
+        'district_code', 'course_code', 'batch__batch_code'
     ]
-    filterset_fields = ['district', 'center', 'course', 'enrollment_status', 'training_received', 'district_code', 'course_code', 'batch_year']
+    filterset_fields = ['district', 'center', 'course', 'enrollment_status', 'training_received', 'district_code', 'course_code', 'batch']
     
     def get_queryset(self):
         queryset = Student.objects.all()
         user = self.request.user
         search_term = self.request.query_params.get('search', None)
         
-        # Apply district restrictions based on user role
         if user.role in ['district_manager', 'training_officer', 'data_entry'] and user.district:
             queryset = queryset.filter(district=user.district)
         
-        # Apply search filter
         if search_term:
             queryset = queryset.filter(
                 Q(full_name_english__icontains=search_term) |
@@ -92,10 +54,11 @@ class StudentViewSet(viewsets.ModelViewSet):
                 Q(course__name__icontains=search_term) |
                 Q(district_code__icontains=search_term) |
                 Q(course_code__icontains=search_term) |
-                Q(batch_year__icontains=search_term)
+                Q(batch__batch_code__icontains=search_term) |
+                Q(batch__batch_name__icontains=search_term)
             )
         
-        return queryset.select_related('center', 'course', 'created_by')
+        return queryset.select_related('center', 'course', 'created_by', 'batch')
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -107,7 +70,6 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def preview_registration(self, request):
-        """Preview the registration number that would be generated"""
         serializer = RegistrationNumberPreviewSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -116,6 +78,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         district = data.get('district')
         course_id = data.get('course_id')
         enrollment_date = data.get('enrollment_date')
+        batch_id = data.get('batch_id')
         
         current_year = timezone.now().year
         
@@ -146,93 +109,110 @@ class StudentViewSet(viewsets.ModelViewSet):
             except Course.DoesNotExist:
                 pass
         
-        # Get batch year
-        if enrollment_date:
+        # Get batch
+        batch_code = "01"
+        batch_name = "1st Batch"
+        if batch_id:
             try:
-                enrollment_date_obj = datetime.strptime(str(enrollment_date), '%Y-%m-%d').date()
-                batch_year_full = enrollment_date_obj.year
-            except:
-                batch_year_full = current_year
+                batch = Batch.objects.get(id=batch_id)
+                batch_code = batch.batch_code
+                batch_name = batch.batch_name
+            except Batch.DoesNotExist:
+                pass
         else:
-            batch_year_full = current_year
-        
-        batch_year = str(batch_year_full)[-2:]
+            # Get default batch
+            default_batch = Batch.objects.filter(is_active=True).order_by('display_order').first()
+            if default_batch:
+                batch_code = default_batch.batch_code
+                batch_name = default_batch.batch_name
         
         # Get next student number
         students_in_batch = Student.objects.filter(
             district=district,
             course_id=course_id,
-            batch_year=batch_year
+            batch_id=batch_id
         )
         
         student_number = students_in_batch.count() + 1
         
+        # Get registration year
+        registration_year = current_year
+        if enrollment_date:
+            try:
+                enrollment_date_obj = datetime.strptime(str(enrollment_date), '%Y-%m-%d').date()
+                registration_year = enrollment_date_obj.year
+            except:
+                pass
+        
         # Generate preview
-        full_registration = f"{district_code}/{course_code}/{batch_year}/{student_number:04d}/{current_year}"
+        full_registration = f"{district_code}/{course_code}/{batch_code}/{student_number:04d}/{registration_year}"
         
         return Response({
             'district_code': district_code,
             'course_code': course_code,
-            'batch_year': batch_year,
+            'batch_id': batch_id,
+            'batch_code': batch_code,
+            'batch_name': batch_name,
             'student_number': str(student_number).zfill(4),
-            'year': str(current_year),
+            'year': str(registration_year),
             'full_registration': full_registration,
             'explanation': {
                 'district_code': f'Code for {district} district',
                 'course_code': f'Code for the selected course' if course_id else 'General course code',
-                'batch_year': f'Batch of {batch_year_full}',
+                'batch': f'Batch: {batch_name} ({batch_code})',
                 'student_number': f'Student #{student_number} in this batch',
-                'year': f'Registration year: {current_year}'
+                'year': f'Registration year: {registration_year}'
             }
         })
     
     @action(detail=False, methods=['get'])
     def available_district_codes(self, request):
-        """Get all available district codes"""
         district_codes = DistrictCode.objects.all()
         serializer = DistrictCodeSerializer(district_codes, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def available_course_codes(self, request):
-        """Get all available course codes"""
         course_codes = CourseCode.objects.all()
         serializer = CourseCodeSerializer(course_codes, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
+    def available_batches(self, request):
+        batches = Batch.objects.filter(is_active=True).order_by('display_order')
+        serializer = BatchSerializer(batches, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
     def available_batch_years(self, request):
-        """Get all available batch years"""
         batch_years = BatchYear.objects.filter(is_active=True)
         serializer = BatchYearSerializer(batch_years, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def registration_formats(self, request):
-        """Get example registration number formats"""
         examples = [
             {
-                'format': 'MT/WP/24/0010/2025',
-                'explanation': 'Matara (MT) / Web Programming (WP) / 2024 Batch (24) / Student #10 (0010) / Registration Year 2025'
+                'format': 'MT/WP/01/0001/2025',
+                'explanation': 'Matara (MT) / Web Programming (WP) / 1st Batch (01) / Student #1 (0001) / Registration Year 2025'
             },
             {
-                'format': 'CO/GD/23/0045/2024',
-                'explanation': 'Colombo (CO) / Graphic Design (GD) / 2023 Batch (23) / Student #45 (0045) / Registration Year 2024'
+                'format': 'CO/GD/02/0045/2024',
+                'explanation': 'Colombo (CO) / Graphic Design (GD) / 2nd Batch (02) / Student #45 (0045) / Registration Year 2024'
             },
             {
-                'format': 'GA/DM/25/0001/2026',
-                'explanation': 'Gampaha (GA) / Digital Marketing (DM) / 2025 Batch (25) / Student #1 (0001) / Registration Year 2026'
+                'format': 'GA/DM/03/0001/2026',
+                'explanation': 'Gampaha (GA) / Digital Marketing (DM) / 3rd Batch (03) / Student #1 (0001) / Registration Year 2026'
             }
         ]
         return Response({
-            'format': 'District code/Course code/Batch year/Student number/Year',
+            'format': 'District code/Course code/Batch code/Student number/Year',
             'examples': examples,
             'note': 'Registration numbers are auto-generated when left empty'
         })
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """Get student statistics for dashboard"""
         user = request.user
         queryset = self.get_queryset()
         
@@ -247,7 +227,6 @@ class StudentViewSet(viewsets.ModelViewSet):
             'recent_students': queryset.filter(created_at__gte=timezone.now() - timezone.timedelta(days=7)).count(),
         }
         
-        # Center distribution
         center_stats = {}
         for student in queryset.select_related('center'):
             center_name = student.center.name if student.center else 'No Center'
@@ -255,7 +234,6 @@ class StudentViewSet(viewsets.ModelViewSet):
         
         stats['center_distribution'] = center_stats
         
-        # Registration number stats
         registration_stats = {
             'by_district': {},
             'by_course': {},
@@ -263,16 +241,13 @@ class StudentViewSet(viewsets.ModelViewSet):
         }
         
         for student in queryset:
-            # District stats
             district = student.district_code or 'Unknown'
             registration_stats['by_district'][district] = registration_stats['by_district'].get(district, 0) + 1
             
-            # Course stats
             course = student.course_code or 'GEN'
             registration_stats['by_course'][course] = registration_stats['by_course'].get(course, 0) + 1
             
-            # Batch stats
-            batch = student.batch_year or 'Unknown'
+            batch = student.batch.batch_name if student.batch else 'Unknown'
             registration_stats['by_batch'][batch] = registration_stats['by_batch'].get(batch, 0) + 1
         
         stats['registration_stats'] = registration_stats
@@ -282,7 +257,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def export(self, request):
         format_type = request.query_params.get('format', 'csv')
-        students = self.get_queryset()  # This already applies district filters
+        students = self.get_queryset()
         
         if format_type == 'csv':
             response = HttpResponse(content_type='text/csv')
@@ -290,7 +265,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             
             writer = csv.writer(response)
             writer.writerow([
-                'Registration No', 'District Code', 'Course Code', 'Batch Year',
+                'Registration No', 'District Code', 'Course Code', 'Batch', 'Batch Name',
                 'Student Number', 'Registration Year', 'Full Name (English)', 
                 'Full Name (Sinhala)', 'Name with Initials', 'Gender', 'Date of Birth', 
                 'NIC/ID', 'Address', 'District', 'Divisional Secretariat', 
@@ -306,7 +281,8 @@ class StudentViewSet(viewsets.ModelViewSet):
                     student.registration_no,
                     student.district_code,
                     student.course_code,
-                    student.batch_year,
+                    student.batch.batch_code if student.batch else '',
+                    student.batch.batch_name if student.batch else '',
                     student.student_number,
                     student.registration_year,
                     student.full_name_english,
@@ -346,7 +322,8 @@ class StudentViewSet(viewsets.ModelViewSet):
                     'Registration No': student.registration_no,
                     'District Code': student.district_code,
                     'Course Code': student.course_code,
-                    'Batch Year': student.batch_year,
+                    'Batch Code': student.batch.batch_code if student.batch else '',
+                    'Batch Name': student.batch.batch_name if student.batch else '',
                     'Student Number': student.student_number,
                     'Registration Year': student.registration_year,
                     'Full Name (English)': student.full_name_english,
@@ -421,18 +398,24 @@ class StudentViewSet(viewsets.ModelViewSet):
             
             for index, row in df.iterrows():
                 try:
-                    # Get center and course objects
                     center_name = row.get('Center', '')
                     course_name = row.get('Course', '')
+                    batch_code = row.get('Batch Code', '01')
                     
                     center = None
                     course = None
+                    batch = None
                     
                     if center_name:
                         center = Center.objects.filter(name=center_name, district=request.user.district).first()
                     
                     if course_name:
                         course = Course.objects.filter(name=course_name, district=request.user.district).first()
+                    
+                    if batch_code:
+                        batch = Batch.objects.filter(batch_code=batch_code).first()
+                        if not batch:
+                            batch = Batch.objects.filter(is_active=True).order_by('display_order').first()
                     
                     student_data = {
                         'full_name_english': row.get('Full Name (English)', ''),
@@ -458,12 +441,12 @@ class StudentViewSet(viewsets.ModelViewSet):
                         'training_placement_preference': row.get('Placement Preference', '1st'),
                         'center': center.id if center else None,
                         'course': course.id if course else None,
+                        'batch': batch.id if batch else None,
                         'enrollment_date': row.get('Enrollment Date', ''),
                         'enrollment_status': row.get('Enrollment Status', 'Pending'),
                         'date_of_application': row.get('Date of Application', ''),
                     }
                     
-                    # For data entry officers, ensure district matches
                     if request.user.role == 'data_entry' and request.user.district:
                         student_data['district'] = request.user.district
                     
@@ -489,7 +472,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-# NEW VIEWSETS FOR ADMIN MODELS
 class DistrictCodeViewSet(viewsets.ModelViewSet):
     queryset = DistrictCode.objects.all()
     serializer_class = DistrictCodeSerializer
@@ -510,6 +492,23 @@ class CourseCodeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [SearchFilter]
     search_fields = ['course_name', 'course_code']
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
+class BatchViewSet(viewsets.ModelViewSet):
+    queryset = Batch.objects.all()
+    serializer_class = BatchSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter]
+    search_fields = ['batch_code', 'batch_name']
+    
+    def get_queryset(self):
+        return Batch.objects.all().order_by('display_order', 'batch_code')
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:

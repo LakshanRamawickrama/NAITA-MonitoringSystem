@@ -1,7 +1,7 @@
-# students/admin.py
+# students/admin.py - COMPLETE UPDATED VERSION
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Student, EducationalQualification, DistrictCode, CourseCode, BatchYear
+from .models import Student, EducationalQualification, DistrictCode, CourseCode, Batch, BatchYear
 
 @admin.register(DistrictCode)
 class DistrictCodeAdmin(admin.ModelAdmin):
@@ -19,6 +19,22 @@ class CourseCodeAdmin(admin.ModelAdmin):
     ordering = ['course_code']
     fields = ['course_name', 'course_code', 'description']
 
+@admin.register(Batch)
+class BatchAdmin(admin.ModelAdmin):
+    list_display = ['batch_code', 'batch_name', 'is_active', 'display_order', 'student_count']
+    list_editable = ['is_active', 'display_order']
+    search_fields = ['batch_code', 'batch_name']
+    list_filter = ['is_active']
+    ordering = ['display_order', 'batch_code']
+    fields = ['batch_code', 'batch_name', 'description', 'is_active', 'display_order']
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).order_by('display_order', 'batch_code')
+    
+    def student_count(self, obj):
+        return obj.students.count()
+    student_count.short_description = 'Students'
+
 @admin.register(BatchYear)
 class BatchYearAdmin(admin.ModelAdmin):
     list_display = ['year_code', 'description', 'is_active']
@@ -29,16 +45,16 @@ class BatchYearAdmin(admin.ModelAdmin):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['registration_no', 'full_name_english', 'nic_id', 'district', 'course', 'date_of_application', 'created_by']
-    list_filter = ['district', 'gender', 'training_received', 'created_at', 'course', 'enrollment_status']
+    list_display = ['registration_no', 'full_name_english', 'nic_id', 'district', 'course', 'batch', 'date_of_application', 'created_by']
+    list_filter = ['district', 'gender', 'training_received', 'created_at', 'course', 'enrollment_status', 'batch']
     search_fields = ['registration_no', 'full_name_english', 'nic_id', 'district', 'district_code', 'course_code']
-    readonly_fields = ['registration_no', 'district_code', 'course_code', 'batch_year', 'student_number', 'registration_year', 'created_at', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at']
     
     fieldsets = (
         ('Registration Information', {
             'fields': (
                 'registration_no', 
-                ('district_code', 'course_code', 'batch_year'),
+                ('district_code', 'course_code', 'batch'),
                 ('student_number', 'registration_year'),
                 'date_of_application', 
                 'enrollment_date', 
@@ -93,10 +109,10 @@ class StudentAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.select_related('center', 'course', 'created_by')
+        return qs.select_related('center', 'course', 'created_by', 'batch')
     
     def save_model(self, request, obj, form, change):
-        if not change:  # Only on create
+        if not change:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
 

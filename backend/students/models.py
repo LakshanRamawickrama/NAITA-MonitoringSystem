@@ -1,4 +1,4 @@
-# students/models.py
+# students/models.py - COMPLETE FIXED VERSION
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
@@ -6,7 +6,6 @@ from django.utils import timezone
 
 User = get_user_model()
 
-# NEW MODELS
 class DistrictCode(models.Model):
     """Model to store district codes for registration numbers"""
     district_name = models.CharField(max_length=100, unique=True)
@@ -35,6 +34,28 @@ class CourseCode(models.Model):
     def __str__(self):
         return f"{self.course_code} - {self.course_name}"
 
+class Batch(models.Model):
+    """Model to define batches for registration numbers"""
+    batch_code = models.CharField(max_length=2, unique=True, help_text="Batch code in 2-digit format (e.g., 01 for 1st batch)")
+    batch_name = models.CharField(max_length=50, help_text="e.g., 1st Batch, 2nd Batch, etc.")
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=1, help_text="Order in which batches appear in dropdowns")
+    
+    class Meta:
+        verbose_name = "Batch"
+        verbose_name_plural = "Batches"
+        ordering = ['display_order', 'batch_code']
+    
+    def __str__(self):
+        return f"{self.batch_code} - {self.batch_name}"
+    
+    def save(self, *args, **kwargs):
+        # Ensure batch_code is 2 digits with leading zero
+        if self.batch_code and len(self.batch_code) == 1:
+            self.batch_code = f"0{self.batch_code}"
+        super().save(*args, **kwargs)
+
 class BatchYear(models.Model):
     """Model to define batch years for registration numbers"""
     year_code = models.CharField(max_length=4, unique=True, help_text="Year in YY format (e.g., 24 for 2024)")
@@ -49,7 +70,6 @@ class BatchYear(models.Model):
     def __str__(self):
         return f"{self.year_code} - {self.description}"
 
-# EXISTING STUDENT MODEL WITH UPDATES
 class Student(models.Model):
     GENDER_CHOICES = [
         ('Male', 'Male'),
@@ -77,12 +97,13 @@ class Student(models.Model):
     ]
 
     # Registration Information
-    registration_no = models.CharField(max_length=50, unique=True, blank=True, editable=False)
-    district_code = models.CharField(max_length=10, blank=True, editable=False)
-    course_code = models.CharField(max_length=10, blank=True, editable=False)
-    batch_year = models.CharField(max_length=4, blank=True, editable=False)
-    student_number = models.IntegerField(default=0, editable=False)
-    registration_year = models.CharField(max_length=4, blank=True, editable=False)
+    registration_no = models.CharField(max_length=50, unique=True, blank=True)
+    district_code = models.CharField(max_length=10, blank=True)
+    course_code = models.CharField(max_length=10, blank=True)
+    batch = models.ForeignKey(Batch, on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
+    batch_year = models.CharField(max_length=4, blank=True)
+    student_number = models.IntegerField(default=0)
+    registration_year = models.CharField(max_length=4, blank=True)
     
     # Personal Information
     full_name_english = models.CharField(max_length=200)
@@ -157,82 +178,109 @@ class Student(models.Model):
             models.Index(fields=['course']),
             models.Index(fields=['district_code']),
             models.Index(fields=['course_code']),
-            models.Index(fields=['batch_year']),
+            models.Index(fields=['batch']),
         ]
     
-    def generate_registration_number(self):
-        """Generate registration number in format: District code/Course code/batch year/student number/year"""
+    def generate_registration_number(self, use_existing_components=False):
+        """Generate registration number in format: District code/Course code/batch code/student number/year"""
+        
+        if use_existing_components and all([
+            self.district_code,
+            self.course_code,
+            self.batch,
+            self.student_number,
+            self.registration_year
+        ]):
+            batch_code = self.batch.batch_code if self.batch else "01"
+            return f"{self.district_code}/{self.course_code}/{batch_code}/{self.student_number:04d}/{self.registration_year}"
+        
         current_year = timezone.now().year
         
         # Get district code
-        try:
-            district_code_obj = DistrictCode.objects.filter(
-                district_name__iexact=self.district
-            ).first()
-            if district_code_obj:
-                self.district_code = district_code_obj.district_code
-            else:
-                # Fallback: first 3 letters uppercase
-                self.district_code = self.district[:3].upper()
-        except:
-            self.district_code = self.district[:3].upper() if self.district else 'GEN'
+        if not self.district_code:
+            try:
+                district_code_obj = DistrictCode.objects.filter(
+                    district_name__iexact=self.district
+                ).first()
+                if district_code_obj:
+                    self.district_code = district_code_obj.district_code
+                else:
+                    self.district_code = self.district[:3].upper() if self.district else 'GEN'
+            except:
+                self.district_code = self.district[:3].upper() if self.district else 'GEN'
         
         # Get course code
-        self.course_code = "GEN"  # Default
-        if self.course:
-            try:
-                course_code_obj = CourseCode.objects.filter(
-                    course_name__icontains=self.course.name
-                ).first()
-                if course_code_obj:
-                    self.course_code = course_code_obj.course_code
-                elif self.course.code:
-                    self.course_code = self.course.code[:3].upper()
-            except:
-                if self.course.code:
-                    self.course_code = self.course.code[:3].upper()
+        if not self.course_code:
+            self.course_code = "GEN"
+            if self.course:
+                try:
+                    course_code_obj = CourseCode.objects.filter(
+                        course_name__icontains=self.course.name
+                    ).first()
+                    if course_code_obj:
+                        self.course_code = course_code_obj.course_code
+                    elif self.course.code:
+                        self.course_code = self.course.code[:3].upper()
+                except:
+                    if self.course.code:
+                        self.course_code = self.course.code[:3].upper()
         
-        # Get batch year
-        if self.enrollment_date:
-            batch_year_full = self.enrollment_date.year
-        else:
-            batch_year_full = current_year
+        # Get batch
+        if not self.batch:
+            default_batch = Batch.objects.filter(is_active=True).order_by('display_order').first()
+            if default_batch:
+                self.batch = default_batch
+            else:
+                default_batch, created = Batch.objects.get_or_create(
+                    batch_code='01',
+                    defaults={
+                        'batch_name': '1st Batch',
+                        'description': 'Default 1st Batch',
+                        'is_active': True,
+                        'display_order': 1
+                    }
+                )
+                self.batch = default_batch
         
-        self.batch_year = str(batch_year_full)[-2:]  # Last 2 digits
-        
-        # Get student number (sequential in district-course-batch)
-        students_in_batch = Student.objects.filter(
-            district=self.district,
-            course=self.course,
-            batch_year=self.batch_year
-        ).exclude(id=self.id)  # Exclude current student
-        
-        self.student_number = students_in_batch.count() + 1
-        
-        # Get registration year
-        self.registration_year = str(current_year)
-        
-        # Format: MT/WP/24/0010/2025
-        return f"{self.district_code}/{self.course_code}/{self.batch_year}/{self.student_number:04d}/{self.registration_year}"
-    
-    def save(self, *args, **kwargs):
-        # Only generate registration number if it doesn't exist
-        if not self.registration_no:
-            self.registration_no = self.generate_registration_number()
-        
-        # Ensure student_number is saved even if we're not generating a new registration
-        if not self.student_number:
-            # Get the highest student number for this district-course-batch
-            max_student = Student.objects.filter(
+        # Get student number
+        if not self.student_number or self.student_number == 0:
+            students_in_batch = Student.objects.filter(
                 district=self.district,
                 course=self.course,
-                batch_year=self.batch_year
-            ).exclude(id=self.id).order_by('-student_number').first()
+                batch=self.batch
+            ).exclude(id=self.id)
             
-            if max_student:
-                self.student_number = max_student.student_number + 1
+            self.student_number = students_in_batch.count() + 1
+        
+        # Get registration year
+        if not self.registration_year:
+            if self.enrollment_date:
+                self.registration_year = str(self.enrollment_date.year)
             else:
-                self.student_number = 1
+                self.registration_year = str(current_year)
+        
+        batch_code = self.batch.batch_code if self.batch else "01"
+        return f"{self.district_code}/{self.course_code}/{batch_code}/{self.student_number:04d}/{self.registration_year}"
+    
+    def save(self, *args, **kwargs):
+        manual_components = all([
+            self.district_code,
+            self.course_code,
+            self.batch,
+            self.student_number,
+            self.registration_year
+        ])
+        
+        if not self.registration_no or not manual_components:
+            self.registration_no = self.generate_registration_number(use_existing_components=manual_components)
+        elif manual_components and self.registration_no:
+            batch_code = self.batch.batch_code if self.batch else "01"
+            expected_format = f"{self.district_code}/{self.course_code}/{batch_code}/{self.student_number:04d}/{self.registration_year}"
+            if self.registration_no != expected_format:
+                self.registration_no = expected_format
+        
+        if self.batch:
+            self.batch_year = self.batch.batch_code
         
         super().save(*args, **kwargs)
     

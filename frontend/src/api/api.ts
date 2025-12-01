@@ -1,4 +1,4 @@
-// src/api/api.ts - CORRECTED VERSION (NO DUPLICATES)
+// src/api/api.ts - UPDATED VERSION WITH ALL MISSING PROPERTIES
 import axios from "axios";
 
 const api = axios.create({
@@ -422,8 +422,18 @@ export interface EducationalQualificationType {
   type: 'OL' | 'AL';
 }
 
+// UPDATED StudentType interface with all missing properties
 export interface StudentType {
   id?: number;
+  registration_no: string;
+  district_code?: string;
+  course_code?: string;
+  batch?: number | null;  // Added batch field
+  batch_display?: string;  // Added batch_display field
+  batch_code?: string;  // Added batch_code field
+  batch_year?: string;
+  student_number?: number;
+  registration_year?: string;
   full_name_english: string;
   full_name_sinhala: string;
   name_with_initials: string;
@@ -451,10 +461,9 @@ export interface StudentType {
   center_name?: string;
   course?: number | null;
   course_name?: string;
-  course_code?: string;
+  course_code_display?: string;
   enrollment_date?: string;
   enrollment_status?: 'Pending' | 'Enrolled' | 'Completed' | 'Dropped';
-  registration_no: string;
   date_of_application: string;
   created_at?: string;
   updated_at?: string;
@@ -1521,7 +1530,9 @@ export const canAccessTrainingOfficerReports = (): boolean => {
 export interface RegistrationNumberPreview {
   district_code: string;
   course_code: string;
-  batch_year: string;
+  batch_id: number | null;  // Added batch_id
+  batch_code: string;  // Added batch_code
+  batch_name: string;  // Added batch_name
   student_number: string;
   year: string;
   full_registration: string;
@@ -1571,6 +1582,7 @@ export const previewRegistrationNumber = async (data: {
   district: string;
   course_id?: number;
   enrollment_date?: string;
+  batch_id?: number;  // Added batch_id parameter
 }): Promise<RegistrationNumberPreview> => {
   const res = await api.post("/api/students/preview_registration/", data);
   return res.data;
@@ -1600,48 +1612,20 @@ export const fetchAvailableBatchYears = async (): Promise<BatchYearType[]> => {
   return res.data;
 };
 
-// Update StudentType interface to include new fields
-export interface StudentType {
-  id?: number;
-  registration_no: string;
-  district_code?: string;
-  course_code?: string;
-  batch_year?: string;
-  student_number?: number;
-  registration_year?: string;
-  full_name_english: string;
-  full_name_sinhala: string;
-  name_with_initials: string;
-  gender: 'Male' | 'Female' | 'Other';
-  date_of_birth: string;
-  nic_id: string;
-  address_line: string;
-  district: string;
-  divisional_secretariat: string;
-  grama_niladhari_division: string;
-  village: string;
-  residence_type: string;
-  mobile_no: string;
-  email: string;
-  ol_results: EducationalQualificationType[];
-  al_results: EducationalQualificationType[];
-  training_received: boolean;
-  training_provider: string;
-  course_vocation_name: string;
-  training_duration: string;
-  training_nature: 'Initial' | 'Further' | 'Re-training';
-  training_establishment: string;
-  training_placement_preference: '1st' | '2nd' | '3rd';
-  center?: number | null;
-  center_name?: string;
-  course?: number | null;
-  course_name?: string;
-  course_code_display?: string;
-  enrollment_date?: string;
-  enrollment_status?: 'Pending' | 'Enrolled' | 'Completed' | 'Dropped';
-  date_of_application: string;
-  created_at?: string;
-  updated_at?: string;
+// Batch Type interface
+export interface BatchType {
+  id: number;
+  batch_code: string;
+  batch_name: string;
+  description: string;
+  is_active: boolean;
+  display_order: number;
 }
+
+// Get available batches for dropdown
+export const fetchAvailableBatches = async (): Promise<BatchType[]> => {
+  const res = await api.get("/api/students/available_batches/");
+  return res.data;
+};
 
 export default api;

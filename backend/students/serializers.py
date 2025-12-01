@@ -1,8 +1,8 @@
-# students/serializers.py
+# students/serializers.py - COMPLETE FIXED VERSION
 from rest_framework import serializers
 from django.utils import timezone
 from datetime import datetime
-from .models import Student, EducationalQualification, DistrictCode, CourseCode, BatchYear
+from .models import Student, EducationalQualification, DistrictCode, CourseCode, Batch, BatchYear
 from centers.models import Center
 from courses.models import Course
 
@@ -15,6 +15,11 @@ class CourseCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseCode
         fields = ['id', 'course_name', 'course_code', 'description']
+
+class BatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Batch
+        fields = ['id', 'batch_code', 'batch_name', 'description', 'is_active', 'display_order']
 
 class BatchYearSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,6 +37,7 @@ class StudentSerializer(serializers.ModelSerializer):
     center_name = serializers.CharField(source='center.name', read_only=True)
     course_name = serializers.CharField(source='course.name', read_only=True)
     course_code_display = serializers.CharField(source='course.code', read_only=True)
+    batch_display = serializers.CharField(source='batch.batch_name', read_only=True)
     registration_components = serializers.SerializerMethodField()
     
     class Meta:
@@ -41,6 +47,8 @@ class StudentSerializer(serializers.ModelSerializer):
             'registration_no', 
             'district_code', 
             'course_code', 
+            'batch', 
+            'batch_display',
             'batch_year', 
             'student_number', 
             'registration_year',
@@ -138,12 +146,12 @@ class StudentSerializer(serializers.ModelSerializer):
         course = data.get('course')
         district = data.get('district')
         
-        if center and district and center.district != district:
+        if center and isinstance(center, Center) and district and center.district != district:
             raise serializers.ValidationError({
                 "center": "Selected center must be in the same district as the student."
             })
             
-        if course and district and course.district != district:
+        if course and isinstance(course, Course) and district and course.district != district:
             raise serializers.ValidationError({
                 "course": "Selected course must be in the same district as the student."
             })
@@ -228,13 +236,11 @@ class RegistrationNumberPreviewSerializer(serializers.Serializer):
     district = serializers.CharField(max_length=100)
     course_id = serializers.IntegerField(required=False, allow_null=True)
     enrollment_date = serializers.DateField(required=False, allow_null=True)
+    batch_id = serializers.IntegerField(required=False, allow_null=True)
     
     def validate(self, data):
         # Validate that district exists
         district = data.get('district')
-        if not DistrictCode.objects.filter(district_name__iexact=district).exists():
-            # Don't raise error, just use fallback
-            pass
         
         # Validate course if provided
         course_id = data.get('course_id')
@@ -244,6 +250,16 @@ class RegistrationNumberPreviewSerializer(serializers.Serializer):
             except Course.DoesNotExist:
                 raise serializers.ValidationError({
                     "course_id": "Invalid course ID."
+                })
+        
+        # Validate batch if provided
+        batch_id = data.get('batch_id')
+        if batch_id:
+            try:
+                Batch.objects.get(id=batch_id)
+            except Batch.DoesNotExist:
+                raise serializers.ValidationError({
+                    "batch_id": "Invalid batch ID."
                 })
         
         return data
