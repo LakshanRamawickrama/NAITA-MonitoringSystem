@@ -1,24 +1,68 @@
 # students/admin.py
 from django.contrib import admin
-from .models import Student, EducationalQualification
+from django.utils.html import format_html
+from .models import Student, EducationalQualification, DistrictCode, CourseCode, BatchYear
+
+@admin.register(DistrictCode)
+class DistrictCodeAdmin(admin.ModelAdmin):
+    list_display = ['district_code', 'district_name', 'description']
+    search_fields = ['district_code', 'district_name']
+    list_filter = ['district_code']
+    ordering = ['district_code']
+    fields = ['district_name', 'district_code', 'description']
+
+@admin.register(CourseCode)
+class CourseCodeAdmin(admin.ModelAdmin):
+    list_display = ['course_code', 'course_name', 'description']
+    search_fields = ['course_code', 'course_name']
+    list_filter = ['course_code']
+    ordering = ['course_code']
+    fields = ['course_name', 'course_code', 'description']
+
+@admin.register(BatchYear)
+class BatchYearAdmin(admin.ModelAdmin):
+    list_display = ['year_code', 'description', 'is_active']
+    search_fields = ['year_code', 'description']
+    list_filter = ['is_active']
+    ordering = ['-year_code']
+    fields = ['year_code', 'description', 'is_active']
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['registration_no', 'full_name_english', 'nic_id', 'district', 'date_of_application', 'created_by']
-    list_filter = ['district', 'gender', 'training_received', 'created_at']
-    search_fields = ['registration_no', 'full_name_english', 'nic_id', 'district']
-    readonly_fields = ['registration_no', 'created_at', 'updated_at']
+    list_display = ['registration_no', 'full_name_english', 'nic_id', 'district', 'course', 'date_of_application', 'created_by']
+    list_filter = ['district', 'gender', 'training_received', 'created_at', 'course', 'enrollment_status']
+    search_fields = ['registration_no', 'full_name_english', 'nic_id', 'district', 'district_code', 'course_code']
+    readonly_fields = ['registration_no', 'district_code', 'course_code', 'batch_year', 'student_number', 'registration_year', 'created_at', 'updated_at']
+    
     fieldsets = (
+        ('Registration Information', {
+            'fields': (
+                'registration_no', 
+                ('district_code', 'course_code', 'batch_year'),
+                ('student_number', 'registration_year'),
+                'date_of_application', 
+                'enrollment_date', 
+                'enrollment_status'
+            )
+        }),
         ('Personal Information', {
             'fields': (
-                'registration_no', 'full_name_english', 'full_name_sinhala', 
-                'name_with_initials', 'gender', 'date_of_birth', 'nic_id'
+                'full_name_english', 
+                'full_name_sinhala', 
+                'name_with_initials', 
+                'gender', 
+                'date_of_birth', 
+                'nic_id'
             )
         }),
         ('Address Information', {
             'fields': (
-                'address_line', 'district', 'divisional_secretariat',
-                'grama_niladhari_division', 'village', 'residence_type'
+                'address_line', 
+                'district', 
+                'divisional_secretariat',
+                'grama_niladhari_division', 
+                'village', 
+                'residence_type'
             )
         }),
         ('Contact Information', {
@@ -26,9 +70,19 @@ class StudentAdmin(admin.ModelAdmin):
         }),
         ('Training Details', {
             'fields': (
-                'training_received', 'training_provider', 'course_vocation_name',
-                'training_duration', 'training_nature', 'training_establishment',
-                'training_placement_preference', 'date_of_application'
+                'training_received', 
+                'training_provider', 
+                'course_vocation_name',
+                'training_duration', 
+                'training_nature', 
+                'training_establishment',
+                'training_placement_preference'
+            )
+        }),
+        ('Center & Course Information', {
+            'fields': (
+                'center', 
+                'course'
             )
         }),
         ('System Information', {
@@ -36,9 +90,19 @@ class StudentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('center', 'course', 'created_by')
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Only on create
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 @admin.register(EducationalQualification)
 class EducationalQualificationAdmin(admin.ModelAdmin):
     list_display = ['student', 'subject', 'grade', 'year', 'type']
     list_filter = ['type', 'year']
     search_fields = ['student__full_name_english', 'subject']
+    raw_id_fields = ['student']

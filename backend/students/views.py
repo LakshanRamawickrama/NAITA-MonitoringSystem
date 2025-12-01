@@ -531,4 +531,3 @@ class BatchYearViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
-
