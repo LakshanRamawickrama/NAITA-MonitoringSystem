@@ -1516,4 +1516,132 @@ export const canAccessTrainingOfficerReports = (): boolean => {
   return role === 'training_officer'; 
 };
 
+
+/* ========== REGISTRATION NUMBER API ========== */
+export interface RegistrationNumberPreview {
+  district_code: string;
+  course_code: string;
+  batch_year: string;
+  student_number: string;
+  year: string;
+  full_registration: string;
+  explanation: {
+    district_code: string;
+    course_code: string;
+    batch_year: string;
+    student_number: string;
+    year: string;
+  };
+}
+
+export interface DistrictCodeType {
+  id: number;
+  district_name: string;
+  district_code: string;
+  description: string;
+}
+
+export interface CourseCodeType {
+  id: number;
+  course_name: string;
+  course_code: string;
+  description: string;
+}
+
+export interface BatchYearType {
+  id: number;
+  year_code: string;
+  description: string;
+  is_active: boolean;
+}
+
+export interface RegistrationFormatExample {
+  format: string;
+  explanation: string;
+}
+
+export interface RegistrationFormats {
+  format: string;
+  examples: RegistrationFormatExample[];
+  note: string;
+}
+
+// Preview registration number
+export const previewRegistrationNumber = async (data: {
+  district: string;
+  course_id?: number;
+  enrollment_date?: string;
+}): Promise<RegistrationNumberPreview> => {
+  const res = await api.post("/api/students/preview_registration/", data);
+  return res.data;
+};
+
+// Get registration number formats
+export const fetchRegistrationFormats = async (): Promise<RegistrationFormats> => {
+  const res = await api.get("/api/students/registration_formats/");
+  return res.data;
+};
+
+// Get available district codes for dropdown
+export const fetchAvailableDistrictCodes = async (): Promise<DistrictCodeType[]> => {
+  const res = await api.get("/api/students/available_district_codes/");
+  return res.data;
+};
+
+// Get available course codes for dropdown
+export const fetchAvailableCourseCodes = async (): Promise<CourseCodeType[]> => {
+  const res = await api.get("/api/students/available_course_codes/");
+  return res.data;
+};
+
+// Get available batch years for dropdown
+export const fetchAvailableBatchYears = async (): Promise<BatchYearType[]> => {
+  const res = await api.get("/api/students/available_batch_years/");
+  return res.data;
+};
+
+// Update StudentType interface to include new fields
+export interface StudentType {
+  id?: number;
+  registration_no: string;
+  district_code?: string;
+  course_code?: string;
+  batch_year?: string;
+  student_number?: number;
+  registration_year?: string;
+  full_name_english: string;
+  full_name_sinhala: string;
+  name_with_initials: string;
+  gender: 'Male' | 'Female' | 'Other';
+  date_of_birth: string;
+  nic_id: string;
+  address_line: string;
+  district: string;
+  divisional_secretariat: string;
+  grama_niladhari_division: string;
+  village: string;
+  residence_type: string;
+  mobile_no: string;
+  email: string;
+  ol_results: EducationalQualificationType[];
+  al_results: EducationalQualificationType[];
+  training_received: boolean;
+  training_provider: string;
+  course_vocation_name: string;
+  training_duration: string;
+  training_nature: 'Initial' | 'Further' | 'Re-training';
+  training_establishment: string;
+  training_placement_preference: '1st' | '2nd' | '3rd';
+  center?: number | null;
+  center_name?: string;
+  course?: number | null;
+  course_name?: string;
+  course_code_display?: string;
+  enrollment_date?: string;
+  enrollment_status?: 'Pending' | 'Enrolled' | 'Completed' | 'Dropped';
+  date_of_application: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export default api;

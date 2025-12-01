@@ -1,10 +1,16 @@
+// src/pages/DataEntryDashboard/DataEntryStudents.tsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye, MapPin, Building, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye, 
+  MapPin, Building, ChevronDown, ChevronUp, Info, RefreshCw, 
+  Phone, BookOpen
+} from 'lucide-react';
 import { 
   type StudentType, 
   type EducationalQualificationType,
   type Center,
   type CourseType,
+  type RegistrationNumberPreview,
   fetchStudents, 
   createStudent, 
   updateStudent, 
@@ -13,6 +19,8 @@ import {
   fetchCoursesForStudent,
   getUserDistrict,
   getUserRole,
+  previewRegistrationNumber,
+  fetchRegistrationFormats
 } from '../../api/api';
 
 // Mobile Student Card Component
@@ -41,8 +49,12 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-medium text-gray-900 text-sm break-words">{student.full_name_english}</h3>
-            <p className="text-gray-500 text-xs mt-1 break-words">{student.registration_no}</p>
+            <p className="text-green-600 font-bold text-xs mt-1 break-words">{student.registration_no}</p>
             <p className="text-gray-500 text-xs">NIC: {student.nic_id}</p>
+            <div className="flex items-center mt-1">
+              <MapPin className="w-3 h-3 text-gray-400 mr-1" />
+              <span className="text-gray-500 text-xs">{student.district}</span>
+            </div>
           </div>
         </div>
         <button
@@ -75,35 +87,61 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+          {/* Registration Info */}
+          <div className="bg-gray-50 rounded p-2">
+            <div className="text-xs font-semibold text-gray-700 mb-1">Registration Details:</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.district_code || 'N/A'}</div>
+                <div className="text-gray-600">District Code</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.course_code || 'N/A'}</div>
+                <div className="text-gray-600">Course Code</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.batch_year || 'N/A'}</div>
+                <div className="text-gray-600">Batch Year</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.student_number || 'N/A'}</div>
+                <div className="text-gray-600">Student #</div>
+              </div>
+            </div>
+          </div>
+
           {/* Contact & Center Info */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs">
-              <span className="text-gray-600">Mobile:</span>
+              <span className="text-gray-600 flex items-center">
+                <Phone className="w-3 h-3 mr-1" /> Mobile:
+              </span>
               <span className="font-medium">{student.mobile_no}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-600">Center:</span>
+              <span className="text-gray-600 flex items-center">
+                <Building className="w-3 h-3 mr-1" /> Center:
+              </span>
               <span className="font-medium text-right">{student.center_name || 'No Center'}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-600">Course:</span>
+              <span className="text-gray-600 flex items-center">
+                <BookOpen className="w-3 h-3 mr-1" /> Course:
+              </span>
               <span className="font-medium text-right">{student.course_name || 'No Course'}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-gray-600">District:</span>
-              <span className="font-medium">{student.district}</span>
             </div>
           </div>
 
           {/* Education Summary */}
           <div className="bg-gray-50 rounded p-2">
+            <div className="text-xs font-semibold text-gray-700 mb-1">Education:</div>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div>
-                <div className="text-xs font-bold text-gray-900">{student.ol_results.length}</div>
+                <div className="text-xs font-bold text-gray-900">{student.ol_results?.length || 0}</div>
                 <div className="text-[10px] text-gray-600">O/L Subjects</div>
               </div>
               <div>
-                <div className="text-xs font-bold text-gray-900">{student.al_results.length}</div>
+                <div className="text-xs font-bold text-gray-900">{student.al_results?.length || 0}</div>
                 <div className="text-[10px] text-gray-600">A/L Subjects</div>
               </div>
             </div>
@@ -139,7 +177,7 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
   );
 };
 
-const StudentDataEntry: React.FC = () => {
+const DataEntryStudents: React.FC = () => {
   const [students, setStudents] = useState<StudentType[]>([]);
   const [centers, setCenters] = useState<Center[]>([]);
   const [courses, setCourses] = useState<CourseType[]>([]);
@@ -153,12 +191,17 @@ const StudentDataEntry: React.FC = () => {
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [userDistrict, setUserDistrict] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
+  const [registrationPreview, setRegistrationPreview] = useState<RegistrationNumberPreview | null>(null);
+  const [registrationFormats, setRegistrationFormats] = useState<any>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+  const [isAutoGenerateRegNo, setIsAutoGenerateRegNo] = useState(true);
   
+  // FIXED: Properly typed form data with gender as union type
   const [formData, setFormData] = useState<Partial<StudentType>>({
     full_name_english: '',
     full_name_sinhala: '',
     name_with_initials: '',
-    gender: 'Male',
+    gender: 'Male', // This is now properly typed as 'Male' | 'Female' | 'Other'
     date_of_birth: '',
     nic_id: '',
     address_line: '',
@@ -195,16 +238,27 @@ const StudentDataEntry: React.FC = () => {
 
   // Load user info and data
   useEffect(() => {
-    const loadUserInfo = () => {
-      setUserDistrict(getUserDistrict());
-      setUserRole(getUserRole());
+    const loadUserInfo = async () => {
+      const district = getUserDistrict();
+      const role = getUserRole();
+      
+      setUserDistrict(district);
+      setUserRole(role);
       
       // Auto-set district for data entry officers in form
-      if (getUserRole() === 'data_entry' && getUserDistrict()) {
+      if (role === 'data_entry' && district) {
         setFormData(prev => ({
           ...prev,
-          district: getUserDistrict()
+          district: district
         }));
+      }
+      
+      // Load registration formats
+      try {
+        const formats = await fetchRegistrationFormats();
+        setRegistrationFormats(formats);
+      } catch (error) {
+        console.error('Error loading registration formats:', error);
       }
     };
 
@@ -212,6 +266,48 @@ const StudentDataEntry: React.FC = () => {
     loadStudents();
     loadCenters();
   }, []);
+
+  // Generate registration number preview
+  const generateRegistrationPreview = async () => {
+    if (!formData.district) {
+      setRegistrationPreview(null);
+      return;
+    }
+
+    try {
+      setIsGeneratingPreview(true);
+      const preview = await previewRegistrationNumber({
+        district: formData.district,
+        course_id: formData.course || undefined,
+        enrollment_date: formData.enrollment_date || undefined
+      });
+      setRegistrationPreview(preview);
+      
+      // Auto-fill the registration number field with preview if auto-generate is enabled
+      if (isAutoGenerateRegNo) {
+        setFormData(prev => ({
+          ...prev,
+          registration_no: preview.full_registration
+        }));
+      }
+    } catch (error) {
+      console.error('Error generating registration preview:', error);
+      setRegistrationPreview(null);
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  };
+
+  // Update preview when relevant fields change
+  useEffect(() => {
+    if (formData.district || formData.course || formData.enrollment_date) {
+      const timer = setTimeout(() => {
+        generateRegistrationPreview();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formData.district, formData.course, formData.enrollment_date]);
 
   // Fetch students from backend
   const loadStudents = async () => {
@@ -262,15 +358,21 @@ const StudentDataEntry: React.FC = () => {
     setLoading(true);
 
     try {
+      // If auto-generate is checked and registration_no is empty or matches preview, remove it
+      let studentData = { ...formData };
+      if (isAutoGenerateRegNo && (!studentData.registration_no || studentData.registration_no === registrationPreview?.full_registration)) {
+        delete studentData.registration_no;
+      }
+
       if (editingStudent && editingStudent.id) {
         // Update existing student
-        const updatedStudent = await updateStudent(editingStudent.id, formData);
+        const updatedStudent = await updateStudent(editingStudent.id, studentData);
         setStudents(students.map(student => 
           student.id === editingStudent.id ? updatedStudent : student
         ));
       } else {
         // Add new student
-        const newStudent = await createStudent(formData);
+        const newStudent = await createStudent(studentData);
         setStudents([...students, newStudent]);
       }
 
@@ -279,7 +381,10 @@ const StudentDataEntry: React.FC = () => {
       setEditingStudent(null);
     } catch (error: any) {
       console.error('Error saving student:', error);
-      alert(error.response?.data?.detail || 'Error saving student. Please try again.');
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          (typeof error.response?.data === 'object' ? JSON.stringify(error.response.data) : 'Error saving student. Please try again.');
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -305,6 +410,7 @@ const StudentDataEntry: React.FC = () => {
     });
     setEditingStudent(student);
     setShowForm(true);
+    setIsAutoGenerateRegNo(false); // When editing, don't auto-generate
   };
 
   const handleViewDetails = (student: StudentType) => {
@@ -312,16 +418,17 @@ const StudentDataEntry: React.FC = () => {
     setShowDetails(true);
   };
 
+  // FIXED: Reset form function with proper typing
   const resetForm = () => {
     setFormData({
       full_name_english: '',
       full_name_sinhala: '',
       name_with_initials: '',
-      gender: 'Male',
+      gender: 'Male', // Fixed: Now properly typed
       date_of_birth: '',
       nic_id: '',
       address_line: '',
-      district: userRole === 'data_entry' ? getUserDistrict() : '',
+      district: userRole === 'data_entry' ? userDistrict : '',
       divisional_secretariat: '',
       grama_niladhari_division: '',
       village: '',
@@ -344,8 +451,16 @@ const StudentDataEntry: React.FC = () => {
       registration_no: '',
       date_of_application: new Date().toISOString().split('T')[0],
     });
+    
     setEditingStudent(null);
     setCourses([]);
+    setRegistrationPreview(null);
+    setIsAutoGenerateRegNo(true);
+    
+    // Generate new preview after reset
+    setTimeout(() => {
+      generateRegistrationPreview();
+    }, 100);
   };
 
   const addOlResult = () => {
@@ -406,7 +521,78 @@ const StudentDataEntry: React.FC = () => {
     .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
     .slice(0, 3);
 
-  // Center and Course Selection Component
+  // Registration Preview Component
+  const RegistrationPreviewSection = () => {
+    if (!registrationPreview) return null;
+
+    return (
+      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-semibold text-blue-800 flex items-center">
+            <Info className="w-4 h-4 mr-1" />
+            Registration Number Preview
+          </h4>
+          <button
+            type="button"
+            onClick={generateRegistrationPreview}
+            disabled={isGeneratingPreview}
+            className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
+          >
+            <RefreshCw className={`w-3 h-3 mr-1 ${isGeneratingPreview ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+        
+        <div className="mb-2">
+          <div className="text-lg font-bold text-blue-900 mb-1">
+            {registrationPreview.full_registration}
+          </div>
+          <div className="text-xs text-gray-600 grid grid-cols-2 gap-1">
+            <div><span className="font-medium">District:</span> {registrationPreview.district_code}</div>
+            <div><span className="font-medium">Course:</span> {registrationPreview.course_code}</div>
+            <div><span className="font-medium">Batch:</span> 20{registrationPreview.batch_year}</div>
+            <div><span className="font-medium">Student #:</span> {registrationPreview.student_number}</div>
+            <div className="col-span-2"><span className="font-medium">Year:</span> {registrationPreview.year}</div>
+          </div>
+        </div>
+        
+        <div className="text-xs text-gray-500 italic">
+          This number will be assigned when you save the student record.
+        </div>
+      </div>
+    );
+  };
+
+  // Registration Format Info Component
+  const RegistrationFormatInfo = () => {
+    if (!registrationFormats) return null;
+
+    return (
+      <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <h4 className="text-sm font-semibold text-green-800 mb-2">
+          Registration Number Format
+        </h4>
+        <div className="text-xs text-gray-700 mb-2">
+          <code className="bg-green-100 px-2 py-1 rounded">{registrationFormats.format}</code>
+        </div>
+        
+        <div className="text-xs text-gray-600">
+          <div className="font-medium mb-1">Examples:</div>
+          {registrationFormats.examples.map((example: any, index: number) => (
+            <div key={index} className="mb-1">
+              <code className="bg-white px-2 py-1 rounded border">{example.format}</code>
+              <div className="text-gray-500 text-xs mt-1">{example.explanation}</div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="text-xs text-green-600 mt-2">
+          {registrationFormats.note}
+        </div>
+      </div>
+    );
+  };
+
   const CenterAndCourseSection = () => (
     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
       <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800 flex items-center">
@@ -471,14 +657,16 @@ const StudentDataEntry: React.FC = () => {
 
         <div>
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-            Enrollment Date
+            Enrollment Date *
           </label>
           <input
             type="date"
+            required
             value={formData.enrollment_date || ''}
             onChange={(e) => setFormData({ ...formData, enrollment_date: e.target.value })}
             className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-green-500 hover:border-green-400 transition text-xs sm:text-sm"
           />
+          <p className="text-xs text-gray-500 mt-1">Used to determine batch year</p>
         </div>
 
         <div>
@@ -548,6 +736,12 @@ const StudentDataEntry: React.FC = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                  {/* Registration Format Info */}
+                  <RegistrationFormatInfo />
+                  
+                  {/* Registration Preview */}
+                  <RegistrationPreviewSection />
+                  
                   {/* Personal Information */}
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Personal Information</h3>
@@ -594,7 +788,10 @@ const StudentDataEntry: React.FC = () => {
                         </label>
                         <select
                           value={formData.gender || 'Male'}
-                          onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            gender: e.target.value as 'Male' | 'Female' | 'Other' // FIXED: Type assertion
+                          })}
                           className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-green-500 hover:border-green-400 transition text-xs sm:text-sm"
                         >
                           <option value="Male">Male</option>
@@ -646,16 +843,13 @@ const StudentDataEntry: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                          District {userRole === 'data_entry' && '(Auto-set)'}
+                          District *
                         </label>
                         <input
                           type="text"
+                          required
                           value={formData.district || ''}
-                          onChange={(e) => {
-                            if (userRole !== 'data_entry') {
-                              setFormData({ ...formData, district: e.target.value })
-                            }
-                          }}
+                          onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                           readOnly={userRole === 'data_entry'}
                           className={`w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-green-500 hover:border-green-400 transition text-xs sm:text-sm ${
                             userRole === 'data_entry' ? 'bg-gray-100 cursor-not-allowed' : ''
@@ -750,23 +944,60 @@ const StudentDataEntry: React.FC = () => {
                   {/* Application Information */}
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-green-300 transition-all duration-200">
                     <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Application Information</h3>
+                    
+                    {/* Auto-generate toggle */}
+                    <div className="mb-4 p-3 bg-white border border-gray-300 rounded-lg">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={isAutoGenerateRegNo}
+                          onChange={(e) => {
+                            setIsAutoGenerateRegNo(e.target.checked);
+                            if (e.target.checked) {
+                              // Clear manual registration number
+                              setFormData({ ...formData, registration_no: '' });
+                              // Generate new preview
+                              generateRegistrationPreview();
+                            }
+                          }}
+                          className="mr-3 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          id="auto-generate-regno"
+                        />
+                        <label htmlFor="auto-generate-regno" className="block text-sm font-medium text-gray-700">
+                          Auto-generate Registration Number
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 ml-7">
+                        {isAutoGenerateRegNo 
+                          ? "Registration number will be automatically generated in the format: District code/Course code/Batch year/Student number/Year"
+                          : "You can manually enter a registration number"
+                        }
+                      </p>
+                    </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                          Registration No. *
+                          Registration No. {isAutoGenerateRegNo ? '(Auto-generated)' : '*'}
                         </label>
                         <input
                           type="text"
-                          required
+                          required={!isAutoGenerateRegNo}
                           value={formData.registration_no || ''}
                           onChange={(e) => setFormData({ ...formData, registration_no: e.target.value })}
-                          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-green-500 hover:border-green-400 transition text-xs sm:text-sm"
-                          placeholder="Auto-generated if left empty"
+                          disabled={isAutoGenerateRegNo}
+                          className={`w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 sm:focus:ring-2 focus:ring-green-500 hover:border-green-400 transition text-xs sm:text-sm ${
+                            isAutoGenerateRegNo ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''
+                          }`}
+                          placeholder={isAutoGenerateRegNo ? "Will be auto-generated after saving" : "Enter registration number"}
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Leave empty to auto-generate registration number
-                        </p>
+                        {isAutoGenerateRegNo && registrationPreview && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Preview: <span className="font-bold">{registrationPreview.full_registration}</span>
+                          </p>
+                        )}
                       </div>
+                      
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           Date of Application *
@@ -1026,17 +1257,42 @@ const StudentDataEntry: React.FC = () => {
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
-                  {/* Application Information */}
+                  {/* Registration Information */}
                   <div className="bg-gray-50 p-3 sm:p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">Application Information</h3>
+                    <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800 flex items-center">
+                      <Info className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-600" />
+                      Registration Information
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                      <div>
+                      <div className="md:col-span-2">
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Registration No.</label>
-                        <p className="text-base sm:text-lg font-bold text-green-600">{selectedStudent.registration_no}</p>
+                        <p className="text-lg sm:text-xl font-bold text-green-600">{selectedStudent.registration_no}</p>
+                        <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2">
+                          <div className="bg-blue-50 p-2 rounded">
+                            <div className="text-xs text-gray-600">District Code</div>
+                            <div className="font-bold">{selectedStudent.district_code || 'N/A'}</div>
+                          </div>
+                          <div className="bg-green-50 p-2 rounded">
+                            <div className="text-xs text-gray-600">Course Code</div>
+                            <div className="font-bold">{selectedStudent.course_code || 'N/A'}</div>
+                          </div>
+                          <div className="bg-yellow-50 p-2 rounded">
+                            <div className="text-xs text-gray-600">Batch Year</div>
+                            <div className="font-bold">{selectedStudent.batch_year || 'N/A'}</div>
+                          </div>
+                          <div className="bg-purple-50 p-2 rounded">
+                            <div className="text-xs text-gray-600">Student #</div>
+                            <div className="font-bold">{selectedStudent.student_number || 'N/A'}</div>
+                          </div>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date of Application</label>
                         <p className="text-gray-900 text-sm sm:text-base">{selectedStudent.date_of_application}</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Enrollment Date</label>
+                        <p className="text-gray-900 text-sm sm:text-base">{selectedStudent.enrollment_date || 'Not set'}</p>
                       </div>
                     </div>
                   </div>
@@ -1089,13 +1345,7 @@ const StudentDataEntry: React.FC = () => {
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Course</label>
                         <p className="text-gray-900 text-sm sm:text-base">
                           {selectedStudent.course_name || 'Not assigned'}
-                          {selectedStudent.course_code && ` (${selectedStudent.course_code})`}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Enrollment Date</label>
-                        <p className="text-gray-900 text-sm sm:text-base">
-                          {selectedStudent.enrollment_date || 'Not set'}
+                          {selectedStudent.course_code_display && ` (${selectedStudent.course_code_display})`}
                         </p>
                       </div>
                       <div>
@@ -1281,7 +1531,7 @@ const StudentDataEntry: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-medium text-gray-800 text-sm sm:text-base">{student.full_name_english}</p>
-                    <p className="text-xs sm:text-sm text-gray-500">{student.registration_no}</p>
+                    <p className="text-green-600 font-bold text-xs sm:text-sm">{student.registration_no}</p>
                     <p className="text-xs text-gray-400">{student.nic_id}</p>
                   </div>
                 </div>
@@ -1337,6 +1587,9 @@ const StudentDataEntry: React.FC = () => {
                     Registration & Student Info
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Registration Components
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Center & Course
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1374,12 +1627,33 @@ const StudentDataEntry: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        <div className="flex space-x-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            {student.district_code || 'N/A'}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            {student.course_code || 'GEN'}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                            {student.batch_year || 'N/A'}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            #{student.student_number || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Year: {student.registration_year || new Date().getFullYear()}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
                         {student.center_name || 'No Center'}
                       </div>
                       <div className="text-sm text-gray-500">
                         {student.course_name || 'No Course'}
-                        {student.course_code && ` (${student.course_code})`}
+                        {student.course_code_display && ` (${student.course_code_display})`}
                       </div>
                       {student.enrollment_status && (
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
@@ -1403,10 +1677,10 @@ const StudentDataEntry: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">
-                        O/L: {student.ol_results.length} subjects
+                        O/L: {student.ol_results?.length || 0} subjects
                       </div>
                       <div className="text-sm text-gray-900">
-                        A/L: {student.al_results.length} subjects
+                        A/L: {student.al_results?.length || 0} subjects
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -1464,7 +1738,7 @@ const StudentDataEntry: React.FC = () => {
                 ))}
                 {filteredStudents.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="text-center text-gray-500 py-6">
+                    <td colSpan={8} className="text-center text-gray-500 py-6">
                       {loading ? 'Loading...' : 'No student records found.'}
                     </td>
                   </tr>
@@ -1478,4 +1752,4 @@ const StudentDataEntry: React.FC = () => {
   );
 };
 
-export default StudentDataEntry;
+export default DataEntryStudents;

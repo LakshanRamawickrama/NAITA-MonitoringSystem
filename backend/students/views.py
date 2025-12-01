@@ -1,5 +1,5 @@
 # students/views.py
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -10,20 +10,20 @@ import pandas as pd
 from django.http import HttpResponse
 import csv
 from django.utils import timezone
+from datetime import datetime
 
-from .models import Student, EducationalQualification
-from .serializers import StudentSerializer, StudentImportSerializer
+from .models import Student, EducationalQualification, DistrictCode, CourseCode, BatchYear
+from .serializers import (
+    StudentSerializer, StudentImportSerializer, 
+    DistrictCodeSerializer, CourseCodeSerializer, BatchYearSerializer,
+    RegistrationNumberPreviewSerializer
+)
 from centers.models import Center
 from courses.models import Course
 
 class StudentPermission:
     """
     Custom permission class for student operations
-    - Admin: Can manage all students
-    - District Manager: Can manage students in their district
-    - Training Officer: Can manage students in their district  
-    - Data Entry: Can only manage students in their district (create/read/update)
-    - Instructor: Read-only access to assigned students
     """
     
     def has_permission(self, request, view):
@@ -65,9 +65,10 @@ class StudentViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = [
         'registration_no', 'full_name_english', 'full_name_sinhala',
-        'name_with_initials', 'nic_id', 'district', 'email'
+        'name_with_initials', 'nic_id', 'district', 'email',
+        'district_code', 'course_code', 'batch_year'
     ]
-    filterset_fields = ['district', 'center', 'course', 'enrollment_status', 'training_received']
+    filterset_fields = ['district', 'center', 'course', 'enrollment_status', 'training_received', 'district_code', 'course_code', 'batch_year']
     
     def get_queryset(self):
         queryset = Student.objects.all()
@@ -88,10 +89,13 @@ class StudentViewSet(viewsets.ModelViewSet):
                 Q(registration_no__icontains=search_term) |
                 Q(district__icontains=search_term) |
                 Q(center__name__icontains=search_term) |
-                Q(course__name__icontains=search_term)
+                Q(course__name__icontains=search_term) |
+                Q(district_code__icontains=search_term) |
+                Q(course_code__icontains=search_term) |
+                Q(batch_year__icontains=search_term)
             )
         
-        return queryset.select_related('center', 'course')
+        return queryset.select_related('center', 'course', 'created_by')
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -99,8 +103,132 @@ class StudentViewSet(viewsets.ModelViewSet):
         return context
     
     def perform_create(self, serializer):
-        # Auto-set the creator
-        serializer.save(created_by=self.request.user)
+        serializer.save()
+
+    @action(detail=False, methods=['post'])
+    def preview_registration(self, request):
+        """Preview the registration number that would be generated"""
+        serializer = RegistrationNumberPreviewSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        data = serializer.validated_data
+        district = data.get('district')
+        course_id = data.get('course_id')
+        enrollment_date = data.get('enrollment_date')
+        
+        current_year = timezone.now().year
+        
+        # Get district code
+        try:
+            district_code_obj = DistrictCode.objects.filter(
+                district_name__iexact=district
+            ).first()
+            if district_code_obj:
+                district_code = district_code_obj.district_code
+            else:
+                district_code = district[:3].upper()
+        except:
+            district_code = district[:3].upper() if district else 'GEN'
+        
+        # Get course code
+        course_code = "GEN"
+        if course_id:
+            try:
+                course = Course.objects.get(id=course_id)
+                course_code_obj = CourseCode.objects.filter(
+                    course_name__icontains=course.name
+                ).first()
+                if course_code_obj:
+                    course_code = course_code_obj.course_code
+                elif course.code:
+                    course_code = course.code[:3].upper()
+            except Course.DoesNotExist:
+                pass
+        
+        # Get batch year
+        if enrollment_date:
+            try:
+                enrollment_date_obj = datetime.strptime(str(enrollment_date), '%Y-%m-%d').date()
+                batch_year_full = enrollment_date_obj.year
+            except:
+                batch_year_full = current_year
+        else:
+            batch_year_full = current_year
+        
+        batch_year = str(batch_year_full)[-2:]
+        
+        # Get next student number
+        students_in_batch = Student.objects.filter(
+            district=district,
+            course_id=course_id,
+            batch_year=batch_year
+        )
+        
+        student_number = students_in_batch.count() + 1
+        
+        # Generate preview
+        full_registration = f"{district_code}/{course_code}/{batch_year}/{student_number:04d}/{current_year}"
+        
+        return Response({
+            'district_code': district_code,
+            'course_code': course_code,
+            'batch_year': batch_year,
+            'student_number': str(student_number).zfill(4),
+            'year': str(current_year),
+            'full_registration': full_registration,
+            'explanation': {
+                'district_code': f'Code for {district} district',
+                'course_code': f'Code for the selected course' if course_id else 'General course code',
+                'batch_year': f'Batch of {batch_year_full}',
+                'student_number': f'Student #{student_number} in this batch',
+                'year': f'Registration year: {current_year}'
+            }
+        })
+    
+    @action(detail=False, methods=['get'])
+    def available_district_codes(self, request):
+        """Get all available district codes"""
+        district_codes = DistrictCode.objects.all()
+        serializer = DistrictCodeSerializer(district_codes, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def available_course_codes(self, request):
+        """Get all available course codes"""
+        course_codes = CourseCode.objects.all()
+        serializer = CourseCodeSerializer(course_codes, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def available_batch_years(self, request):
+        """Get all available batch years"""
+        batch_years = BatchYear.objects.filter(is_active=True)
+        serializer = BatchYearSerializer(batch_years, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def registration_formats(self, request):
+        """Get example registration number formats"""
+        examples = [
+            {
+                'format': 'MT/WP/24/0010/2025',
+                'explanation': 'Matara (MT) / Web Programming (WP) / 2024 Batch (24) / Student #10 (0010) / Registration Year 2025'
+            },
+            {
+                'format': 'CO/GD/23/0045/2024',
+                'explanation': 'Colombo (CO) / Graphic Design (GD) / 2023 Batch (23) / Student #45 (0045) / Registration Year 2024'
+            },
+            {
+                'format': 'GA/DM/25/0001/2026',
+                'explanation': 'Gampaha (GA) / Digital Marketing (DM) / 2025 Batch (25) / Student #1 (0001) / Registration Year 2026'
+            }
+        ]
+        return Response({
+            'format': 'District code/Course code/Batch year/Student number/Year',
+            'examples': examples,
+            'note': 'Registration numbers are auto-generated when left empty'
+        })
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
@@ -127,6 +255,28 @@ class StudentViewSet(viewsets.ModelViewSet):
         
         stats['center_distribution'] = center_stats
         
+        # Registration number stats
+        registration_stats = {
+            'by_district': {},
+            'by_course': {},
+            'by_batch': {}
+        }
+        
+        for student in queryset:
+            # District stats
+            district = student.district_code or 'Unknown'
+            registration_stats['by_district'][district] = registration_stats['by_district'].get(district, 0) + 1
+            
+            # Course stats
+            course = student.course_code or 'GEN'
+            registration_stats['by_course'][course] = registration_stats['by_course'].get(course, 0) + 1
+            
+            # Batch stats
+            batch = student.batch_year or 'Unknown'
+            registration_stats['by_batch'][batch] = registration_stats['by_batch'].get(batch, 0) + 1
+        
+        stats['registration_stats'] = registration_stats
+        
         return Response(stats)
     
     @action(detail=False, methods=['get'])
@@ -140,19 +290,25 @@ class StudentViewSet(viewsets.ModelViewSet):
             
             writer = csv.writer(response)
             writer.writerow([
-                'Registration No', 'Full Name (English)', 'Full Name (Sinhala)',
-                'Name with Initials', 'Gender', 'Date of Birth', 'NIC/ID',
-                'Address', 'District', 'Divisional Secretariat', 'Grama Niladhari Division',
-                'Village', 'Residence Type', 'Mobile No', 'Email', 'Training Received',
-                'Training Provider', 'Course/Vocation', 'Training Duration',
-                'Training Nature', 'Training Establishment', 'Placement Preference',
-                'Center', 'Course', 'Enrollment Date', 'Enrollment Status',
-                'Date of Application'
+                'Registration No', 'District Code', 'Course Code', 'Batch Year',
+                'Student Number', 'Registration Year', 'Full Name (English)', 
+                'Full Name (Sinhala)', 'Name with Initials', 'Gender', 'Date of Birth', 
+                'NIC/ID', 'Address', 'District', 'Divisional Secretariat', 
+                'Grama Niladhari Division', 'Village', 'Residence Type', 'Mobile No', 
+                'Email', 'Training Received', 'Training Provider', 'Course/Vocation', 
+                'Training Duration', 'Training Nature', 'Training Establishment', 
+                'Placement Preference', 'Center', 'Course', 'Enrollment Date', 
+                'Enrollment Status', 'Date of Application'
             ])
             
             for student in students:
                 writer.writerow([
                     student.registration_no,
+                    student.district_code,
+                    student.course_code,
+                    student.batch_year,
+                    student.student_number,
+                    student.registration_year,
                     student.full_name_english,
                     student.full_name_sinhala,
                     student.name_with_initials,
@@ -184,11 +340,15 @@ class StudentViewSet(viewsets.ModelViewSet):
             return response
         
         elif format_type == 'excel':
-            # Implement Excel export using pandas
             data = []
             for student in students:
                 data.append({
                     'Registration No': student.registration_no,
+                    'District Code': student.district_code,
+                    'Course Code': student.course_code,
+                    'Batch Year': student.batch_year,
+                    'Student Number': student.student_number,
+                    'Registration Year': student.registration_year,
                     'Full Name (English)': student.full_name_english,
                     'Full Name (Sinhala)': student.full_name_sinhala,
                     'Name with Initials': student.name_with_initials,
@@ -220,7 +380,10 @@ class StudentViewSet(viewsets.ModelViewSet):
             df = pd.DataFrame(data)
             response = HttpResponse(content_type='application/vnd.ms-excel')
             response['Content-Disposition'] = 'attachment; filename="students.xlsx"'
-            df.to_excel(response, index=False)
+            
+            with pd.ExcelWriter(response, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Students')
+            
             return response
         
         else:
@@ -231,7 +394,6 @@ class StudentViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'])
     def import_students(self, request):
-        # Check permission for import
         if request.user.role not in ['admin', 'district_manager', 'training_officer', 'data_entry']:
             return Response(
                 {'error': 'You do not have permission to import students'}, 
@@ -326,31 +488,47 @@ class StudentViewSet(viewsets.ModelViewSet):
                 {'error': f'Error processing file: {str(e)}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-            
-        # students/views.py - UPDATE THE STATS FUNCTION
-@action(detail=False, methods=['get'])
-def stats(self, request):
-    """Get student statistics for dashboard"""
-    user = request.user
-    queryset = self.get_queryset()
+
+# NEW VIEWSETS FOR ADMIN MODELS
+class DistrictCodeViewSet(viewsets.ModelViewSet):
+    queryset = DistrictCode.objects.all()
+    serializer_class = DistrictCodeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter]
+    search_fields = ['district_name', 'district_code']
     
-    stats = {
-        'total_students': queryset.count(),
-        'trained_students': queryset.filter(training_received=True).count(),
-        'enrolled_students': queryset.filter(enrollment_status='Enrolled').count(),
-        'completed_students': queryset.filter(enrollment_status='Completed').count(),
-        'pending_students': queryset.filter(enrollment_status='Pending').count(),
-        'with_ol_results': queryset.filter(qualifications__type='OL').distinct().count(),
-        'with_al_results': queryset.filter(qualifications__type='AL').distinct().count(),
-        'recent_students': queryset.filter(created_at__gte=timezone.now() - timezone.timedelta(days=7)).count(),
-    }
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
+class CourseCodeViewSet(viewsets.ModelViewSet):
+    queryset = CourseCode.objects.all()
+    serializer_class = CourseCodeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter]
+    search_fields = ['course_name', 'course_code']
     
-    # Center distribution - UPDATED related_name
-    center_stats = {}
-    for student in queryset.select_related('center'):
-        center_name = student.center.name if student.center else 'No Center'
-        center_stats[center_name] = center_stats.get(center_name, 0) + 1
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
+class BatchYearViewSet(viewsets.ModelViewSet):
+    queryset = BatchYear.objects.all()
+    serializer_class = BatchYearSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter]
+    search_fields = ['year_code', 'description']
     
-    stats['center_distribution'] = center_stats
-    
-    return Response(stats)
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
