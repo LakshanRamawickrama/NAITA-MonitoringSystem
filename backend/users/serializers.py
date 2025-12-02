@@ -17,7 +17,7 @@ class UserListSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "username", "email", "first_name", "last_name",
-            "role", "center", "district", "is_active", "is_staff", "last_login"
+            "role", "center", "district", "epf_no", "is_active", "is_staff", "last_login"
         ]
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -29,12 +29,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
         write_only=True
     )
     password = serializers.CharField(write_only=True, min_length=8)
+    epf_no = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
         fields = [
             "username", "email", "password", "first_name", "last_name",
-            "role", "center_id", "district", "is_active", "is_staff"
+            "role", "center_id", "district", "epf_no", "is_active", "is_staff"
         ]
 
     def validate(self, data):
@@ -46,6 +47,31 @@ class UserCreateSerializer(serializers.ModelSerializer):
                 data.get('role') == 'district_manager'):
                 raise serializers.ValidationError({
                     "role": "District managers cannot create other district managers."
+                })
+            
+            # Validate EPF number based on role
+            role = data.get('role')
+            epf_no = data.get('epf_no', '')
+            
+            # Roles that require EPF number
+            roles_requiring_epf = ['admin', 'district_manager', 'training_officer', 'data_entry']
+            
+            if role in roles_requiring_epf and not epf_no:
+                raise serializers.ValidationError({
+                    "epf_no": f"{role.replace('_', ' ').title()} must have an EPF number."
+                })
+            
+            # Instructor should not have EPF number
+            if role == 'instructor' and epf_no:
+                raise serializers.ValidationError({
+                    "epf_no": "Instructors should not have an EPF number."
+                })
+            
+            # Allow any format for EPF number (letters, numbers, special characters)
+            # Just ensure it's not too long
+            if epf_no and len(epf_no) > 50:
+                raise serializers.ValidationError({
+                    "epf_no": "EPF number cannot exceed 50 characters."
                 })
         
         return data

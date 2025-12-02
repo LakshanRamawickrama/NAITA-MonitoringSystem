@@ -118,6 +118,7 @@ export interface UserType {
   role: string;
   center: { id: number; name: string; district: string | null } | null;
   district: string | null;
+  epf_no: string | null;
   is_active: boolean;
   is_staff: boolean;
   last_login: string | null;

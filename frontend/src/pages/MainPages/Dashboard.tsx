@@ -93,6 +93,7 @@ const Dashboard = () => {
     if (role === "training_officer") {
       if (p === "/dashboard/training_officer") return <TrainingOfficerOverview />;
       if (p === "/dashboard/training_officer/courses") return <TrainingOfficerCourses />;
+      if (p === "/dashboard/training_officer/users") return <Users />;
       if (p === "/dashboard/training_officer/instructors") return <Instructor />;
       if (p === "/dashboard/training_officer/reports") return <TrainingOfficerReports />;
     }

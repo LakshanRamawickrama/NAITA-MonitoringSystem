@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import DataTable from "../../components/DataTable";
 import {
   Search, Plus, Mail, Shield, X, Loader2,
-  Edit, Trash2, Key, AlertCircle, MapPin
+  Edit, Trash2, Key, AlertCircle, MapPin, User
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -26,6 +26,7 @@ interface UserType {
   role: string;
   center: { id: number; name: string; district: string | null } | null;
   district: string | null;
+  epf_no: string | null;
   is_active: boolean;
   is_staff: boolean;
   last_login: string | null;
@@ -55,7 +56,7 @@ const Users: React.FC = () => {
   // Forms
   const initialForm = {
     username: "", email: "", password: "", first_name: "", last_name: "",
-    role: "", center_id: "", district: "", is_active: true, is_staff: false
+    role: "", center_id: "", district: "", epf_no: "", is_active: true, is_staff: false
   };
   const [addForm, setAddForm] = useState(initialForm);
   const [editForm, setEditForm] = useState(initialForm);
@@ -102,13 +103,30 @@ const Users: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        setLoading(true); setError("");
+        setLoading(true); 
+        setError("");
+        console.log("Fetching users and centers..."); // Debug
+        
         const [u, c] = await Promise.all([fetchUsers(), fetchCenters()]);
-        setUsers(u); setCenters(c);
+        
+        console.log("Fetched users:", u); // Debug
+        console.log("Users with IDs:", u.map(user => ({ 
+          id: user.id, 
+          username: user.username,
+          hasId: !!user.id 
+        }))); // Debug
+        
+        // Filter out any users without IDs for safety
+        const validUsers = u.filter(user => user.id != null);
+        console.log(`Loaded ${validUsers.length} valid users out of ${u.length} total`); // Debug
+        
+        setUsers(validUsers); 
+        setCenters(c);
       } catch (e: any) {
         const msg = e.response?.data?.detail || "Failed to load data";
         setError(msg);
         toast.error(msg);
+        console.error("Error loading data:", e); // Debug
       } finally {
         setLoading(false);
       }
@@ -125,19 +143,67 @@ const Users: React.FC = () => {
   };
 
   const openEdit = (u: UserType) => {
+    if (!u.id) {
+      toast.error("Cannot edit user: ID is missing");
+      return;
+    }
+    
+    console.log("Opening edit for user:", u.id, u.username); // Debug
     setSelectedUser(u);
     setEditForm({
-      username: u.username, email: u.email, password: "",
-      first_name: u.first_name, last_name: u.last_name,
-      role: u.role, center_id: u.center?.id?.toString() || "",
+      username: u.username, 
+      email: u.email, 
+      password: "",
+      first_name: u.first_name, 
+      last_name: u.last_name,
+      role: u.role, 
+      center_id: u.center?.id?.toString() || "",
       district: u.district || "",
-      is_active: u.is_active, is_staff: u.is_staff
+      epf_no: u.epf_no || "",
+      is_active: u.is_active, 
+      is_staff: u.is_staff
     });
     setShowEdit(true);
   };
 
-  const openPwd = (u: UserType) => { setSelectedUser(u); setPwdForm({ new_password: "" }); setShowPwd(true); };
-  const openDelete = (u: UserType) => { setSelectedUser(u); setShowDelete(true); };
+  const openPwd = (u: UserType) => { 
+    if (!u.id) {
+      toast.error("Cannot change password: User ID is missing");
+      return;
+    }
+    setSelectedUser(u); 
+    setPwdForm({ new_password: "" }); 
+    setShowPwd(true); 
+  };
+
+  const openDelete = (u: UserType) => { 
+    console.log("Opening delete for user:", u.id, u.username); // Debug
+    if (!u.id) {
+      toast.error("Cannot delete user: ID is missing");
+      return;
+    }
+    setSelectedUser(u); 
+    setShowDelete(true); 
+  };
+
+  /* ========== EFFECT FOR EPF FIELD ========== */
+  useEffect(() => {
+    // When role changes in add form
+    if (addForm.role === 'instructor') {
+      setAddForm(prev => ({ ...prev, epf_no: "" }));
+    } else if (addForm.role && addForm.role !== 'instructor' && !addForm.epf_no) {
+      setAddForm(prev => ({ ...prev, epf_no: "" }));
+    }
+  }, [addForm.role]);
+
+  useEffect(() => {
+    // When role changes in edit form
+    if (editForm.role === 'instructor') {
+      setEditForm(prev => ({ ...prev, epf_no: "" }));
+    } else if (editForm.role && editForm.role !== 'instructor' && !editForm.epf_no) {
+      setEditForm(prev => ({ ...prev, epf_no: "" }));
+    }
+  }, [editForm.role]);
 
   /* ========== CRUD ========== */
   const handleAdd = async (e: React.FormEvent) => {
@@ -163,8 +229,18 @@ const Users: React.FC = () => {
         is_active: addForm.is_active,
         is_staff: addForm.is_staff
       };
+      
+      // Add EPF only for non-instructor roles, auto-uppercase
+      if (addForm.role !== 'instructor') {
+        payload.epf_no = addForm.epf_no.trim().toUpperCase();
+      } else {
+        // Clear EPF for instructors
+        payload.epf_no = "";
+      }
+
       if (addForm.center_id) payload.center_id = Number(addForm.center_id);
 
+      console.log("Creating user with payload:", payload); // Debug
       const nu = await createUser(payload);
       setUsers(p => [...p, nu]);
       setShowAdd(false); 
@@ -178,7 +254,10 @@ const Users: React.FC = () => {
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault(); 
     setFormErrors({});
-    if (!selectedUser) return;
+    if (!selectedUser || !selectedUser.id) {
+      toast.error("Cannot update: User ID is missing");
+      return;
+    }
     
     try {
       const payload: any = {
@@ -191,8 +270,18 @@ const Users: React.FC = () => {
         is_active: editForm.is_active,
         is_staff: editForm.is_staff
       };
+      
+      // Add EPF only for non-instructor roles, auto-uppercase
+      if (editForm.role !== 'instructor') {
+        payload.epf_no = editForm.epf_no.trim().toUpperCase();
+      } else {
+        // Clear EPF for instructors
+        payload.epf_no = "";
+      }
+
       if (editForm.center_id) payload.center_id = Number(editForm.center_id);
 
+      console.log(`Updating user ${selectedUser.id} with payload:`, payload); // Debug
       const upd = await updateUser(selectedUser.id, payload);
       setUsers(p => p.map(u => u.id === selectedUser.id ? upd : u));
       setShowEdit(false); 
@@ -206,7 +295,10 @@ const Users: React.FC = () => {
   const handlePwd = async (e: React.FormEvent) => {
     e.preventDefault(); 
     setFormErrors({});
-    if (!selectedUser) return;
+    if (!selectedUser || !selectedUser.id) {
+      toast.error("Cannot change password: User ID is missing");
+      return;
+    }
     try {
       await changePassword(selectedUser.id, pwdForm.new_password);
       setShowPwd(false); 
@@ -218,16 +310,49 @@ const Users: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!selectedUser) return;
+    console.log("handleDelete called, selectedUser:", selectedUser); // Debug
+    
+    if (!selectedUser || !selectedUser.id) {
+      console.error("Delete error: No user selected or user ID is missing", selectedUser);
+      toast.error("Cannot delete: User ID is missing");
+      setShowDelete(false);
+      return;
+    }
+    
     setDeleteLoading(true);
     try {
+      console.log(`Attempting to delete user ID: ${selectedUser.id}, Username: ${selectedUser.username}`);
+      
       await deleteUser(selectedUser.id);
-      setUsers(p => p.filter(u => u.id !== selectedUser.id));
+      
+      // Update local state
+      setUsers(prevUsers => prevUsers.filter(u => u.id !== selectedUser.id));
       setShowDelete(false);
-      toast.success(`${selectedUser.username} deleted`);
+      setSelectedUser(null);
+      
+      toast.success(`${selectedUser.username} deleted successfully`);
     } catch (err: any) {
-      const msg = err.response?.data?.detail || "Delete failed";
-      toast.error(msg);
+      console.error("Delete API error:", err);
+      console.error("Error response:", err.response);
+      
+      let errorMessage = "Delete failed";
+      if (err.response) {
+        if (err.response.status === 403) {
+          errorMessage = "Permission denied. You don't have access to delete this user.";
+        } else if (err.response.status === 404) {
+          errorMessage = "User not found.";
+        } else if (err.response.data?.detail) {
+          errorMessage = err.response.data.detail;
+        } else if (err.response.data) {
+          errorMessage = typeof err.response.data === 'string' 
+            ? err.response.data 
+            : JSON.stringify(err.response.data);
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setDeleteLoading(false);
     }
@@ -250,11 +375,13 @@ const Users: React.FC = () => {
       const name = `${u.first_name} ${u.last_name}`.toLowerCase();
       const center = u.center?.name.toLowerCase() || "";
       const district = u.district?.toLowerCase() || "";
+      const epf = u.epf_no?.toLowerCase() || "";
       return u.username.toLowerCase().includes(s) ||
              u.email.toLowerCase().includes(s) ||
              name.includes(s) || 
              center.includes(s) ||
-             district.includes(s);
+             district.includes(s) ||
+             epf.includes(s);
     })
     .filter(u => roleFilter ? u.role === roleFilter : true)
     .filter(u => statusFilter ? (u.is_active ? "Active" : "Inactive") === statusFilter : true)
@@ -311,6 +438,21 @@ const Users: React.FC = () => {
       }
     },
     { 
+      key: "epf_no", 
+      label: "EPF No", 
+      render: (epf: string | null, row: UserType) => (
+        <div className="flex items-center">
+          <User className="w-4 h-4 mr-1 text-gray-400" />
+          <div>
+            <span className="text-sm font-medium block">{epf || "—"}</span>
+            {row.role === 'instructor' && (
+              <span className="text-xs text-gray-400 italic">Not required</span>
+            )}
+          </div>
+        </div>
+      ) 
+    },
+    { 
       key: "district", 
       label: "District", 
       render: (d: string | null) => (
@@ -320,7 +462,11 @@ const Users: React.FC = () => {
         </div>
       ) 
     },
-    { key: "center", label: "Center", render: (c: any) => <span className="text-sm font-medium">{c?.name || "—"}</span> },
+    { 
+      key: "center", 
+      label: "Center", 
+      render: (c: any) => <span className="text-sm font-medium">{c?.name || "—"}</span> 
+    },
     {
       key: "is_active",
       label: "Status",
@@ -335,13 +481,32 @@ const Users: React.FC = () => {
       label: "Actions",
       render: (_: any, row: UserType) => (
         <div className="flex space-x-2">
-          <button onClick={() => openEdit(row)} className="text-blue-600 hover:text-blue-800">
+          <button 
+            onClick={() => openEdit(row)} 
+            className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+            title="Edit"
+          >
             <Edit className="w-4 h-4" />
           </button>
-          <button onClick={() => openPwd(row)} className="text-orange-600 hover:text-orange-800">
+          <button 
+            onClick={() => openPwd(row)} 
+            className="text-orange-600 hover:text-orange-800 p-1 hover:bg-orange-50 rounded"
+            title="Change Password"
+          >
             <Key className="w-4 h-4" />
           </button>
-          <button onClick={() => openDelete(row)} className="text-red-600 hover:text-red-800">
+          <button 
+            onClick={() => {
+              console.log("Delete clicked for user:", row.id, row.username);
+              if (!row.id) {
+                toast.error("Cannot delete: User ID is missing");
+                return;
+              }
+              openDelete(row);
+            }} 
+            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
+            title="Delete"
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -383,33 +548,55 @@ const Users: React.FC = () => {
             )}
           </div>
           {(isAdmin || isDistrictManager) && (
-            <button onClick={() => { 
-              resetForm(); 
-              // Auto-fill district for district managers and set default role
-              if (isDistrictManager && userDistrict) {
-                setAddForm(prev => ({ 
-                  ...prev, 
-                  district: userDistrict,
-                  role: roleOptions[0]?.value || "" // Set first available role as default
-                }));
-              }
-              setShowAdd(true); 
-            }}
-                    className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 flex items-center space-x-2 shadow-sm">
+            <button 
+              onClick={() => { 
+                resetForm(); 
+                // Auto-fill district for district managers and set default role
+                if (isDistrictManager && userDistrict) {
+                  setAddForm(prev => ({ 
+                    ...prev, 
+                    district: userDistrict,
+                    role: roleOptions[0]?.value || "" // Set first available role as default
+                  }));
+                }
+                setShowAdd(true); 
+              }}
+              className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 flex items-center space-x-2 shadow-sm transition"
+            >
               <Plus className="w-4 h-4" /><span>Add User</span>
             </button>
           )}
         </div>
 
+        {/* Debug button - remove after testing */}
+        <button 
+          onClick={() => {
+            console.log("Current users state:", users);
+            console.log("Users with IDs:", users.map(u => ({ id: u.id, username: u.username })));
+            console.log("Selected user:", selectedUser);
+          }}
+          className="mb-4 px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
+        >
+          Debug Data
+        </button>
+
         {/* Filters */}
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input type="text" placeholder="Search…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                   className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" />
+            <input 
+              type="text" 
+              placeholder="Search…" 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+            />
           </div>
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+          <select 
+            value={roleFilter} 
+            onChange={e => setRoleFilter(e.target.value)}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+          >
             <option value="">All Roles</option>
             <option value="admin">Admin</option>
             <option value="district_manager">District Manager</option>
@@ -417,14 +604,20 @@ const Users: React.FC = () => {
             <option value="data_entry">Data Entry</option>
             <option value="instructor">Instructor</option>
           </select>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+          <select 
+            value={statusFilter} 
+            onChange={e => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+          >
             <option value="">All Status</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
-          <select value={districtFilter} onChange={e => setDistrictFilter(e.target.value)}
-                  className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+          <select 
+            value={districtFilter} 
+            onChange={e => setDistrictFilter(e.target.value)}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+          >
             <option value="">All Districts</option>
             {districts.map(district => (
               <option key={district} value={district || ""}>{district}</option>
@@ -432,8 +625,13 @@ const Users: React.FC = () => {
           </select>
         </div>
 
-        <DataTable columns={columns} data={paginated} currentPage={currentPage}
-                   totalPages={totalPages} onPageChange={setCurrentPage} />
+        <DataTable 
+          columns={columns} 
+          data={paginated} 
+          currentPage={currentPage}
+          totalPages={totalPages} 
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* ========== MODALS ========== */}
@@ -449,6 +647,28 @@ const Users: React.FC = () => {
               <Input label="Last Name" value={addForm.last_name} onChange={v => setAddForm({ ...addForm, last_name: v })} />
             </div>
             <Select label="Role *" options={roleOptions} value={addForm.role} onChange={v => setAddForm({ ...addForm, role: v })} error={formErrors.role} required />
+            
+            {/* EPF Number Field - Always show but conditionally required */}
+            <div className={addForm.role === 'instructor' ? 'opacity-50' : ''}>
+              <Input 
+                label={addForm.role === 'instructor' ? "EPF Number (Not required for instructors)" : "EPF Number *"} 
+                value={addForm.epf_no} 
+                onChange={v => {
+                  // Auto-uppercase EPF numbers for consistency
+                  setAddForm({ ...addForm, epf_no: v.toUpperCase() })
+                }} 
+                error={formErrors.epf_no} 
+                required={addForm.role !== 'instructor'}
+                disabled={addForm.role === 'instructor'}
+                placeholder="e.g., GAL/89/78, 12345, AB-1234/X"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {addForm.role === 'instructor' 
+                  ? "Instructors do not require EPF numbers"
+                  : "Enter EPF number in any format (letters, numbers, special characters allowed)"}
+              </p>
+            </div>
+            
             {isAdmin && (
               <Input label="District" value={addForm.district} onChange={v => setAddForm({ ...addForm, district: v })} error={formErrors.district} />
             )}
@@ -473,6 +693,28 @@ const Users: React.FC = () => {
               <Input label="Last Name" value={editForm.last_name} onChange={v => setEditForm({ ...editForm, last_name: v })} />
             </div>
             <Select label="Role *" options={roleOptions} value={editForm.role} onChange={v => setEditForm({ ...editForm, role: v })} error={formErrors.role} required />
+            
+            {/* EPF Number Field - Always show but conditionally required */}
+            <div className={editForm.role === 'instructor' ? 'opacity-50' : ''}>
+              <Input 
+                label={editForm.role === 'instructor' ? "EPF Number (Not required for instructors)" : "EPF Number *"} 
+                value={editForm.epf_no} 
+                onChange={v => {
+                  // Auto-uppercase EPF numbers for consistency
+                  setEditForm({ ...editForm, epf_no: v.toUpperCase() })
+                }} 
+                error={formErrors.epf_no} 
+                required={editForm.role !== 'instructor'}
+                disabled={editForm.role === 'instructor'}
+                placeholder="e.g., GAL/89/78, 12345, AB-1234/X"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {editForm.role === 'instructor' 
+                  ? "Instructors do not require EPF numbers"
+                  : "Enter EPF number in any format (letters, numbers, special characters allowed)"}
+              </p>
+            </div>
+            
             {isAdmin && (
               <Input label="District" value={editForm.district} onChange={v => setEditForm({ ...editForm, district: v })} error={formErrors.district} />
             )}
@@ -506,20 +748,27 @@ const Users: React.FC = () => {
             <p className="text-sm text-gray-600 mb-2">
               Are you sure you want to delete <strong>{selectedUser.username}</strong>?
             </p>
+            {/* Debug info - remove after fixing */}
+            <p className="text-xs text-red-500 mb-1 font-medium">
+              User ID: {selectedUser.id ? selectedUser.id : 'UNDEFINED - This is the problem!'}
+            </p>
             <p className="text-xs text-gray-500 mb-6">This action <strong>cannot be undone</strong>.</p>
 
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setShowDelete(false)}
+                onClick={() => {
+                  console.log("Delete cancelled");
+                  setShowDelete(false);
+                }}
                 disabled={deleteLoading}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                disabled={deleteLoading}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70"
+                disabled={deleteLoading || !selectedUser.id}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed font-medium"
               >
                 {deleteLoading ? (
                   <>
@@ -557,25 +806,49 @@ const Modal = ({ title, onClose, children }: ModalProps) => (
   </div>
 );
 
-type InputProps = { label: string; type?: string; value: string; onChange: (v: string) => void; error?: string; required?: boolean; minLength?: number; disabled?: boolean; };
-const Input = ({ label, type = "text", value, onChange, error, required, minLength, disabled }: InputProps) => (
+type InputProps = { 
+  label: string; 
+  type?: string; 
+  value: string; 
+  onChange: (v: string) => void; 
+  error?: string; 
+  required?: boolean; 
+  minLength?: number; 
+  disabled?: boolean; 
+  placeholder?: string; 
+};
+const Input = ({ label, type = "text", value, onChange, error, required, minLength, disabled, placeholder }: InputProps) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
     <input
-      type={type} value={value} onChange={e => onChange(e.target.value)}
-      required={required} minLength={minLength} disabled={disabled}
-      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"} ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
+      type={type} 
+      value={value} 
+      onChange={e => onChange(e.target.value)}
+      required={required} 
+      minLength={minLength} 
+      disabled={disabled} 
+      placeholder={placeholder}
+      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"} ${disabled ? "bg-gray-100 cursor-not-allowed opacity-70" : ""}`}
     />
     {error && <p className="text-red-600 text-xs mt-1">{error}</p>}
   </div>
 );
 
-type SelectProps = { label: string; options: { value: string; label: string }[]; value: string; onChange: (v: string) => void; error?: string; required?: boolean; };
+type SelectProps = { 
+  label: string; 
+  options: { value: string; label: string }[]; 
+  value: string; 
+  onChange: (v: string) => void; 
+  error?: string; 
+  required?: boolean; 
+};
 const Select = ({ label, options, value, onChange, error, required }: SelectProps) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
     <select
-      value={value} onChange={e => onChange(e.target.value)} required={required}
+      value={value} 
+      onChange={e => onChange(e.target.value)} 
+      required={required}
       className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"}`}
     >
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -584,15 +857,30 @@ const Select = ({ label, options, value, onChange, error, required }: SelectProp
   </div>
 );
 
-type CheckboxesProps = { active: boolean; staff: boolean; onActive: (v: boolean) => void; onStaff: (v: boolean) => void; };
+type CheckboxesProps = { 
+  active: boolean; 
+  staff: boolean; 
+  onActive: (v: boolean) => void; 
+  onStaff: (v: boolean) => void; 
+};
 const Checkboxes = ({ active, staff, onActive, onStaff }: CheckboxesProps) => (
   <div className="flex items-center space-x-8">
     <label className="flex items-center cursor-pointer">
-      <input type="checkbox" checked={active} onChange={e => onActive(e.target.checked)} className="w-4 h-4 text-green-600 rounded focus:ring-green-500" />
+      <input 
+        type="checkbox" 
+        checked={active} 
+        onChange={e => onActive(e.target.checked)} 
+        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300" 
+      />
       <span className="ml-2 text-sm text-gray-700">Active</span>
     </label>
     <label className="flex items-center cursor-pointer">
-      <input type="checkbox" checked={staff} onChange={e => onStaff(e.target.checked)} className="w-4 h-4 text-green-600 rounded focus:ring-green-500" />
+      <input 
+        type="checkbox" 
+        checked={staff} 
+        onChange={e => onStaff(e.target.checked)} 
+        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300" 
+      />
       <span className="ml-2 text-sm text-gray-700">Staff</span>
     </label>
   </div>
@@ -601,10 +889,17 @@ const Checkboxes = ({ active, staff, onActive, onStaff }: CheckboxesProps) => (
 type ModalFooterProps = { onCancel: () => void; submitText: string; };
 const ModalFooter = ({ onCancel, submitText }: ModalFooterProps) => (
   <div className="flex justify-end space-x-3 pt-4 border-t">
-    <button type="button" onClick={onCancel} className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium">
+    <button 
+      type="button" 
+      onClick={onCancel} 
+      className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition"
+    >
       Cancel
     </button>
-    <button type="submit" className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm">
+    <button 
+      type="submit" 
+      className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm transition"
+    >
       {submitText}
     </button>
   </div>

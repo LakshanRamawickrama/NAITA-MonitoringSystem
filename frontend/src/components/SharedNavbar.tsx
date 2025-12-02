@@ -39,6 +39,7 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
         return [
           { path: '/dashboard/training_officer', label: 'Overview', icon: '📊' },
           { path: '/dashboard/training_officer/courses', label: 'Courses', icon: '📚' },
+          { path: '/dashboard/training_officer/users', label: 'Users', icon: '👥' },
           { path: '/dashboard/training_officer/instructors', label: 'Instructors', icon: '👨‍🏫' },  
           { path: '/dashboard/training_officer/reports', label: 'Reports', icon: '📈' }
         ];
