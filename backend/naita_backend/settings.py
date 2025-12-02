@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     'attendance',
     'centers',
     'courses',
-    'instructor',
     'students',
     'reports',
     'users',
