@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import DataTable from "../../components/DataTable";
 import {
   Search, Plus, Mail, Shield, X, Loader2,
-  Edit, Trash2, Key, AlertCircle, MapPin, User
+  Edit, Trash2, Key, AlertCircle, MapPin, User, Filter
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -70,6 +70,7 @@ const Users: React.FC = () => {
   const userDistrict = localStorage.getItem("user_district") || "";
   const isAdmin = userRole === "admin";
   const isDistrictManager = userRole === "district_manager";
+  const isTrainingOfficer = userRole === "training_officer";
 
   // Get role options based on user role
   const getRoleOptions = () => {
@@ -87,17 +88,32 @@ const Users: React.FC = () => {
         { value: "data_entry", label: "Data Entry" },
         { value: "instructor", label: "Instructor" },
       ];
+    } else if (isTrainingOfficer) {
+      // Training officers can only add instructors
+      return [
+        { value: "instructor", label: "Instructor" },
+      ];
     }
     return [];
   };
 
   const roleOptions = getRoleOptions();
 
-  // Get unique districts for filter
+  // Get unique districts for filter - only show districts that the user can access
   const districts = useMemo(() => {
-    const districtSet = new Set(users.map(user => user.district).filter(Boolean));
-    return Array.from(districtSet).sort();
-  }, [users]);
+    if (isAdmin) {
+      // Admin can see all districts
+      const districtSet = new Set(users.map(user => user.district).filter(Boolean));
+      return Array.from(districtSet).sort();
+    } else if (isDistrictManager || isTrainingOfficer) {
+      // District managers and training officers can only see their own district
+      if (userDistrict) {
+        return [userDistrict];
+      }
+      return [];
+    }
+    return [];
+  }, [users, userDistrict, isAdmin, isDistrictManager, isTrainingOfficer]);
 
   /* ========== FETCH DATA ========== */
   useEffect(() => {
@@ -105,20 +121,28 @@ const Users: React.FC = () => {
       try {
         setLoading(true); 
         setError("");
-        console.log("Fetching users and centers..."); // Debug
         
         const [u, c] = await Promise.all([fetchUsers(), fetchCenters()]);
         
-        console.log("Fetched users:", u); // Debug
-        console.log("Users with IDs:", u.map(user => ({ 
-          id: user.id, 
-          username: user.username,
-          hasId: !!user.id 
-        }))); // Debug
+        // Filter users based on role permissions
+        let filteredUsers = u;
+        
+        if (isTrainingOfficer) {
+          // Training officers can only see instructors in their district
+          filteredUsers = u.filter(user => 
+            user.role === 'instructor' && 
+            user.district === userDistrict
+          );
+        } else if (isDistrictManager) {
+          // District managers can see all non-admin users in their district
+          filteredUsers = u.filter(user => 
+            user.district === userDistrict && 
+            user.role !== 'admin'
+          );
+        }
         
         // Filter out any users without IDs for safety
-        const validUsers = u.filter(user => user.id != null);
-        console.log(`Loaded ${validUsers.length} valid users out of ${u.length} total`); // Debug
+        const validUsers = filteredUsers.filter(user => user.id != null);
         
         setUsers(validUsers); 
         setCenters(c);
@@ -126,13 +150,12 @@ const Users: React.FC = () => {
         const msg = e.response?.data?.detail || "Failed to load data";
         setError(msg);
         toast.error(msg);
-        console.error("Error loading data:", e); // Debug
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [isTrainingOfficer, isDistrictManager, userDistrict]);
 
   /* ========== HELPERS ========== */
   const resetForm = () => {
@@ -148,7 +171,18 @@ const Users: React.FC = () => {
       return;
     }
     
-    console.log("Opening edit for user:", u.id, u.username); // Debug
+    // Check if training officer is trying to edit non-instructor
+    if (isTrainingOfficer && u.role !== 'instructor') {
+      toast.error("Training officers can only edit instructors");
+      return;
+    }
+    
+    // Check if district manager/training officer is trying to edit user from different district
+    if ((isDistrictManager || isTrainingOfficer) && u.district !== userDistrict) {
+      toast.error("You can only edit users in your district");
+      return;
+    }
+    
     setSelectedUser(u);
     setEditForm({
       username: u.username, 
@@ -171,17 +205,40 @@ const Users: React.FC = () => {
       toast.error("Cannot change password: User ID is missing");
       return;
     }
+    
+    // Check permissions
+    if (isTrainingOfficer && u.role !== 'instructor') {
+      toast.error("Training officers can only change passwords for instructors");
+      return;
+    }
+    
+    if ((isDistrictManager || isTrainingOfficer) && u.district !== userDistrict) {
+      toast.error("You can only change passwords for users in your district");
+      return;
+    }
+    
     setSelectedUser(u); 
     setPwdForm({ new_password: "" }); 
     setShowPwd(true); 
   };
 
   const openDelete = (u: UserType) => { 
-    console.log("Opening delete for user:", u.id, u.username); // Debug
     if (!u.id) {
       toast.error("Cannot delete user: ID is missing");
       return;
     }
+    
+    // Check permissions
+    if (isTrainingOfficer && u.role !== 'instructor') {
+      toast.error("Training officers can only delete instructors");
+      return;
+    }
+    
+    if ((isDistrictManager || isTrainingOfficer) && u.district !== userDistrict) {
+      toast.error("You can only delete users in your district");
+      return;
+    }
+    
     setSelectedUser(u); 
     setShowDelete(true); 
   };
@@ -210,7 +267,12 @@ const Users: React.FC = () => {
     e.preventDefault(); 
     setFormErrors({});
     
-    // Ensure district managers don't accidentally send district_manager role
+    // Check permissions based on role
+    if (isTrainingOfficer && addForm.role !== 'instructor') {
+      toast.error("Training officers can only add instructors");
+      return;
+    }
+    
     if (isDistrictManager && addForm.role === 'district_manager') {
       setFormErrors({ role: "District managers cannot create other district managers." });
       toast.error("District managers cannot create other district managers.");
@@ -240,7 +302,6 @@ const Users: React.FC = () => {
 
       if (addForm.center_id) payload.center_id = Number(addForm.center_id);
 
-      console.log("Creating user with payload:", payload); // Debug
       const nu = await createUser(payload);
       setUsers(p => [...p, nu]);
       setShowAdd(false); 
@@ -256,6 +317,12 @@ const Users: React.FC = () => {
     setFormErrors({});
     if (!selectedUser || !selectedUser.id) {
       toast.error("Cannot update: User ID is missing");
+      return;
+    }
+    
+    // Check permissions
+    if (isTrainingOfficer && editForm.role !== 'instructor') {
+      toast.error("Training officers can only edit instructors");
       return;
     }
     
@@ -281,7 +348,6 @@ const Users: React.FC = () => {
 
       if (editForm.center_id) payload.center_id = Number(editForm.center_id);
 
-      console.log(`Updating user ${selectedUser.id} with payload:`, payload); // Debug
       const upd = await updateUser(selectedUser.id, payload);
       setUsers(p => p.map(u => u.id === selectedUser.id ? upd : u));
       setShowEdit(false); 
@@ -310,10 +376,7 @@ const Users: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    console.log("handleDelete called, selectedUser:", selectedUser); // Debug
-    
     if (!selectedUser || !selectedUser.id) {
-      console.error("Delete error: No user selected or user ID is missing", selectedUser);
       toast.error("Cannot delete: User ID is missing");
       setShowDelete(false);
       return;
@@ -321,8 +384,6 @@ const Users: React.FC = () => {
     
     setDeleteLoading(true);
     try {
-      console.log(`Attempting to delete user ID: ${selectedUser.id}, Username: ${selectedUser.username}`);
-      
       await deleteUser(selectedUser.id);
       
       // Update local state
@@ -332,9 +393,6 @@ const Users: React.FC = () => {
       
       toast.success(`${selectedUser.username} deleted successfully`);
     } catch (err: any) {
-      console.error("Delete API error:", err);
-      console.error("Error response:", err.response);
-      
       let errorMessage = "Delete failed";
       if (err.response) {
         if (err.response.status === 403) {
@@ -343,13 +401,7 @@ const Users: React.FC = () => {
           errorMessage = "User not found.";
         } else if (err.response.data?.detail) {
           errorMessage = err.response.data.detail;
-        } else if (err.response.data) {
-          errorMessage = typeof err.response.data === 'string' 
-            ? err.response.data 
-            : JSON.stringify(err.response.data);
         }
-      } else if (err.message) {
-        errorMessage = err.message;
       }
       
       toast.error(errorMessage);
@@ -476,41 +528,53 @@ const Users: React.FC = () => {
         </span>
       )
     },
-    ...((isAdmin || isDistrictManager) ? [{
+    ...((isAdmin || isDistrictManager || isTrainingOfficer) ? [{
       key: "actions",
       label: "Actions",
-      render: (_: any, row: UserType) => (
-        <div className="flex space-x-2">
-          <button 
-            onClick={() => openEdit(row)} 
-            className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
-            title="Edit"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => openPwd(row)} 
-            className="text-orange-600 hover:text-orange-800 p-1 hover:bg-orange-50 rounded"
-            title="Change Password"
-          >
-            <Key className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => {
-              console.log("Delete clicked for user:", row.id, row.username);
-              if (!row.id) {
-                toast.error("Cannot delete: User ID is missing");
-                return;
-              }
-              openDelete(row);
-            }} 
-            className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      )
+      render: (_: any, row: UserType) => {
+        // Check if user can perform actions on this row
+        const canEdit = isAdmin || 
+          (isDistrictManager && row.district === userDistrict && row.role !== 'admin') ||
+          (isTrainingOfficer && row.role === 'instructor' && row.district === userDistrict);
+        
+        const canDelete = canEdit; // Same permission for delete
+        
+        if (!canEdit && !canDelete) {
+          return <span className="text-sm text-gray-400">No actions</span>;
+        }
+        
+        return (
+          <div className="flex space-x-2">
+            {canEdit && (
+              <button 
+                onClick={() => openEdit(row)} 
+                className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
+                title="Edit"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+            {canEdit && (
+              <button 
+                onClick={() => openPwd(row)} 
+                className="text-orange-600 hover:text-orange-800 p-1 hover:bg-orange-50 rounded"
+                title="Change Password"
+              >
+                <Key className="w-4 h-4" />
+              </button>
+            )}
+            {canDelete && (
+              <button 
+                onClick={() => openDelete(row)} 
+                className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        );
+      }
     }] : [])
   ];
 
@@ -541,44 +605,63 @@ const Users: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
             <p className="text-gray-600 mt-1">Manage system users and permissions</p>
+            
+            {/* Role-specific messages */}
             {isDistrictManager && userDistrict && (
-              <p className="text-sm text-green-600 mt-1">
-                Managing users in: <strong>{userDistrict}</strong> district
+              <p className="text-sm text-green-600 mt-1 flex items-center">
+                <Shield className="w-3 h-3 mr-1" />
+                Managing all non-admin users in: <strong className="ml-1">{userDistrict}</strong> district
+              </p>
+            )}
+            
+            {isTrainingOfficer && userDistrict && (
+              <p className="text-sm text-yellow-600 mt-1 flex items-center">
+                <Filter className="w-3 h-3 mr-1" />
+                Managing instructors only in: <strong className="ml-1">{userDistrict}</strong> district
+              </p>
+            )}
+            
+            {isAdmin && (
+              <p className="text-sm text-purple-600 mt-1 flex items-center">
+                <Shield className="w-3 h-3 mr-1" />
+                Admin view: Managing all users across all districts
               </p>
             )}
           </div>
-          {(isAdmin || isDistrictManager) && (
+          
+          {/* Add User Button with permissions */}
+          {(isAdmin || isDistrictManager || isTrainingOfficer) && (
             <button 
               onClick={() => { 
                 resetForm(); 
-                // Auto-fill district for district managers and set default role
+                
+                // Auto-fill based on role
                 if (isDistrictManager && userDistrict) {
                   setAddForm(prev => ({ 
                     ...prev, 
                     district: userDistrict,
-                    role: roleOptions[0]?.value || "" // Set first available role as default
+                    role: roleOptions[0]?.value || ""
+                  }));
+                } else if (isTrainingOfficer && userDistrict) {
+                  // Training officers can only add instructors
+                  setAddForm(prev => ({ 
+                    ...prev, 
+                    district: userDistrict,
+                    role: "instructor" // Force instructor role
                   }));
                 }
+                
                 setShowAdd(true); 
               }}
               className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 flex items-center space-x-2 shadow-sm transition"
             >
-              <Plus className="w-4 h-4" /><span>Add User</span>
+              <Plus className="w-4 h-4" />
+              <span>
+                {isTrainingOfficer ? "Add Instructor" : "Add User"}
+              </span>
             </button>
           )}
         </div>
-
-        {/* Debug button - remove after testing */}
-        <button 
-          onClick={() => {
-            console.log("Current users state:", users);
-            console.log("Users with IDs:", users.map(u => ({ id: u.id, username: u.username })));
-            console.log("Selected user:", selectedUser);
-          }}
-          className="mb-4 px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
-        >
-          Debug Data
-        </button>
 
         {/* Filters */}
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -592,18 +675,31 @@ const Users: React.FC = () => {
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
             />
           </div>
+          
           <select 
             value={roleFilter} 
             onChange={e => setRoleFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
           >
             <option value="">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="district_manager">District Manager</option>
-            <option value="training_officer">Training Officer</option>
-            <option value="data_entry">Data Entry</option>
+            {/* Show only roles that the user can see */}
+            {isAdmin && (
+              <>
+                <option value="admin">Admin</option>
+                <option value="district_manager">District Manager</option>
+                <option value="training_officer">Training Officer</option>
+                <option value="data_entry">Data Entry</option>
+              </>
+            )}
+            {(isDistrictManager || isTrainingOfficer) && (
+              <>
+                {isDistrictManager && <option value="training_officer">Training Officer</option>}
+                <option value="data_entry">Data Entry</option>
+              </>
+            )}
             <option value="instructor">Instructor</option>
           </select>
+          
           <select 
             value={statusFilter} 
             onChange={e => setStatusFilter(e.target.value)}
@@ -613,10 +709,12 @@ const Users: React.FC = () => {
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
+          
           <select 
             value={districtFilter} 
             onChange={e => setDistrictFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+            disabled={!isAdmin && (isDistrictManager || isTrainingOfficer)} // Disabled for non-admins
           >
             <option value="">All Districts</option>
             {districts.map(district => (
@@ -624,6 +722,20 @@ const Users: React.FC = () => {
             ))}
           </select>
         </div>
+
+        {/* Info box about permissions */}
+        {isTrainingOfficer && (
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
+            <div className="flex items-center">
+              <Filter className="w-4 h-4 mr-2" />
+              <p className="text-sm font-medium">Training Officer View</p>
+            </div>
+            <p className="text-sm mt-1">
+              You can only view and manage instructors in your district ({userDistrict}). 
+              You cannot see or manage other user roles.
+            </p>
+          </div>
+        )}
 
         <DataTable 
           columns={columns} 
@@ -636,7 +748,7 @@ const Users: React.FC = () => {
 
       {/* ========== MODALS ========== */}
       {showAdd && (
-        <Modal title="Add New User" onClose={() => { setShowAdd(false); resetForm(); }}>
+        <Modal title={isTrainingOfficer ? "Add New Instructor" : "Add New User"} onClose={() => { setShowAdd(false); resetForm(); }}>
           <form onSubmit={handleAdd} className="space-y-5">
             {formErrors.general && <Alert text={formErrors.general} />}
             <Input label="Username *" value={addForm.username} onChange={v => setAddForm({ ...addForm, username: v })} error={formErrors.username} required />
@@ -646,7 +758,17 @@ const Users: React.FC = () => {
               <Input label="First Name" value={addForm.first_name} onChange={v => setAddForm({ ...addForm, first_name: v })} />
               <Input label="Last Name" value={addForm.last_name} onChange={v => setAddForm({ ...addForm, last_name: v })} />
             </div>
-            <Select label="Role *" options={roleOptions} value={addForm.role} onChange={v => setAddForm({ ...addForm, role: v })} error={formErrors.role} required />
+            
+            {/* Role selection - limited for training officers */}
+            <Select 
+              label="Role *" 
+              options={roleOptions} 
+              value={addForm.role} 
+              onChange={v => setAddForm({ ...addForm, role: v })} 
+              error={formErrors.role} 
+              required 
+              disabled={isTrainingOfficer} // Training officers can only add instructors
+            />
             
             {/* EPF Number Field - Always show but conditionally required */}
             <div className={addForm.role === 'instructor' ? 'opacity-50' : ''}>
@@ -669,15 +791,23 @@ const Users: React.FC = () => {
               </p>
             </div>
             
+            {/* District field - auto-filled for non-admins */}
             {isAdmin && (
               <Input label="District" value={addForm.district} onChange={v => setAddForm({ ...addForm, district: v })} error={formErrors.district} />
             )}
-            {isDistrictManager && (
-              <Input label="District" value={addForm.district} onChange={v => setAddForm({ ...addForm, district: v })} error={formErrors.district} disabled />
+            {(isDistrictManager || isTrainingOfficer) && (
+              <Input 
+                label="District" 
+                value={addForm.district} 
+                onChange={v => setAddForm({ ...addForm, district: v })} 
+                error={formErrors.district} 
+                disabled 
+              />
             )}
+            
             <Select label="Center (Optional)" options={[{ value: "", label: "No Center" }, ...centers.map(c => ({ value: c.id.toString(), label: c.name }))]} value={addForm.center_id} onChange={v => setAddForm({ ...addForm, center_id: v })} />
             <Checkboxes active={addForm.is_active} staff={addForm.is_staff} onActive={v => setAddForm({ ...addForm, is_active: v })} onStaff={v => setAddForm({ ...addForm, is_staff: v })} />
-            <ModalFooter onCancel={() => { setShowAdd(false); resetForm(); }} submitText="Create User" />
+            <ModalFooter onCancel={() => { setShowAdd(false); resetForm(); }} submitText={isTrainingOfficer ? "Create Instructor" : "Create User"} />
           </form>
         </Modal>
       )}
@@ -692,7 +822,17 @@ const Users: React.FC = () => {
               <Input label="First Name" value={editForm.first_name} onChange={v => setEditForm({ ...editForm, first_name: v })} />
               <Input label="Last Name" value={editForm.last_name} onChange={v => setEditForm({ ...editForm, last_name: v })} />
             </div>
-            <Select label="Role *" options={roleOptions} value={editForm.role} onChange={v => setEditForm({ ...editForm, role: v })} error={formErrors.role} required />
+            
+            {/* Role selection - limited for training officers */}
+            <Select 
+              label="Role *" 
+              options={roleOptions} 
+              value={editForm.role} 
+              onChange={v => setEditForm({ ...editForm, role: v })} 
+              error={formErrors.role} 
+              required 
+              disabled={isTrainingOfficer} // Training officers can only edit instructors
+            />
             
             {/* EPF Number Field - Always show but conditionally required */}
             <div className={editForm.role === 'instructor' ? 'opacity-50' : ''}>
@@ -715,12 +855,20 @@ const Users: React.FC = () => {
               </p>
             </div>
             
+            {/* District field - auto-filled for non-admins */}
             {isAdmin && (
               <Input label="District" value={editForm.district} onChange={v => setEditForm({ ...editForm, district: v })} error={formErrors.district} />
             )}
-            {isDistrictManager && (
-              <Input label="District" value={editForm.district} onChange={v => setEditForm({ ...editForm, district: v })} error={formErrors.district} disabled />
+            {(isDistrictManager || isTrainingOfficer) && (
+              <Input 
+                label="District" 
+                value={editForm.district} 
+                onChange={v => setEditForm({ ...editForm, district: v })} 
+                error={formErrors.district} 
+                disabled 
+              />
             )}
+            
             <Select label="Center (Optional)" options={[{ value: "", label: "No Center" }, ...centers.map(c => ({ value: c.id.toString(), label: c.name }))]} value={editForm.center_id} onChange={v => setEditForm({ ...editForm, center_id: v })} />
             <Checkboxes active={editForm.is_active} staff={editForm.is_staff} onActive={v => setEditForm({ ...editForm, is_active: v })} onStaff={v => setEditForm({ ...editForm, is_staff: v })} />
             <ModalFooter onCancel={() => { setShowEdit(false); resetForm(); }} submitText="Save Changes" />
@@ -748,18 +896,11 @@ const Users: React.FC = () => {
             <p className="text-sm text-gray-600 mb-2">
               Are you sure you want to delete <strong>{selectedUser.username}</strong>?
             </p>
-            {/* Debug info - remove after fixing */}
-            <p className="text-xs text-red-500 mb-1 font-medium">
-              User ID: {selectedUser.id ? selectedUser.id : 'UNDEFINED - This is the problem!'}
-            </p>
             <p className="text-xs text-gray-500 mb-6">This action <strong>cannot be undone</strong>.</p>
 
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => {
-                  console.log("Delete cancelled");
-                  setShowDelete(false);
-                }}
+                onClick={() => setShowDelete(false)}
                 disabled={deleteLoading}
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
               >
@@ -767,8 +908,8 @@ const Users: React.FC = () => {
               </button>
               <button
                 onClick={handleDelete}
-                disabled={deleteLoading || !selectedUser.id}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed font-medium"
+                disabled={deleteLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center space-x-2 disabled:opacity-70 font-medium"
               >
                 {deleteLoading ? (
                   <>
@@ -834,22 +975,25 @@ const Input = ({ label, type = "text", value, onChange, error, required, minLeng
   </div>
 );
 
+// UPDATED SELECT COMPONENT WITH DISABLED PROP
 type SelectProps = { 
   label: string; 
   options: { value: string; label: string }[]; 
   value: string; 
   onChange: (v: string) => void; 
   error?: string; 
-  required?: boolean; 
+  required?: boolean;
+  disabled?: boolean; // Added disabled prop
 };
-const Select = ({ label, options, value, onChange, error, required }: SelectProps) => (
+const Select = ({ label, options, value, onChange, error, required, disabled }: SelectProps) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
     <select
       value={value} 
       onChange={e => onChange(e.target.value)} 
       required={required}
-      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"}`}
+      disabled={disabled}
+      className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"} ${options.length === 1 ? "bg-gray-50" : ""} ${disabled ? "bg-gray-100 cursor-not-allowed opacity-70" : ""}`}
     >
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
