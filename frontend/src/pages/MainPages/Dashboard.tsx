@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import SharedNavbar from "../../components/SharedNavbar";
 
-// ADMIN
+//Main
 import Centers from "./Centers";
 import Users from "./Users";
 import Instructor from "./Instructor";
+
+// ADMIN
 import HeadOfficeOverview from "../HeadOfficeDashboard/HeadOfficeOverview";
 import HeadOfficeCourses from "../HeadOfficeDashboard/HeadOfficeCourses";
 import HeadOfficeApprovals from "../HeadOfficeDashboard/HeadOfficeApprovals";
@@ -84,6 +86,7 @@ const Dashboard = () => {
       if (p === "/dashboard/manager") return <DistrictManagerOverview />;
       if (p === "/dashboard/manager/centers") return <Centers />;
       if (p === "/dashboard/manager/users") return <Users />;
+      if (p === "/dashboard/manager/instructors") return <Instructor />;
       if (p === "/dashboard/manager/courses") return <DistrictManagerCourses />;
       if (p === "/dashboard/manager/approvals_dm") return <DistrictManagerApprovals />;
       if (p === "/dashboard/manager/reports") return <DistrictManagerReports />;

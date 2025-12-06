@@ -32,6 +32,7 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
           { path: '/dashboard/manager/centers', label: 'Centers', icon: '🏢' },
           { path: '/dashboard/manager/courses', label: 'Courses', icon: '📚' },
           { path: '/dashboard/manager/users', label: 'Users', icon: '👥' },
+          { path: '/dashboard/manager/instructors', label: 'Instructors', icon: '👨‍🏫' },  
           { path: '/dashboard/manager/approvals_dm', label: 'Approvals', icon: '✅' },
           { path: '/dashboard/manager/reports', label: 'Reports', icon: '📈' }
         ];
