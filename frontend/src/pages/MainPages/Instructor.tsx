@@ -1,20 +1,137 @@
-// Updated Instructor.tsx - Fixed TypeScript errors and removed EPF
+// Updated Instructor.tsx - Removed Edit Profile button
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Mail, Phone, User, ChevronDown, Loader, 
   Users, BookOpen, CheckCircle, 
-  XCircle, Filter, Plus, Building 
+  XCircle, Filter, Plus, Building,
+  AlertTriangle,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { 
-  fetchUsers,  // Get all users
-  updateUser,
+  fetchUsers,
   fetchCenters,
   fetchCourses,
+  toggleInstructorStatus,
+  checkAccountStatus,
+  logoutUser,
   type UserType,
   type Center,
   type CourseType
 } from '../../api/api';
+
+// Deactivation Confirmation Modal Component
+const DeactivationConfirmModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  instructorName: string;
+  isCurrentlyActive: boolean;
+  isSelf: boolean;
+  loading?: boolean;
+}> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  instructorName,
+  isCurrentlyActive,
+  isSelf,
+  loading = false
+}) => {
+  if (!isOpen) return null;
+  
+  const title = isCurrentlyActive ? 'Deactivate Instructor' : 'Activate Instructor';
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="flex items-start mb-4">
+          <div className={`p-3 rounded-full ${isCurrentlyActive ? 'bg-red-100' : 'bg-green-100'} mr-4`}>
+            {isCurrentlyActive ? (
+              <UserX className="w-6 h-6 text-red-600" />
+            ) : (
+              <UserCheck className="w-6 h-6 text-green-600" />
+            )}
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Instructor: <span className="font-medium">{instructorName}</span>
+            </p>
+          </div>
+        </div>
+        
+        {isSelf && isCurrentlyActive ? (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0" />
+              <p className="text-sm text-yellow-800">
+                <strong>Warning:</strong> You are about to deactivate your own account.
+                This will immediately log you out and you won't be able to login again
+                until another administrator reactivates your account.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4">
+            <p className="text-sm text-gray-700">
+              {isCurrentlyActive ? (
+                <>
+                  Are you sure you want to deactivate this instructor?
+                  <ul className="mt-2 ml-4 list-disc text-gray-600 space-y-1">
+                    <li>They will be immediately logged out of all sessions</li>
+                    <li>Cannot login until reactivated by an administrator</li>
+                    <li>Cannot access any dashboard features</li>
+                    <li>Will receive an email notification</li>
+                  </ul>
+                </>
+              ) : (
+                <>
+                  Are you sure you want to activate this instructor?
+                  <ul className="mt-2 ml-4 list-disc text-gray-600 space-y-1">
+                    <li>They will be able to login immediately</li>
+                    <li>Access will be restored to all features</li>
+                    <li>Will receive an activation notification email</li>
+                  </ul>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm();
+            }}
+            disabled={loading || (isSelf && isCurrentlyActive)}
+            className={`px-4 py-2 rounded-lg text-white transition-colors flex items-center justify-center min-w-[120px] ${
+              isCurrentlyActive
+                ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-300'
+                : 'bg-green-600 hover:bg-green-700 disabled:bg-green-300'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {loading ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : isCurrentlyActive ? (
+              'Deactivate'
+            ) : (
+              'Activate'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface InstructorWithDetails extends UserType {
   specialization?: string;
@@ -37,10 +154,41 @@ const Instructors: React.FC = () => {
   const [specializationFilter, setSpecializationFilter] = useState<string>('all');
   const [specializations, setSpecializations] = useState<string[]>([]);
   const [allCenters, setAllCenters] = useState<Center[]>([]);
+  
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedInstructor, setSelectedInstructor] = useState<{
+    id: number;
+    name: string;
+    is_active: boolean;
+    email: string;
+  } | null>(null);
 
   useEffect(() => {
     loadAllData();
+    
+    // Check current user's account status on mount
+    checkCurrentUserStatus();
   }, []);
+
+  // Function to check current user's account status
+  const checkCurrentUserStatus = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const status = await checkAccountStatus();
+      if (!status.is_active) {
+        toast.error('Your account has been deactivated. Please contact your administrator.');
+        setTimeout(() => {
+          logoutUser();
+          window.location.href = '/login';
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error checking account status:', error);
+    }
+  };
 
   const loadAllData = async () => {
     try {
@@ -48,7 +196,7 @@ const Instructors: React.FC = () => {
       
       // Load all data in parallel
       const [users, courses, centers] = await Promise.all([
-        fetchUsers(),  // Get ALL users
+        fetchUsers(),
         fetchCourses(),
         fetchCenters()
       ]);
@@ -161,32 +309,70 @@ const Instructors: React.FC = () => {
     setSearchTerm(e.target.value);
   };
 
-  const handleStatusChange = async (id: number, currentStatus: boolean, name: string) => {
-    const newStatus = !currentStatus;
-    
-    if (!window.confirm(`Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} instructor ${name}?`)) {
-      return;
-    }
+  const openStatusModal = (instructor: InstructorWithDetails) => {
+    setSelectedInstructor({
+      id: instructor.id,
+      name: `${instructor.first_name} ${instructor.last_name}`,
+      is_active: instructor.is_active,
+      email: instructor.email
+    });
+    setModalOpen(true);
+  };
+
+  const handleStatusChange = async () => {
+    if (!selectedInstructor) return;
 
     try {
-      setDeletingId(id);
+      setDeletingId(selectedInstructor.id);
       
-      await updateUser(id, { is_active: newStatus });
+      // Call the new toggle status endpoint
+      const response = await toggleInstructorStatus(selectedInstructor.id);
       
       // Update local state
       setInstructors(prev => prev.map(instructor =>
-        instructor.id === id ? { ...instructor, is_active: newStatus } : instructor
+        instructor.id === selectedInstructor.id 
+          ? { ...instructor, is_active: response.is_active } 
+          : instructor
       ));
       
       // Recalculate stats
       calculateStats(instructors.map(instructor =>
-        instructor.id === id ? { ...instructor, is_active: newStatus } : instructor
+        instructor.id === selectedInstructor.id 
+          ? { ...instructor, is_active: response.is_active } 
+          : instructor
       ));
       
-      toast.success(`Instructor ${newStatus ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
+      toast.success(response.detail);
+      
+      // Check if deactivating current user
+      const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+      
+      if (selectedInstructor.id === currentUserId && !response.is_active) {
+        setTimeout(() => {
+          toast.error('Your account has been deactivated. You will be logged out.');
+          logoutUser();
+          window.location.href = '/login';
+        }, 2000);
+      }
+      
+      // Close modal
+      setModalOpen(false);
+      setSelectedInstructor(null);
+      
+    } catch (error: any) {
       console.error('Error updating instructor status:', error);
-      toast.error('Failed to update instructor status');
+      const errorMessage = error.response?.data?.detail || 'Failed to update instructor status';
+      toast.error(errorMessage);
+      
+      // Special handling for self-deactivation attempt
+      if (error.response?.status === 400 && error.response?.data?.detail?.includes('own account')) {
+        toast.error('You cannot deactivate your own account. Please ask another administrator.');
+      }
+      
+      // Check permissions error
+      if (error.response?.status === 403) {
+        toast.error('You do not have permission to perform this action.');
+      }
     } finally {
       setDeletingId(null);
     }
@@ -241,11 +427,84 @@ const Instructors: React.FC = () => {
 
   // Function to get role-based access
   const canManageInstructors = () => {
-    return true;
+    const userRole = localStorage.getItem("user_role");
+    return userRole === 'admin' || userRole === 'district_manager' || userRole === 'training_officer';
+  };
+
+  // Check if current user is the instructor being managed
+  const isCurrentUser = (instructorId: number) => {
+    const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+    return instructorId === currentUserId;
+  };
+
+  // Get status badge color
+  const getStatusBadgeColor = (isActive: boolean) => {
+    if (isActive) {
+      return {
+        bg: 'bg-green-100',
+        text: 'text-green-800',
+        dot: 'bg-green-400'
+      };
+    } else {
+      return {
+        bg: 'bg-red-100',
+        text: 'text-red-800',
+        dot: 'bg-red-400'
+      };
+    }
+  };
+
+  // Get status action button
+  const getStatusActionButton = (instructor: InstructorWithDetails) => {
+    const isSelf = isCurrentUser(instructor.id);
+    
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          openStatusModal(instructor);
+        }}
+        disabled={deletingId === instructor.id}
+        className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
+          instructor.is_active
+            ? 'bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50'
+            : 'bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50'
+        } ${isSelf && instructor.is_active ? 'cursor-not-allowed opacity-60' : ''}`}
+        title={isSelf && instructor.is_active ? "You cannot deactivate your own account" : ""}
+      >
+        {deletingId === instructor.id ? (
+          <Loader className="w-4 h-4 mr-2 animate-spin" />
+        ) : instructor.is_active ? (
+          <>
+            <XCircle className="w-4 h-4 mr-2" />
+            Deactivate
+          </>
+        ) : (
+          <>
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Activate
+          </>
+        )}
+      </button>
+    );
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Deactivation Confirmation Modal */}
+      <DeactivationConfirmModal
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedInstructor(null);
+        }}
+        onConfirm={handleStatusChange}
+        instructorName={selectedInstructor?.name || ''}
+        isCurrentlyActive={selectedInstructor?.is_active || false}
+        isSelf={selectedInstructor ? isCurrentUser(selectedInstructor.id) : false}
+        loading={deletingId === selectedInstructor?.id}
+      />
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header and Stats */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -256,14 +515,13 @@ const Instructors: React.FC = () => {
             </p>
           </div>
           {canManageInstructors() && (
-            // Update the button path based on user role
             <button
               onClick={() => {
                 // Get current user role
                 const userRole = localStorage.getItem("user_role") || "";
                 
                 // Define paths for different roles
-                let usersPagePath = '/dashboard/admin/users'; // Default for admin
+                let usersPagePath = '/dashboard/admin/users';
                 
                 if (userRole === 'district_manager') {
                   usersPagePath = '/dashboard/manager/users';
@@ -272,7 +530,6 @@ const Instructors: React.FC = () => {
                 } else if (userRole === 'admin') {
                   usersPagePath = '/dashboard/admin/users';
                 }
-                // Add other roles as needed
                 
                 window.location.href = usersPagePath;
               }}
@@ -347,6 +604,9 @@ const Instructors: React.FC = () => {
               <p className="text-xs text-blue-600 mt-1">
                 To view all users or add new instructors, go to the Users page
               </p>
+              <p className="text-xs text-blue-500 mt-1">
+                <span className="font-medium">Note:</span> Deactivated instructors will be immediately logged out and cannot login until reactivated.
+              </p>
             </div>
           </div>
         </div>
@@ -416,6 +676,7 @@ const Instructors: React.FC = () => {
                 );
                 const totalStudents = instructor.total_students || 0;
                 const instructorCenters = getInstructorCenters(instructor);
+                const statusColors = getStatusBadgeColor(instructor.is_active);
                 
                 return (
                   <div 
@@ -427,13 +688,19 @@ const Instructors: React.FC = () => {
                       onClick={() => toggleExpanded(instructor.id)}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                          instructor.is_active ? 'bg-blue-100' : 'bg-gray-100'
+                        }`}>
                           {instructor.first_name && instructor.last_name ? (
-                            <span className="font-semibold text-blue-700">
+                            <span className={`font-semibold ${
+                              instructor.is_active ? 'text-blue-700' : 'text-gray-500'
+                            }`}>
                               {instructor.first_name[0]}{instructor.last_name[0]}
                             </span>
                           ) : (
-                            <User className="w-6 h-6 text-blue-500" />
+                            <User className={`w-6 h-6 ${
+                              instructor.is_active ? 'text-blue-500' : 'text-gray-400'
+                            }`} />
                           )}
                         </div>
                         <div>
@@ -444,11 +711,19 @@ const Instructors: React.FC = () => {
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
                               Instructor
                             </span>
+                            {isCurrentUser(instructor.id) && (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                                You
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm text-gray-500">{instructor.specialization || 'General'}</p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {instructor.email}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Mail className="w-3 h-3 text-gray-400" />
+                            <p className="text-xs text-gray-400">
+                              {instructor.email}
+                            </p>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
@@ -458,9 +733,8 @@ const Instructors: React.FC = () => {
                           </p>
                           <p className="text-xs text-gray-500">{totalStudents} Student{totalStudents !== 1 ? 's' : ''}</p>
                         </div>
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          instructor.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${statusColors.bg} ${statusColors.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusColors.dot}`}></span>
                           {instructor.is_active ? 'Active' : 'Inactive'}
                         </div>
                         <ChevronDown 
@@ -485,7 +759,6 @@ const Instructors: React.FC = () => {
                             <p className="text-sm text-gray-600">Phone</p>
                             <p className="font-medium flex items-center gap-2">
                               <Phone className="w-4 h-4 text-gray-400" />
-                              {/* Use optional chaining to avoid TypeScript error */}
                               {instructor.phone || 'Not provided'}
                             </p>
                           </div>
@@ -509,11 +782,8 @@ const Instructors: React.FC = () => {
                           </div>
                           <div>
                             <p className="text-sm text-gray-600">Status</p>
-                            <p className={`font-medium px-2 py-1 rounded-full inline-block ${
-                              instructor.is_active 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
+                            <p className={`font-medium px-2 py-1 rounded-full inline-block flex items-center gap-1.5 ${statusColors.bg} ${statusColors.text}`}>
+                              <span className={`w-2 h-2 rounded-full ${statusColors.dot}`}></span>
                               {instructor.is_active ? 'Active' : 'Inactive'}
                             </p>
                           </div>
@@ -615,33 +885,7 @@ const Instructors: React.FC = () => {
                         </div>
 
                         <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
-                          <button
-                            onClick={() => handleStatusChange(
-                              instructor.id, 
-                              instructor.is_active, 
-                              `${instructor.first_name} ${instructor.last_name}`
-                            )}
-                            disabled={deletingId === instructor.id}
-                            className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
-                              instructor.is_active
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50'
-                            }`}
-                          >
-                            {deletingId === instructor.id ? (
-                              <Loader className="w-4 h-4 mr-2 animate-spin" />
-                            ) : instructor.is_active ? (
-                              <>
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Deactivate Instructor
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Activate Instructor
-                              </>
-                            )}
-                          </button>
+                          {canManageInstructors() && getStatusActionButton(instructor)}
                         </div>
                       </div>
                     )}
@@ -660,6 +904,16 @@ const Instructors: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   Filtered from {allUsers.length} total users in the system
                 </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                    <span className="text-xs">Active</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-red-400 rounded-full"></span>
+                    <span className="text-xs">Inactive</span>
+                  </div>
+                </div>
               </div>
               
               {stats?.top_specializations && Object.keys(stats.top_specializations).length > 0 && (
@@ -697,7 +951,20 @@ const Instructors: React.FC = () => {
                 </p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                   <button
-                    onClick={() => window.location.href = '/users?role=instructor'}
+                    onClick={() => {
+                      const userRole = localStorage.getItem("user_role") || "";
+                      let usersPath = '/dashboard/admin/users';
+                      
+                      if (userRole === 'district_manager') {
+                        usersPath = '/dashboard/manager/users';
+                      } else if (userRole === 'training_officer') {
+                        usersPath = '/dashboard/training_officer/users';
+                      } else if (userRole === 'admin') {
+                        usersPath = '/dashboard/admin/users';
+                      }
+                      
+                      window.location.href = usersPath;
+                    }}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
                   >
                     <Plus className="w-4 h-4 mr-2" />

@@ -75,6 +75,26 @@ export const refreshToken = async (): Promise<{ access: string }> => {
   return res.data;
 };
 
+// Add to User API section
+export const toggleInstructorStatus = async (id: number): Promise<{ 
+  detail: string; 
+  is_active: boolean; 
+  instructor: UserType 
+}> => {
+  const res = await api.post(`/api/users/${id}/toggle-status/`);
+  return res.data;
+};
+
+export const checkAccountStatus = async (): Promise<{ 
+  is_active: boolean; 
+  email: string; 
+  role: string; 
+  message: string 
+}> => {
+  const res = await api.get("/api/account/status/");
+  return res.data;
+};
+
 /* ========== UTILITY FUNCTIONS ========== */
 export const isAuthenticated = (): boolean => {
   return !!localStorage.getItem("access_token");
