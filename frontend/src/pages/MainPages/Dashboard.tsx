@@ -7,11 +7,11 @@ import SharedNavbar from "../../components/SharedNavbar";
 import Centers from "./Centers";
 import Users from "./Users";
 import Instructor from "./Instructor";
+import Students from "./Students";
 
 // ADMIN
 import HeadOfficeOverview from "../HeadOfficeDashboard/HeadOfficeOverview";
 import HeadOfficeCourses from "../HeadOfficeDashboard/HeadOfficeCourses";
-import HeadOfficeStudents from "../HeadOfficeDashboard/HeadOfficeStudents";
 import HeadOfficeApprovals from "../HeadOfficeDashboard/HeadOfficeApprovals";
 import HeadOfficeReports from "../HeadOfficeDashboard/HeadOfficeReports";
 
@@ -78,7 +78,7 @@ const Dashboard = () => {
       if (p === "/dashboard/admin/users") return <Users />;
       if (p === "/dashboard/admin/instructors") return <Instructor />;
       if (p === "/dashboard/admin/courses") return <HeadOfficeCourses />;
-      if (p === "/dashboard/admin/students") return <HeadOfficeStudents />;
+      if (p === "/dashboard/admin/students") return <Students />;
       if (p === "/dashboard/admin/approvals") return <HeadOfficeApprovals />;
       if (p === "/dashboard/admin/reports") return <HeadOfficeReports />;
     }
@@ -88,6 +88,7 @@ const Dashboard = () => {
       if (p === "/dashboard/manager") return <DistrictManagerOverview />;
       if (p === "/dashboard/manager/centers") return <Centers />;
       if (p === "/dashboard/manager/users") return <Users />;
+      if (p === "/dashboard/manager/students") return <Students />;
       if (p === "/dashboard/manager/instructors") return <Instructor />;
       if (p === "/dashboard/manager/courses") return <DistrictManagerCourses />;
       if (p === "/dashboard/manager/approvals_dm") return <DistrictManagerApprovals />;

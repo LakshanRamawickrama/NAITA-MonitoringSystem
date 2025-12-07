@@ -1,4 +1,4 @@
-// src/pages/admin/AdminStudents.tsx - COMPLETE FIXED VERSION
+// src/pages/admin/HeadofficeStudents.tsx - UPDATED VERSION WITH ROLE-BASED ACCESS
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
@@ -21,7 +21,9 @@ import {
   fetchCourses,
   fetchAvailableBatches,
   type Center,
-  type CourseType
+  type CourseType,
+  getUserRole,
+  getUserDistrict
 } from '../../api/api';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -60,7 +62,7 @@ const formatDate = (dateString?: string) => {
   }
 };
 
-const AdminStudents: React.FC = () => {
+const Students: React.FC = () => {
   // State Management
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<FilterState>({
@@ -81,6 +83,11 @@ const AdminStudents: React.FC = () => {
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
+  
+  // Get user role and district
+  const userRole = getUserRole();
+  const userDistrict = getUserDistrict();
+  const isDistrictManager = userRole === 'district_manager';
 
   // Filter options
   const enrollmentStatuses = [
@@ -112,9 +119,18 @@ const AdminStudents: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const studentsData = await fetchStudents();
-      setStudents(studentsData);
-      setFilteredStudents(studentsData);
+      
+      // For district managers, only fetch students from their district
+      if (isDistrictManager && userDistrict) {
+        const studentsData = await fetchStudents('', { district: userDistrict });
+        setStudents(studentsData);
+        setFilteredStudents(studentsData);
+      } else {
+        // For admins, fetch all students
+        const studentsData = await fetchStudents();
+        setStudents(studentsData);
+        setFilteredStudents(studentsData);
+      }
       
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || 'Failed to load students';
@@ -127,8 +143,25 @@ const AdminStudents: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const statsData = await fetchStudentStats();
-      setStats(statsData);
+      // For district managers, get stats only for their district
+      if (isDistrictManager && userDistrict) {
+        // You might need to create a separate API endpoint for district-specific stats
+        // For now, we'll filter the stats client-side
+        const districtStudents = students.filter(s => s.district === userDistrict);
+        
+        const districtStats = {
+          total_students: districtStudents.length,
+          enrolled_students: districtStudents.filter(s => s.enrollment_status === 'Enrolled').length,
+          trained_students: districtStudents.filter(s => s.training_received).length,
+          pending_students: districtStudents.filter(s => s.enrollment_status === 'Pending').length,
+          completed_students: districtStudents.filter(s => s.enrollment_status === 'Completed').length,
+        };
+        
+        setStats(districtStats);
+      } else {
+        const statsData = await fetchStudentStats();
+        setStats(statsData);
+      }
     } catch (error) {
       console.error('Failed to load stats:', error);
     }
@@ -138,7 +171,14 @@ const AdminStudents: React.FC = () => {
     try {
       // Load all centers from API
       const centersData = await fetchCenters();
-      setCenters(centersData);
+      
+      // For district managers, filter centers by their district
+      if (isDistrictManager && userDistrict) {
+        const districtCenters = centersData.filter(c => c.district === userDistrict);
+        setCenters(districtCenters);
+      } else {
+        setCenters(centersData);
+      }
       
       // Load all courses from API
       const coursesData = await fetchCourses();
@@ -148,21 +188,29 @@ const AdminStudents: React.FC = () => {
       const batchesData = await fetchAvailableBatches();
       setBatches(batchesData);
       
-      // Extract districts from centers
-      const uniqueDistrictsFromCenters = centersData
-        .map(c => c.district)
-        .filter((district): district is string => district !== null && district !== undefined && district.trim() !== '');
+      // Extract districts based on user role
+      let allDistricts: string[] = [];
       
-      // Also get districts from students to ensure coverage
-      const studentsData = await fetchStudents();
-      const uniqueDistrictsFromStudents = studentsData
-        .map(s => s.district)
-        .filter((district): district is string => district !== null && district !== undefined && district.trim() !== '');
-      
-      // Combine and deduplicate districts
-      const allDistricts = Array.from(
-        new Set([...uniqueDistrictsFromCenters, ...uniqueDistrictsFromStudents])
-      ).sort();
+      if (isDistrictManager && userDistrict) {
+        // District managers only see their district
+        allDistricts = [userDistrict];
+      } else {
+        // Admins see all districts
+        const uniqueDistrictsFromCenters = centersData
+          .map(c => c.district)
+          .filter((district): district is string => district !== null && district !== undefined && district.trim() !== '');
+        
+        // Also get districts from students to ensure coverage
+        const studentsData = await fetchStudents();
+        const uniqueDistrictsFromStudents = studentsData
+          .map(s => s.district)
+          .filter((district): district is string => district !== null && district !== undefined && district.trim() !== '');
+        
+        // Combine and deduplicate districts
+        allDistricts = Array.from(
+          new Set([...uniqueDistrictsFromCenters, ...uniqueDistrictsFromStudents])
+        ).sort();
+      }
       
       setDistricts(allDistricts);
       
@@ -264,8 +312,20 @@ const AdminStudents: React.FC = () => {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Student Management</h1>
-              <p className="text-gray-600 mt-2">View and monitor all registered students</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {isDistrictManager ? `${userDistrict} District Students` : 'Student Management'}
+              </h1>
+              <p className="text-gray-600 mt-2">
+                {isDistrictManager 
+                  ? `View and monitor students in ${userDistrict} district`
+                  : 'View and monitor all registered students'
+                }
+              </p>
+              {isDistrictManager && (
+                <div className="mt-1 text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">
+                  District Manager Access
+                </div>
+              )}
             </div>
             <button
               onClick={loadStudents}
@@ -333,18 +393,25 @@ const AdminStudents: React.FC = () => {
               />
             </div>
             
-            <select
-              value={filters.district}
-              onChange={(e) => setFilters({...filters, district: e.target.value})}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="All Districts">All Districts</option>
-              {districts.map((district) => (
-                <option key={district} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
+            {districts.length > 1 ? (
+              <select
+                value={filters.district}
+                onChange={(e) => setFilters({...filters, district: e.target.value})}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="All Districts">All Districts</option>
+                {districts.map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </select>
+            ) : districts.length === 1 ? (
+              <div className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">
+                <div className="text-sm text-gray-900">{districts[0]}</div>
+                <div className="text-xs text-gray-500">District</div>
+              </div>
+            ) : null}
 
             <select
               value={filters.enrollment_status}
@@ -418,6 +485,11 @@ const AdminStudents: React.FC = () => {
         <div className="mb-4 flex justify-between items-center">
           <div className="text-sm text-gray-600">
             Showing {filteredStudents.length} of {students.length} students
+            {isDistrictManager && (
+              <span className="ml-2 text-blue-600">
+                (in {userDistrict} district)
+              </span>
+            )}
           </div>
         </div>
 
@@ -669,4 +741,4 @@ const AdminStudents: React.FC = () => {
   );
 };
 
-export default AdminStudents;
+export default Students;
