@@ -11,6 +11,7 @@ import Instructor from "./Instructor";
 // ADMIN
 import HeadOfficeOverview from "../HeadOfficeDashboard/HeadOfficeOverview";
 import HeadOfficeCourses from "../HeadOfficeDashboard/HeadOfficeCourses";
+import HeadOfficeStudents from "../HeadOfficeDashboard/HeadOfficeStudents";
 import HeadOfficeApprovals from "../HeadOfficeDashboard/HeadOfficeApprovals";
 import HeadOfficeReports from "../HeadOfficeDashboard/HeadOfficeReports";
 
@@ -77,6 +78,7 @@ const Dashboard = () => {
       if (p === "/dashboard/admin/users") return <Users />;
       if (p === "/dashboard/admin/instructors") return <Instructor />;
       if (p === "/dashboard/admin/courses") return <HeadOfficeCourses />;
+      if (p === "/dashboard/admin/students") return <HeadOfficeStudents />;
       if (p === "/dashboard/admin/approvals") return <HeadOfficeApprovals />;
       if (p === "/dashboard/admin/reports") return <HeadOfficeReports />;
     }
