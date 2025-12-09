@@ -336,6 +336,7 @@ const DataEntryStudents: React.FC = () => {
     student_number: 0,
     registration_year: new Date().getFullYear().toString(),
     date_of_application: new Date().toISOString().split('T')[0],
+    // Note: profile_photo is NOT included here, handled separately
   });
 
   const [newOlSubject, setNewOlSubject] = useState('');
@@ -526,6 +527,28 @@ const DataEntryStudents: React.FC = () => {
     loadStudents();
   }, [searchTerm]);
 
+  const handleCenterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const centerId = e.target.value ? parseInt(e.target.value) : null;
+    setFormData({ 
+      ...formData, 
+      center: centerId,
+      course: null // Reset course when center changes
+    });
+    if (centerId) {
+      loadCourses(centerId);
+    } else {
+      setCourses([]);
+    }
+  };
+
+  const handleCourseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const courseId = e.target.value ? parseInt(e.target.value) : null;
+    setFormData({ 
+      ...formData, 
+      course: courseId 
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -534,9 +557,31 @@ const DataEntryStudents: React.FC = () => {
       // Create FormData for file upload
       const formDataObj = new FormData();
       
+      // Prepare form data for submission
+      const submissionData = { ...formData };
+      
+      // Ensure center and course are just IDs (not objects)
+      if (submissionData.center && typeof submissionData.center === 'object') {
+        submissionData.center = (submissionData.center as any).id || submissionData.center;
+      }
+      
+      if (submissionData.course && typeof submissionData.course === 'object') {
+        submissionData.course = (submissionData.course as any).id || submissionData.course;
+      }
+      
+      // Ensure batch is just ID
+      if (submissionData.batch && typeof submissionData.batch === 'object') {
+        submissionData.batch = (submissionData.batch as any).id || submissionData.batch;
+      }
+      
       // Append all form data
-      Object.entries(formData).forEach(([key, value]) => {
+      Object.entries(submissionData).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
+          // Skip empty strings for optional fields
+          if (value === '' && key !== 'registration_no') {
+            return;
+          }
+          
           if (Array.isArray(value)) {
             formDataObj.append(key, JSON.stringify(value));
           } else if (typeof value === 'boolean') {
@@ -557,10 +602,11 @@ const DataEntryStudents: React.FC = () => {
         }
       });
       
-      // Append profile photo if exists
+      // Append profile photo only if a new one was uploaded
       if (profilePhoto) {
         formDataObj.append('profile_photo', profilePhoto);
       }
+      // If editing without changing photo, don't send anything
       
       let updatedStudent;
       
@@ -622,7 +668,15 @@ const DataEntryStudents: React.FC = () => {
       ol_results: student.ol_results || [],
       al_results: student.al_results || [],
       batch: student.batch || null,
-      profile_photo: student.profile_photo_url || null,
+      // Handle center - extract just the ID if it's an object
+      center: typeof student.center === 'object' && student.center !== null 
+        ? (student.center as any).id || student.center 
+        : student.center,
+      // Handle course - extract just the ID if it's an object
+      course: typeof student.course === 'object' && student.course !== null 
+        ? (student.course as any).id || student.course 
+        : student.course,
+      // Don't include profile_photo in formData state
     });
     
     // Set profile photo preview if exists
@@ -649,6 +703,16 @@ const DataEntryStudents: React.FC = () => {
     setShowForm(true);
     setIsAutoGenerateRegNo(false);
     setManualRegNo(true);
+    
+    // Load courses if center is set
+    if (student.center) {
+      const centerId = typeof student.center === 'object' && student.center !== null 
+        ? (student.center as any).id || student.center 
+        : student.center;
+      if (centerId) {
+        loadCourses(Number(centerId));
+      }
+    }
   };
 
   const handleViewDetails = (student: StudentType) => {
@@ -699,6 +763,7 @@ const DataEntryStudents: React.FC = () => {
       student_number: 0,
       registration_year: new Date().getFullYear().toString(),
       date_of_application: new Date().toISOString().split('T')[0],
+      // Don't include profile_photo here
     });
     
     setRegComponents({
@@ -1196,19 +1261,7 @@ const DataEntryStudents: React.FC = () => {
           </label>
           <select
             value={formData.center || ''}
-            onChange={(e) => {
-              const centerId = e.target.value ? parseInt(e.target.value) : null;
-              setFormData({ 
-                ...formData, 
-                center: centerId,
-                course: null
-              });
-              if (centerId) {
-                loadCourses(centerId);
-              } else {
-                setCourses([]);
-              }
-            }}
+            onChange={handleCenterChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm"
           >
             <option value="">Select Center</option>
@@ -1227,10 +1280,7 @@ const DataEntryStudents: React.FC = () => {
           </label>
           <select
             value={formData.course || ''}
-            onChange={(e) => setFormData({ 
-              ...formData, 
-              course: e.target.value ? parseInt(e.target.value) : null 
-            })}
+            onChange={handleCourseChange}
             disabled={!formData.center || loadingCourses}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 hover:border-green-400 transition-all text-sm"
           >

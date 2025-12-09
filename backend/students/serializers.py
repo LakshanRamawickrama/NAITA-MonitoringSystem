@@ -98,12 +98,11 @@ class StudentSerializer(serializers.ModelSerializer):
             'batch_year', 
             'student_number', 
             'registration_year',
-            'profile_photo_url' ,
+            'profile_photo_url',
             'created_at', 
             'updated_at'
         ]
     
-     
     def get_profile_photo_url(self, obj):
         """Return the full URL for the profile photo"""
         if obj.profile_photo and hasattr(obj.profile_photo, 'url'):
@@ -214,12 +213,27 @@ class StudentSerializer(serializers.ModelSerializer):
         ol_results_data = validated_data.pop('ol_results', [])
         al_results_data = validated_data.pop('al_results', [])
         
+        # Handle profile photo - if not in validated_data or None, keep existing
+        if 'profile_photo' in validated_data and validated_data['profile_photo'] is None:
+            # If profile_photo is explicitly set to None, don't update it
+            validated_data.pop('profile_photo')
+        
         # For data entry officers, prevent changing district
         if request and request.user.is_authenticated and request.user.role == 'data_entry':
             if 'district' in validated_data and validated_data['district'] != request.user.district:
                 raise serializers.ValidationError({
                     "district": f"You can only manage students from your assigned district ({request.user.district})."
                 })
+        
+        # Handle center and course - if not provided, keep existing values
+        if 'center' not in validated_data:
+            validated_data['center'] = instance.center
+        
+        if 'course' not in validated_data:
+            validated_data['course'] = instance.course
+        
+        if 'batch' not in validated_data:
+            validated_data['batch'] = instance.batch
         
         # Update student fields
         for attr, value in validated_data.items():
