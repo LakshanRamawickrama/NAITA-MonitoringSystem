@@ -1,9 +1,9 @@
-// src/pages/DataEntryDashboard/DataEntryStudents.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye, 
   MapPin, Building, ChevronDown, ChevronUp, Info, RefreshCw, 
-  Phone, BookOpen, Upload, Camera
+  Phone, BookOpen, Upload, Camera, QrCode, IdCard, Printer, Download,
+  CheckSquare, Square
 } from 'lucide-react';
 import { 
   type StudentType, 
@@ -22,9 +22,16 @@ import {
   fetchRegistrationFormats,
   fetchAvailableDistrictCodes,
   fetchAvailableCourseCodes,
-  fetchAvailableBatches
+  fetchAvailableBatches,
+  bulkGenerateIDCards
 } from '../../api/api';
 import api from '../../api/api';
+
+// Import Student ID Card Component
+import StudentIDCard from '../../components/StudentIDCard';
+
+// Import Bulk ID Card Generator Component
+import BulkIDCardGenerator from '../../components/BulkIDCardGenerator';
 
 // Mobile Student Card Component
 interface MobileStudentCardProps {
@@ -32,13 +39,19 @@ interface MobileStudentCardProps {
   onViewDetails: (student: StudentType) => void;
   onEdit: (student: StudentType) => void;
   onDelete: (id: number) => void;
+  onShowIDCard: (student: StudentType) => void;
+  onToggleSelection: (studentId: number) => void;
+  isSelected: boolean;
 }
 
 const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
   student,
   onViewDetails,
   onEdit,
-  onDelete
+  onDelete,
+  onShowIDCard,
+  onToggleSelection,
+  isSelected
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -46,6 +59,21 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
     <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
+          {/* Selection Checkbox */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelection(student.id!);
+            }}
+            className="mt-1"
+          >
+            {isSelected ? (
+              <CheckSquare className="w-4 h-4 text-green-600" />
+            ) : (
+              <Square className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          
           <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
             student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
           }`}>
@@ -158,6 +186,50 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
             </div>
           </div>
 
+          {/* QR Code and ID Card Actions */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-2 border border-purple-100">
+            <div className="text-xs font-semibold text-purple-700 mb-2">Quick Actions:</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onShowIDCard(student)}
+                className="flex items-center justify-center space-x-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2 px-3 rounded-lg text-xs font-medium hover:from-purple-600 hover:to-purple-700 transition-all"
+              >
+                <IdCard className="w-3 h-3" />
+                <span>ID Card</span>
+              </button>
+              <button
+                onClick={() => {
+                  // Generate QR code data
+                  const qrData = {
+                    student_id: student.id,
+                    registration_no: student.registration_no,
+                    full_name: student.full_name_english,
+                    nic_id: student.nic_id,
+                    course_name: student.course_name || 'Not assigned',
+                    center_name: student.center_name || 'Not assigned',
+                    enrollment_status: student.enrollment_status || 'Pending'
+                  };
+                  
+                  // Create downloadable QR code JSON
+                  const qrString = JSON.stringify(qrData, null, 2);
+                  const blob = new Blob([qrString], { type: 'application/json' });
+                  const url = window.URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `qr_${student.registration_no}.json`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  window.URL.revokeObjectURL(url);
+                }}
+                className="flex items-center justify-center space-x-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-3 rounded-lg text-xs font-medium hover:from-blue-600 hover:to-blue-700 transition-all"
+              >
+                <QrCode className="w-3 h-3" />
+                <span>QR Code</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex space-x-2">
             <button
               onClick={() => onViewDetails(student)}
@@ -213,6 +285,13 @@ const DataEntryStudents: React.FC = () => {
   // Profile photo states
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  
+  // QR Code and ID Card states
+  const [showIDCard, setShowIDCard] = useState(false);
+  const [selectedIDCardStudent, setSelectedIDCardStudent] = useState<StudentType | null>(null);
+  const [showBulkIDCardGenerator, setShowBulkIDCardGenerator] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
+  const [bulkPrintLoading, setBulkPrintLoading] = useState(false);
   
   const [regComponents, setRegComponents] = useState({
     district_code: '',
@@ -409,6 +488,8 @@ const DataEntryStudents: React.FC = () => {
       setLoading(true);
       const data = await fetchStudents(searchTerm);
       setStudents(data);
+      // Clear selections when loading new students
+      setSelectedStudents([]);
     } catch (error) {
       console.error('Error fetching students:', error);
       alert('Error loading students. Please try again.');
@@ -446,8 +527,8 @@ const DataEntryStudents: React.FC = () => {
   }, [searchTerm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
     try {
       // Create FormData for file upload
@@ -527,6 +608,8 @@ const DataEntryStudents: React.FC = () => {
     try {
       await deleteStudent(id);
       setStudents(students.filter(student => student.id !== id));
+      // Remove from selected students if selected
+      setSelectedStudents(prev => prev.filter(studentId => studentId !== id));
     } catch (error: any) {
       console.error('Error deleting student:', error);
       alert(error.response?.data?.detail || 'Error deleting student. Please try again.');
@@ -571,6 +654,11 @@ const DataEntryStudents: React.FC = () => {
   const handleViewDetails = (student: StudentType) => {
     setSelectedStudent(student);
     setShowDetails(true);
+  };
+
+  const handleShowIDCard = (student: StudentType) => {
+    setSelectedIDCardStudent(student);
+    setShowIDCard(true);
   };
 
   const resetForm = () => {
@@ -686,6 +774,49 @@ const DataEntryStudents: React.FC = () => {
       ...prev,
       al_results: (prev.al_results || []).filter((_, i) => i !== index)
     }));
+  };
+
+  const toggleStudentSelection = (studentId: number) => {
+    setSelectedStudents(prev => 
+      prev.includes(studentId) 
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const selectAllStudents = () => {
+    if (selectedStudents.length === filteredStudents.length) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(filteredStudents.map(s => s.id!).filter(Boolean));
+    }
+  };
+
+  const handleBulkPrint = async () => {
+    if (selectedStudents.length === 0) {
+      alert('Please select students to print ID cards');
+      return;
+    }
+
+    setBulkPrintLoading(true);
+    try {
+      const blob = await bulkGenerateIDCards(selectedStudents);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `student_id_cards_${new Date().getTime()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      alert(`Successfully generated ${selectedStudents.length} ID card(s)`);
+    } catch (error) {
+      console.error('Error bulk printing ID cards:', error);
+      alert('Failed to generate bulk ID cards');
+    } finally {
+      setBulkPrintLoading(false);
+    }
   };
 
   const filteredStudents = students;
@@ -1423,6 +1554,50 @@ const DataEntryStudents: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* QR Code Section */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 sm:p-6 rounded-xl border border-blue-200">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">QR Code Information</h3>
+                <div className="text-center">
+                  <p className="text-gray-600 mb-4">Scan this QR code for attendance tracking:</p>
+                  <div className="bg-white p-4 rounded-lg border-2 border-green-300 inline-block">
+                    {/* QR Code would be generated here */}
+                    <div className="w-40 h-40 bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center rounded-lg">
+                      <QrCode className="w-20 h-20 text-green-600" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-3">Student ID: {selectedStudent.id} | Registration No: {selectedStudent.registration_no}</p>
+                  <div className="mt-4 flex justify-center space-x-3">
+                    <button
+                      onClick={() => handleShowIDCard(selectedStudent)}
+                      className="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-purple-700 transition"
+                    >
+                      <IdCard className="w-4 h-4" />
+                      <span>Generate ID Card</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const qrData = {
+                          student_id: selectedStudent.id,
+                          registration_no: selectedStudent.registration_no,
+                          full_name: selectedStudent.full_name_english
+                        };
+                        const qrString = JSON.stringify(qrData, null, 2);
+                        const blob = new Blob([qrString], { type: 'application/json' });
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `qr_${selectedStudent.registration_no}.json`;
+                        link.click();
+                      }}
+                      className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download QR</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1452,7 +1627,28 @@ const DataEntryStudents: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-3">
+            {selectedStudents.length > 0 && (
+              <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                <span className="text-sm font-medium text-blue-700">
+                  {selectedStudents.length} selected
+                </span>
+                <button
+                  onClick={() => setSelectedStudents([])}
+                  className="text-xs text-blue-600 hover:text-blue-800"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+            <button 
+              onClick={() => setShowBulkIDCardGenerator(true)}
+              disabled={students.length === 0}
+              className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 hover:from-purple-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base disabled:opacity-50"
+            >
+              <Printer className="w-5 h-5" />
+              <span>Bulk Print ID Cards</span>
+            </button>
             <button 
               onClick={() => {
                 resetForm();
@@ -1999,6 +2195,45 @@ const DataEntryStudents: React.FC = () => {
 
         {showDetails && <StudentDetailsModal />}
 
+        {/* Student ID Card Modal */}
+        {showIDCard && selectedIDCardStudent && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-2 sm:p-4 z-50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-300">
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Student ID Card
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowIDCard(false);
+                      setSelectedIDCardStudent(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-all hover:scale-110"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <StudentIDCard 
+                  student={selectedIDCardStudent} 
+                  onClose={() => {
+                    setShowIDCard(false);
+                    setSelectedIDCardStudent(null);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk ID Card Generator Modal */}
+        {showBulkIDCardGenerator && (
+          <BulkIDCardGenerator
+            students={students}
+            onClose={() => setShowBulkIDCardGenerator(false)}
+          />
+        )}
+
         {/* Search and Filter Bar */}
         <div className="bg-white rounded-2xl shadow-lg p-4 mb-6 border border-gray-200">
           <div className="flex flex-col md:flex-row gap-4">
@@ -2018,6 +2253,47 @@ const DataEntryStudents: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Bulk Actions Bar */}
+        {selectedStudents.length > 0 && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl shadow-lg p-4 mb-6 border border-blue-200">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <CheckSquare className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900">
+                    {selectedStudents.length} student{selectedStudents.length !== 1 ? 's' : ''} selected
+                  </h3>
+                  <p className="text-sm text-gray-600">Perform bulk actions on selected students</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={selectAllStudents}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium"
+                >
+                  {selectedStudents.length === filteredStudents.length ? 'Deselect All' : 'Select All'}
+                </button>
+                <button
+                  onClick={handleBulkPrint}
+                  disabled={bulkPrintLoading}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition flex items-center space-x-2 disabled:opacity-50 text-sm font-medium"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>{bulkPrintLoading ? 'Generating...' : 'Print ID Cards'}</span>
+                </button>
+                <button
+                  onClick={() => setSelectedStudents([])}
+                  className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-sm font-medium"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Recent Records */}
         <div className="mb-6">
@@ -2088,6 +2364,9 @@ const DataEntryStudents: React.FC = () => {
                 onViewDetails={handleViewDetails}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onShowIDCard={handleShowIDCard}
+                onToggleSelection={toggleStudentSelection}
+                isSelected={selectedStudents.includes(student.id!)}
               />
             ))}
             
@@ -2103,7 +2382,17 @@ const DataEntryStudents: React.FC = () => {
               <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Student Info
+                    <button
+                      onClick={selectAllStudents}
+                      className="flex items-center"
+                    >
+                      {selectedStudents.length === filteredStudents.length ? (
+                        <CheckSquare className="w-4 h-4 text-green-600 mr-2" />
+                      ) : (
+                        <Square className="w-4 h-4 text-gray-400 mr-2" />
+                      )}
+                      Student Info
+                    </button>
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Registration Details
@@ -2130,29 +2419,41 @@ const DataEntryStudents: React.FC = () => {
                   <tr key={student.id} className="hover:bg-gradient-to-r hover:from-green-50/50 hover:to-blue-50/50 transition-all">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden ${
-                          student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
-                        }`}>
-                          {student.profile_photo_url ? (
-                            <img 
-                              src={student.profile_photo_url} 
-                              alt={student.full_name_english}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-green-100', 'to-blue-100');
-                              }}
-                            />
+                        <button 
+                          onClick={() => toggleStudentSelection(student.id!)}
+                          className="mr-3"
+                        >
+                          {selectedStudents.includes(student.id!) ? (
+                            <CheckSquare className="w-4 h-4 text-green-600" />
                           ) : (
-                            <User className="w-6 h-6 text-green-600" />
+                            <Square className="w-4 h-4 text-gray-400" />
                           )}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-green-600">{student.registration_no}</div>
-                          <div className="text-sm font-semibold text-gray-900">{student.full_name_english}</div>
-                          <div className="text-xs text-gray-500">{student.name_with_initials}</div>
-                          <div className="text-xs text-gray-400">NIC: {student.nic_id}</div>
-                          <div className="text-xs text-gray-400">Gender: {student.gender} | DOB: {student.date_of_birth}</div>
+                        </button>
+                        <div className="flex items-center">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden ${
+                            student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
+                          }`}>
+                            {student.profile_photo_url ? (
+                              <img 
+                                src={student.profile_photo_url} 
+                                alt={student.full_name_english}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-green-100', 'to-blue-100');
+                                }}
+                              />
+                            ) : (
+                              <User className="w-6 h-6 text-green-600" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-green-600">{student.registration_no}</div>
+                            <div className="text-sm font-semibold text-gray-900">{student.full_name_english}</div>
+                            <div className="text-xs text-gray-500">{student.name_with_initials}</div>
+                            <div className="text-xs text-gray-400">NIC: {student.nic_id}</div>
+                            <div className="text-xs text-gray-400">Gender: {student.gender} | DOB: {student.date_of_birth}</div>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -2248,6 +2549,13 @@ const DataEntryStudents: React.FC = () => {
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleShowIDCard(student)}
+                          className="text-purple-600 hover:text-purple-800 transition-all transform hover:scale-110 p-2 rounded-lg hover:bg-purple-50"
+                          title="ID Card"
+                        >
+                          <IdCard className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => student.id && handleDelete(student.id)}

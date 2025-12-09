@@ -1,4 +1,5 @@
 # attendance/views.py - FIXED EXCEL GENERATION
+import json
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -798,3 +799,84 @@ def download_attendance_report(request, report_id):
             'success': False,
             'message': f'Failed to download report: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# Add to attendance/views.py
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def scan_qr_attendance(request):
+    """Scan QR code for attendance"""
+    try:
+        qr_data = request.data.get('qr_data')
+        course_id = request.data.get('course_id')
+        
+        if not qr_data or not course_id:
+            return Response({'error': 'Missing QR data or course ID'}, status=400)
+        
+        # Parse QR data
+        try:
+            data = json.loads(qr_data)
+        except:
+            return Response({'error': 'Invalid QR code data'}, status=400)
+        
+        student_id = data.get('student_id')
+        registration_no = data.get('registration_no')
+        
+        # Find student
+        if student_id:
+            student = Student.objects.get(id=student_id)
+        elif registration_no:
+            student = Student.objects.get(registration_no=registration_no)
+        else:
+            return Response({'error': 'Student not found in QR data'}, status=404)
+        
+        # Get course
+        course = Course.objects.get(id=course_id)
+        
+        # Check if student is enrolled in this course
+        if student.course != course:
+            return Response({'error': 'Student is not enrolled in this course'}, status=400)
+        
+        # Create attendance record
+        today = timezone.now().date()
+        current_time = timezone.now().time()
+        
+        # Check if already marked today
+        attendance, created = Attendance.objects.get_or_create(
+            student=student,
+            course=course,
+            date=today,
+            defaults={
+                'status': 'present',
+                'check_in_time': current_time,
+                'recorded_by': request.user
+            }
+        )
+        
+        if not created:
+            # Update existing record
+            attendance.status = 'present'
+            attendance.check_in_time = current_time
+            attendance.recorded_by = request.user
+            attendance.save()
+        
+        return Response({
+            'success': True,
+            'student': {
+                'id': student.id,
+                'name': student.full_name_english,
+                'registration_no': student.registration_no
+            },
+            'attendance': {
+                'id': attendance.id,
+                'status': attendance.status,
+                'check_in_time': attendance.check_in_time,
+                'created': created
+            }
+        })
+        
+    except Student.DoesNotExist:
+        return Response({'error': 'Student not found'}, status=404)
+    except Course.DoesNotExist:
+        return Response({'error': 'Course not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)

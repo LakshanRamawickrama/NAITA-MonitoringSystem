@@ -1,29 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, X, Eye, Send, ChevronDown, ChevronUp } from 'lucide-react';
-import { fetchMyCourses, fetchStudentAttendanceStats } from '../../api/api';
-import type { StudentAttendanceStats, CourseType } from '../../api/api';
+import { 
+  fetchMyCourses, 
+  fetchStudentAttendanceStats,
+  fetchStudentById,
+  type StudentType,
+  type StudentAttendanceStats, 
+  type CourseType 
+} from '../../api/api';
+
+// Update the interface to include StudentType details
+interface EnhancedStudentStats extends StudentAttendanceStats {
+  student_details?: StudentType;
+}
 
 // Interfaces
 interface StudentDetailsPopupProps {
-  student: StudentAttendanceStats;
+  student: EnhancedStudentStats;
   isOpen: boolean;
   onClose: () => void;
-  onSendMessage: (student: StudentAttendanceStats, message: string) => void;
+  onSendMessage: (student: EnhancedStudentStats, message: string) => void;
 }
 
 interface MessagePopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onSend: (message: string, students: StudentAttendanceStats[]) => void;
-  students: StudentAttendanceStats[];
+  onSend: (message: string, students: EnhancedStudentStats[]) => void;
+  students: EnhancedStudentStats[];
   type: 'individual' | 'bulk';
 }
 
 // Mobile Student Card Component
 interface MobileStudentCardProps {
-  student: StudentAttendanceStats;
-  onViewDetails: (student: StudentAttendanceStats) => void;
-  onSendMessage: (student: StudentAttendanceStats) => void;
+  student: EnhancedStudentStats;
+  onViewDetails: (student: EnhancedStudentStats) => void;
+  onSendMessage: (student: EnhancedStudentStats) => void;
 }
 
 const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
@@ -48,18 +59,42 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
     return 'bg-red-600';
   };
 
+  // Get profile photo URL
+  const profilePhotoUrl = student.student_details?.profile_photo_url;
+  const fullName = student.student_details?.full_name_english || student.name;
+  const gender = student.student_details?.gender;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3 shadow-sm">
       {/* Student Header */}
       <div className="flex justify-between items-start">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
-          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <User className="w-5 h-5 text-green-600" />
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
+            profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+          }`}>
+            {profilePhotoUrl ? (
+              <img 
+                src={profilePhotoUrl} 
+                alt={fullName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-blue-100', 'to-indigo-100');
+                }}
+              />
+            ) : (
+              <User className="w-5 h-5 text-blue-700" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-medium text-gray-900 text-sm break-words">{student.name}</h3>
+            <h3 className="font-medium text-gray-900 text-sm break-words">
+              {fullName}
+            </h3>
             <p className="text-gray-500 text-xs mt-1 break-words">{student.email}</p>
             <p className="text-gray-500 text-xs">NIC: {student.nic}</p>
+            {gender && (
+              <p className="text-gray-500 text-xs">Gender: {gender}</p>
+            )}
           </div>
         </div>
         <button
@@ -163,19 +198,53 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
     }
   };
 
+  // Get student details
+  const studentDetails = student.student_details;
+  const profilePhotoUrl = studentDetails?.profile_photo_url;
+  const fullName = studentDetails?.full_name_english || student.name;
+  const nameWithInitials = studentDetails?.name_with_initials || student.name;
+  const gender = studentDetails?.gender;
+  const dateOfBirth = studentDetails?.date_of_birth;
+  const address = studentDetails?.address_line;
+  const district = studentDetails?.district;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-lg w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col mx-2">
         {/* Header */}
         <div className="flex justify-between items-start border-b border-gray-200 px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-start space-x-2 sm:space-x-3 flex-1 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-              <User className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden ${
+              profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+            }`}>
+              {profilePhotoUrl ? (
+                <img 
+                  src={profilePhotoUrl} 
+                  alt={fullName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-blue-100', 'to-indigo-100');
+                  }}
+                />
+              ) : (
+                <User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-700" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 break-words">{student.name}</h2>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 break-words">
+                {fullName}
+              </h2>
+              {nameWithInitials && nameWithInitials !== fullName && (
+                <p className="text-gray-600 text-xs sm:text-sm break-words">
+                  {nameWithInitials}
+                </p>
+              )}
               <p className="text-gray-600 text-xs sm:text-sm break-words">{student.email}</p>
               <p className="text-gray-600 text-xs sm:text-sm">{student.phone}</p>
+              {gender && (
+                <p className="text-gray-600 text-xs sm:text-sm">Gender: {gender}</p>
+              )}
             </div>
           </div>
           <button
@@ -218,11 +287,16 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Personal Information</h3>
                 <div className="space-y-2 sm:space-y-3">
                   {[
-                    { label: 'Full Name', value: student.name },
+                    { label: 'Full Name', value: fullName },
+                    { label: 'Name with Initials', value: nameWithInitials },
                     { label: 'NIC Number', value: student.nic },
+                    { label: 'Gender', value: gender || 'Not specified' },
+                    { label: 'Date of Birth', value: dateOfBirth || 'Not specified' },
                     { label: 'Email', value: student.email },
                     { label: 'Phone', value: student.phone },
-                    { label: 'Enrollment', value: student.enrollment_status, isStatus: true }
+                    { label: 'Address', value: address || 'Not specified' },
+                    { label: 'District', value: district || 'Not specified' },
+                    { label: 'Enrollment Status', value: student.enrollment_status, isStatus: true }
                   ].map((item, index) => (
                     <div key={index} className="flex justify-between items-center py-1 sm:py-2 border-b border-gray-200 last:border-b-0">
                       <span className="text-gray-600 text-xs sm:text-sm">{item.label}:</span>
@@ -513,18 +587,18 @@ const MessagePopup: React.FC<MessagePopupProps> = ({
 const InstructorStudents: React.FC = () => {
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
-  const [students, setStudents] = useState<StudentAttendanceStats[]>([]);
+  const [students, setStudents] = useState<EnhancedStudentStats[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [coursesLoading, setCoursesLoading] = useState(true);
   
   // Popup states
-  const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceStats | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<EnhancedStudentStats | null>(null);
   const [showStudentPopup, setShowStudentPopup] = useState(false);
   const [showMessagePopup, setShowMessagePopup] = useState(false);
   const [messageType, setMessageType] = useState<'individual' | 'bulk'>('individual');
-  const [messageStudents, setMessageStudents] = useState<StudentAttendanceStats[]>([]);
+  const [messageStudents, setMessageStudents] = useState<EnhancedStudentStats[]>([]);
 
   const [attendanceStats, setAttendanceStats] = useState({
     average: 0,
@@ -575,9 +649,30 @@ const InstructorStudents: React.FC = () => {
     
     setLoading(true);
     try {
+      // First fetch attendance stats
       const studentStats = await fetchStudentAttendanceStats(selectedCourse);
-      setStudents(studentStats);
-      calculateOverallStats(studentStats);
+      
+      // Then fetch detailed information for each student
+      const enhancedStudents = await Promise.all(
+        studentStats.map(async (stat) => {
+          try {
+            const studentDetails = await fetchStudentById(stat.id);
+            return {
+              ...stat,
+              student_details: studentDetails
+            };
+          } catch (error) {
+            console.error(`Failed to fetch details for student ${stat.id}:`, error);
+            return {
+              ...stat,
+              student_details: undefined
+            };
+          }
+        })
+      );
+      
+      setStudents(enhancedStudents);
+      calculateOverallStats(enhancedStudents);
     } catch (error) {
       console.error('Failed to load student statistics:', error);
       setStudents([]);
@@ -587,7 +682,7 @@ const InstructorStudents: React.FC = () => {
     }
   };
 
-  const calculateOverallStats = (studentList: StudentAttendanceStats[]) => {
+  const calculateOverallStats = (studentList: EnhancedStudentStats[]) => {
     const totalAttendance = studentList.reduce((sum, student) => sum + student.attendance_percentage, 0);
     const average = studentList.length > 0 ? Math.round(totalAttendance / studentList.length) : 0;
     const atRisk = studentList.filter(s => s.status === 'at-risk').length;
@@ -602,12 +697,12 @@ const InstructorStudents: React.FC = () => {
   };
 
   // Popup handlers
-  const openStudentDetails = (student: StudentAttendanceStats) => {
+  const openStudentDetails = (student: EnhancedStudentStats) => {
     setSelectedStudent(student);
     setShowStudentPopup(true);
   };
 
-  const openMessagePopup = (type: 'individual' | 'bulk', student?: StudentAttendanceStats) => {
+  const openMessagePopup = (type: 'individual' | 'bulk', student?: EnhancedStudentStats) => {
     setMessageType(type);
     if (type === 'individual' && student) {
       setMessageStudents([student]);
@@ -618,19 +713,22 @@ const InstructorStudents: React.FC = () => {
   };
 
   // Action handlers
-  const handleSendMessage = (message: string, students: StudentAttendanceStats[]) => {
-    const studentNames = students.map(s => s.name).join(', ');
+  const handleSendMessage = (message: string, students: EnhancedStudentStats[]) => {
+    const studentNames = students.map(s => s.student_details?.full_name_english || s.name).join(', ');
     alert(`✅ Message sent successfully to: ${studentNames}\n\nMessage: ${message}`);
     setShowMessagePopup(false);
   };
 
-  const handleSendIndividualMessage = (student: StudentAttendanceStats, message: string) => {
-    alert(`✅ Message sent to ${student.name}:\n\n${message}`);
+  const handleSendIndividualMessage = (student: EnhancedStudentStats, message: string) => {
+    alert(`✅ Message sent to ${student.student_details?.full_name_english || student.name}:\n\n${message}`);
   };
 
   const filteredStudents = students.filter(student => {
+    const studentName = student.student_details?.full_name_english || student.name;
     const matchesSearch = 
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (student.student_details?.name_with_initials && 
+       student.student_details.name_with_initials.toLowerCase().includes(searchTerm.toLowerCase())) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.nic.includes(searchTerm);
     
@@ -847,84 +945,111 @@ const InstructorStudents: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredStudents.map((student) => (
-                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                              <User className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-gray-900 truncate">{student.name}</div>
-                              <div className="text-xs text-gray-500 truncate">
-                                NIC: {student.nic}
+                    {filteredStudents.map((student) => {
+                      const profilePhotoUrl = student.student_details?.profile_photo_url;
+                      const fullName = student.student_details?.full_name_english || student.name;
+                      const gender = student.student_details?.gender;
+                      
+                      return (
+                        <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mr-3 flex-shrink-0 overflow-hidden ${
+                                profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+                              }`}>
+                                {profilePhotoUrl ? (
+                                  <img 
+                                    src={profilePhotoUrl} 
+                                    alt={fullName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-blue-100', 'to-indigo-100');
+                                    }}
+                                  />
+                                ) : (
+                                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-blue-700" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-gray-900 truncate">
+                                  {fullName}
+                                </div>
+                                <div className="text-xs text-gray-500 truncate">
+                                  NIC: {student.nic}
+                                </div>
+                                {gender && (
+                                  <div className="text-xs text-gray-500 truncate">
+                                    Gender: {gender}
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
-                            <Mail className="w-4 h-4" />
-                            <span className="truncate max-w-[120px] sm:max-w-xs">{student.email}</span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-500">
-                            <Phone className="w-4 h-4" />
-                            <span className="truncate">{student.phone}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2 mr-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  student.attendance_percentage >= 80 ? 'bg-green-600' :
-                                  student.attendance_percentage >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                                }`}
-                                style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
-                              ></div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
+                              <Mail className="w-4 h-4" />
+                              <span className="truncate max-w-[120px] sm:max-w-xs">{student.email}</span>
                             </div>
-                            <span className="text-sm font-medium text-gray-700 w-12 text-right">{student.attendance_percentage}%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              student.status === 'active' ? 'bg-green-100 text-green-800' :
-                              student.status === 'at-risk' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {student.total_classes}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            P:{student.present_classes} L:{student.late_classes} A:{student.absent_classes}
-                          </div>
-                        </td>
-                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-1 sm:space-x-2">
-                            <button
-                              onClick={() => openStudentDetails(student)}
-                              className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
-                              title="View details"
+                            <div className="flex items-center space-x-2 text-sm text-gray-500">
+                              <Phone className="w-4 h-4" />
+                              <span className="truncate">{student.phone}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2 mr-2">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    student.attendance_percentage >= 80 ? 'bg-green-600' :
+                                    student.attendance_percentage >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                                  }`}
+                                  style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-medium text-gray-700 w-12 text-right">{student.attendance_percentage}%</span>
+                            </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                student.status === 'active' ? 'bg-green-100 text-green-800' :
+                                student.status === 'at-risk' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}
                             >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => openMessagePopup('individual', student)}
-                              className="text-green-600 hover:text-green-900 transition-colors p-1 rounded hover:bg-green-50"
-                              title="Send message"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {student.total_classes}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              P:{student.present_classes} L:{student.late_classes} A:{student.absent_classes}
+                            </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-1 sm:space-x-2">
+                              <button
+                                onClick={() => openStudentDetails(student)}
+                                className="text-blue-600 hover:text-blue-900 transition-colors p-1 rounded hover:bg-blue-50"
+                                title="View details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => openMessagePopup('individual', student)}
+                                className="text-green-600 hover:text-green-900 transition-colors p-1 rounded hover:bg-green-50"
+                                title="Send message"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 

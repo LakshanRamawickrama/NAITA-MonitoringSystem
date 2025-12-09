@@ -1,7 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, CheckCircle, XCircle, Clock, Download, Search, BookOpen, Save, RefreshCw, Building, MapPin, FileText, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { fetchMyCourses, fetchCourseStudents, bulkUpdateAttendance, generateAttendanceReport, type ReportRequest } from '../../api/api';
-import type { CourseType, StudentAttendance } from '../../api/api';
+import { 
+  Calendar, Users, CheckCircle, XCircle, Clock, Download, Search, 
+  BookOpen, Save, RefreshCw, Building, MapPin, FileText, X, 
+  ChevronDown, ChevronUp, QrCode, CheckSquare, Square, 
+} from 'lucide-react';
+import { 
+  fetchMyCourses, 
+  fetchCourseStudents, 
+  bulkUpdateAttendance, 
+  generateAttendanceReport, 
+  type ReportRequest,
+  type CourseType, 
+  type StudentAttendance 
+} from '../../api/api';
+
+// Import QR Scanner Component
+import QRScanner from '../../components/QRScanner';
 
 // Report Modal Component
 interface ReportModalProps {
@@ -272,6 +286,8 @@ interface MobileStudentCardProps {
   onRemarksUpdate: (studentId: number, remarks: string) => void;
   onRemarksSave: (studentId: number) => void;
   saving: boolean;
+  isSelected: boolean;
+  onToggleSelection: (studentId: number) => void;
 }
 
 const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
@@ -279,7 +295,9 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
   onStatusUpdate,
   onRemarksUpdate,
   onRemarksSave,
-  saving
+  saving,
+  isSelected,
+  onToggleSelection
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -304,11 +322,28 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3 shadow-sm">
       <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <h3 className="font-medium text-gray-900 text-sm">{student.name}</h3>
-          <p className="text-xs text-gray-500 mt-1">{student.email}</p>
-          <p className="text-xs text-gray-500">{student.phone}</p>
-          <p className="text-xs text-gray-500 mt-1">NIC: {student.nic}</p>
+        <div className="flex-1 flex items-start">
+          {/* Selection Checkbox */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelection(student.id);
+            }}
+            className="mt-1 mr-2"
+          >
+            {isSelected ? (
+              <CheckSquare className="w-4 h-4 text-green-600" />
+            ) : (
+              <Square className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          
+          <div className="flex-1">
+            <h3 className="font-medium text-gray-900 text-sm">{student.name}</h3>
+            <p className="text-xs text-gray-500 mt-1">{student.email}</p>
+            <p className="text-xs text-gray-500">{student.phone}</p>
+            <p className="text-xs text-gray-500 mt-1">NIC: {student.nic}</p>
+          </div>
         </div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -400,7 +435,9 @@ const InstructorAttendance: React.FC = () => {
   const [saveMessage, setSaveMessage] = useState('');
   const [coursesLoading, setCoursesLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [summary, setSummary] = useState({
     total: 0,
     present: 0,
@@ -454,6 +491,8 @@ const InstructorAttendance: React.FC = () => {
       const courseStudents = await fetchCourseStudents(selectedCourse);
       setStudents(courseStudents);
       updateSummary(courseStudents);
+      // Clear selections when loading new students
+      setSelectedStudents([]);
       showSaveStatus('success', 'Students loaded successfully');
     } catch (error) {
       console.error('Failed to load students:', error);
@@ -586,6 +625,13 @@ const InstructorAttendance: React.FC = () => {
     }
   };
 
+  const handleQRScanComplete = (result: any) => {
+    console.log('Attendance marked via QR:', result);
+    // Refresh attendance data
+    loadCourseStudents();
+    showSaveStatus('success', `Attendance marked for ${result.student?.name || 'student'}`);
+  };
+
   const showSaveStatus = (status: 'success' | 'error' | 'idle', message: string = '') => {
     setSaveStatus(status);
     setSaveMessage(message);
@@ -631,6 +677,66 @@ const InstructorAttendance: React.FC = () => {
       check_in_time: null,
       remarks: null
     }));
+    
+    setStudents(updatedStudents);
+    updateSummary(updatedStudents);
+    await saveAttendanceToBackend(updatedStudents);
+  };
+
+  const toggleStudentSelection = (studentId: number) => {
+    setSelectedStudents(prev => 
+      prev.includes(studentId) 
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const selectAllStudents = () => {
+    if (selectedStudents.length === filteredStudents.length) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(filteredStudents.map(s => s.id).filter(Boolean));
+    }
+  };
+
+  const markSelectedAsPresent = async () => {
+    if (selectedStudents.length === 0) {
+      showSaveStatus('error', 'Please select students first');
+      return;
+    }
+
+    const updatedStudents = students.map(student =>
+      selectedStudents.includes(student.id)
+        ? {
+            ...student,
+            attendance_status: 'present' as const,
+            check_in_time: getCurrentTime(),
+            remarks: student.remarks
+          }
+        : student
+    );
+    
+    setStudents(updatedStudents);
+    updateSummary(updatedStudents);
+    await saveAttendanceToBackend(updatedStudents);
+  };
+
+  const markSelectedAsAbsent = async () => {
+    if (selectedStudents.length === 0) {
+      showSaveStatus('error', 'Please select students first');
+      return;
+    }
+
+    const updatedStudents = students.map(student =>
+      selectedStudents.includes(student.id)
+        ? {
+            ...student,
+            attendance_status: 'absent' as const,
+            check_in_time: null,
+            remarks: 'Absent'
+          }
+        : student
+    );
     
     setStudents(updatedStudents);
     updateSummary(updatedStudents);
@@ -765,6 +871,14 @@ const InstructorAttendance: React.FC = () => {
               <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Report</span>
             </button>
+            <button 
+              onClick={() => setShowQRScanner(true)}
+              className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-2 hover:from-purple-600 hover:to-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+              disabled={courses.length === 0}
+            >
+              <QrCode className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Scan QR</span>
+            </button>
           </div>
         </div>
 
@@ -857,6 +971,42 @@ const InstructorAttendance: React.FC = () => {
               />
             </div>
             
+            {/* Selected Students Actions */}
+            {selectedStudents.length > 0 && (
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    <CheckSquare className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-700">
+                      {selectedStudents.length} student{selectedStudents.length !== 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setSelectedStudents([])}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={markSelectedAsPresent}
+                    className="flex items-center space-x-1 bg-green-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-green-700 transition"
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Mark Selected Present</span>
+                  </button>
+                  <button
+                    onClick={markSelectedAsAbsent}
+                    className="flex items-center space-x-1 bg-red-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-red-700 transition"
+                  >
+                    <XCircle className="w-3 h-3" />
+                    <span>Mark Selected Absent</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {/* Mobile Actions Menu */}
             <MobileActionsMenu />
 
@@ -935,6 +1085,8 @@ const InstructorAttendance: React.FC = () => {
                     onRemarksUpdate={updateRemarks}
                     onRemarksSave={saveRemarks}
                     saving={saving}
+                    isSelected={selectedStudents.includes(student.id)}
+                    onToggleSelection={toggleStudentSelection}
                   />
                 ))}
                 
@@ -962,7 +1114,17 @@ const InstructorAttendance: React.FC = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student
+                        <button
+                          onClick={selectAllStudents}
+                          className="flex items-center"
+                        >
+                          {selectedStudents.length === filteredStudents.length ? (
+                            <CheckSquare className="w-4 h-4 text-green-600 mr-2" />
+                          ) : (
+                            <Square className="w-4 h-4 text-gray-400 mr-2" />
+                          )}
+                          Student
+                        </button>
                       </th>
                       <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contact
@@ -988,7 +1150,19 @@ const InstructorAttendance: React.FC = () => {
                     {filteredStudents.map((student) => (
                       <tr key={student.id} className="hover:bg-gray-50 transition">
                         <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                          <div className="flex items-center">
+                            <button 
+                              onClick={() => toggleStudentSelection(student.id)}
+                              className="mr-3"
+                            >
+                              {selectedStudents.includes(student.id) ? (
+                                <CheckSquare className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <Square className="w-4 h-4 text-gray-400" />
+                              )}
+                            </button>
+                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                          </div>
                         </td>
                         <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">{student.email}</div>
@@ -1094,16 +1268,35 @@ const InstructorAttendance: React.FC = () => {
           generating={generatingReport}
         />
 
+        {/* QR Scanner Modal */}
+        {showQRScanner && (
+          <QRScanner
+            onScanComplete={handleQRScanComplete}
+            onClose={() => setShowQRScanner(false)}
+            courseId={selectedCourse || undefined} 
+          />
+        )}
+
         {/* Help Section */}
         <div className="mt-4 sm:mt-6 bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
           <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">How to Use</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm text-blue-800">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm text-blue-800">
             <div>
               <p className="font-medium">Quick Actions:</p>
               <ul className="list-disc list-inside space-y-1 mt-1">
                 <li>Click <span className="font-semibold">Present</span>, <span className="font-semibold">Absent</span>, or <span className="font-semibold">Late</span> to mark individual student attendance</li>
                 <li>Use <span className="font-semibold">Mark All Present/Absent</span> for bulk actions</li>
                 <li>Add remarks for specific notes about attendance</li>
+                <li>Select multiple students using checkboxes for batch operations</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium">QR Code Scanning:</p>
+              <ul className="list-disc list-inside space-y-1 mt-1">
+                <li>Click <span className="font-semibold">Scan QR</span> to open QR scanner</li>
+                <li>Scan student's QR code from their ID card</li>
+                <li>Automatically marks attendance as present</li>
+                <li>Shows student details for verification</li>
               </ul>
             </div>
             <div>
@@ -1114,6 +1307,11 @@ const InstructorAttendance: React.FC = () => {
                 <li>Reports include all attendance data with summaries</li>
               </ul>
             </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-blue-200">
+            <p className="text-xs text-blue-700">
+              <strong>Tip:</strong> Use QR scanning for faster attendance marking during class sessions. Students can show their ID cards with QR codes for quick scanning.
+            </p>
           </div>
         </div>
       </div>

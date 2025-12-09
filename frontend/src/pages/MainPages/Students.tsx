@@ -1,4 +1,3 @@
-// src/pages/admin/HeadofficeStudents.tsx - UPDATED VERSION WITH PROFILE PHOTOS
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 

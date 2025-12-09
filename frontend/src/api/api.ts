@@ -1,4 +1,3 @@
-// src/api/api.ts - UPDATED VERSION WITH ALL MISSING PROPERTIES
 import axios from "axios";
 
 const api = axios.create({
@@ -504,6 +503,50 @@ export interface StudentStatsType {
   recent_students: number;
   center_distribution: Record<string, number>;
 }
+
+// Add to api.ts - Student QR Code & ID Card API
+
+export interface QRCodeData {
+  student_id: number;
+  registration_no: string;
+  full_name: string;
+  nic_id: string;
+  course_name: string;
+  center_name: string;
+  enrollment_status: string;
+}
+
+export interface StudentIDCardData {
+  id: number;
+  student: StudentType;
+  qr_code_data: QRCodeData;
+  generated_at: string;
+  is_active: boolean;
+}
+
+// Generate QR code data for a student
+export const generateQRCodeData = async (studentId: number): Promise<QRCodeData> => {
+  const res = await api.get(`/api/students/${studentId}/qrcode/`);
+  return res.data;
+};
+
+// Generate student ID card
+export const generateStudentIDCard = async (studentId: number): Promise<Blob> => {
+  const res = await api.get(`/api/students/${studentId}/id-card/`, {
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+// Bulk generate student ID cards
+export const bulkGenerateIDCards = async (studentIds: number[]): Promise<Blob> => {
+  const res = await api.post(`/api/students/bulk-id-cards/`, 
+    { student_ids: studentIds },
+    { responseType: 'blob' }
+  );
+  return res.data;
+};
+
 
 export const fetchStudents = async (search?: string, filters?: {
   district?: string;
@@ -1104,6 +1147,7 @@ export interface StudentAttendance {
   attendance_status: 'present' | 'absent' | 'late' | null;
   check_in_time: string | null;
   remarks: string | null;
+  
 }
 
 export interface AttendanceSummary {
@@ -1132,6 +1176,10 @@ export interface StudentAttendanceStats {
   status: 'active' | 'at-risk' | 'inactive';
   last_active: string;
   enrollment_status: string;
+  profile_photo_url?: string;
+  full_name_english?: string;
+  name_with_initials?: string;
+  gender?: string;
 }
 
 export const fetchAttendance = async (params?: {
@@ -1140,6 +1188,22 @@ export const fetchAttendance = async (params?: {
   status?: string;
 }): Promise<AttendanceRecord[]> => {
   const res = await api.get("/api/attendance/", { params });
+  return res.data;
+};
+
+// In api.ts
+// Scan QR code for attendance
+export const scanQRCodeForAttendance = async (qrData: string, courseId: number): Promise<any> => {
+  const res = await api.post(`/api/attendance/scan-qr/`, {
+    qr_data: qrData,
+    course_id: courseId
+  });
+  return res.data;
+};
+
+// Get student by QR code data
+export const getStudentByQRCode = async (qrData: string): Promise<StudentType> => {
+  const res = await api.post(`/api/students/qr-lookup/`, { qr_data: qrData });
   return res.data;
 };
 

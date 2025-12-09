@@ -11,6 +11,14 @@ from django.http import HttpResponse
 import csv
 from django.utils import timezone
 from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+import qrcode
+import io
+from PIL import Image
+import json
+from datetime import datetime
 
 from .models import Student, EducationalQualification, DistrictCode, CourseCode, Batch, BatchYear
 from .serializers import (
@@ -471,6 +479,132 @@ class StudentViewSet(viewsets.ModelViewSet):
                 {'error': f'Error processing file: {str(e)}'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+            
+    # Add to students/views.py
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+import qrcode
+import io
+from PIL import Image
+import json
+from datetime import datetime
+
+@action(detail=True, methods=['get'])
+def qrcode_data(self, request, pk=None):
+    """Get QR code data for a student"""
+    student = self.get_object()
+    
+    qr_data = {
+        'student_id': student.id,
+        'registration_no': student.registration_no,
+        'full_name': student.full_name_english,
+        'nic_id': student.nic_id,
+        'course_name': student.course.name if student.course else 'Not assigned',
+        'center_name': student.center.name if student.center else 'Not assigned',
+        'enrollment_status': student.enrollment_status,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    return Response(qr_data)
+
+@action(detail=True, methods=['get'])
+def id_card(self, request, pk=None):
+    """Generate student ID card PDF"""
+    student = self.get_object()
+    
+    # Create PDF
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    # Generate QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr_data = json.dumps({
+        'student_id': student.id,
+        'registration_no': student.registration_no,
+        'full_name': student.full_name_english,
+        'timestamp': datetime.now().isoformat()
+    })
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Save QR to bytes
+    qr_buffer = io.BytesIO()
+    qr_img.save(qr_buffer, format='PNG')
+    qr_buffer.seek(0)
+    
+    # Draw ID card
+    # Header
+    p.setFillColorRGB(0, 0.5, 0)  # Green
+    p.rect(50, height - 100, width - 100, 40, fill=1, stroke=0)
+    p.setFillColorRGB(1, 1, 1)  # White
+    p.setFont("Helvetica-Bold", 20)
+    p.drawCentredString(width/2, height - 80, "Student ID Card")
+    p.setFont("Helvetica", 12)
+    p.drawCentredString(width/2, height - 105, "Vocational Training Authority")
+    
+    # Student info
+    p.setFillColorRGB(0, 0, 0)  # Black
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(70, height - 150, f"Name: {student.full_name_english}")
+    p.setFont("Helvetica", 12)
+    p.drawString(70, height - 170, f"Registration No: {student.registration_no}")
+    p.drawString(70, height - 190, f"NIC: {student.nic_id}")
+    p.drawString(70, height - 210, f"Course: {student.course.name if student.course else 'Not assigned'}")
+    p.drawString(70, height - 230, f"Center: {student.center.name if student.center else 'Not assigned'}")
+    p.drawString(70, height - 250, f"District: {student.district}")
+    
+    # QR Code
+    p.drawImage(ImageReader(qr_buffer), width - 150, height - 300, width=100, height=100)
+    p.setFont("Helvetica", 10)
+    p.drawCentredString(width - 100, height - 310, "Scan for Attendance")
+    
+    # Footer
+    p.setFont("Helvetica-Oblique", 10)
+    p.drawString(70, height - 350, f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    p.drawString(70, height - 365, "Valid until course completion")
+    
+    p.showPage()
+    p.save()
+    
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="student_id_card_{student.registration_no}.pdf"'
+    return response
+
+@action(detail=False, methods=['post'])
+def bulk_id_cards(self, request):
+    """Generate ID cards for multiple students"""
+    student_ids = request.data.get('student_ids', [])
+    students = Student.objects.filter(id__in=student_ids)
+    
+    # Create combined PDF
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    
+    for i, student in enumerate(students):
+        if i > 0 and i % 2 == 0:
+            p.showPage()  # New page for every 2 ID cards
+        
+        # Generate each ID card
+        # ... similar drawing code as above ...
+        
+        if i == len(students) - 1:
+            p.showPage()
+    
+    p.save()
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="student_id_cards_{datetime.now().strftime("%Y%m%d_%H%M")}.pdf"'
+    return response
 
 class DistrictCodeViewSet(viewsets.ModelViewSet):
     queryset = DistrictCode.objects.all()
