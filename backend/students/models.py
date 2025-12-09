@@ -138,6 +138,14 @@ class Student(models.Model):
     training_placement_preference = models.CharField(max_length=3, choices=PLACEMENT_PREFERENCE_CHOICES, default='1st')
     date_of_application = models.DateField(auto_now_add=True)
     
+    # Profile Photo 
+    profile_photo = models.ImageField(
+        upload_to='student_photos/',
+        null=True,
+        blank=True,
+        help_text='Student profile photo'
+    )
+    
     # Center and Course Information
     center = models.ForeignKey(
         'centers.Center', 

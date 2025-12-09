@@ -1,4 +1,4 @@
-// src/pages/admin/HeadofficeStudents.tsx - UPDATED VERSION WITH ROLE-BASED ACCESS
+// src/pages/admin/HeadofficeStudents.tsx - UPDATED VERSION WITH PROFILE PHOTOS
 import React, { useState, useEffect } from 'react';
 import { 
   Search, 
@@ -11,7 +11,8 @@ import {
   User,
   IdCard,
   GraduationCap,
-  RefreshCw
+  RefreshCw,
+  Eye,
 } from 'lucide-react';
 import { 
   type StudentType, 
@@ -62,6 +63,148 @@ const formatDate = (dateString?: string) => {
   }
 };
 
+// Mobile Student Card Component
+interface MobileStudentCardProps {
+  student: StudentType;
+  isExpanded: boolean;
+  onToggleExpand: (studentId: number) => void;
+  onViewDetails: (student: StudentType) => void;
+}
+
+const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
+  student,
+  isExpanded,
+  onToggleExpand,
+  onViewDetails
+}) => {
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start">
+        <div className="flex items-start space-x-3 flex-1 min-w-0">
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
+            student.profile_photo_url ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+          }`}>
+            {student.profile_photo_url ? (
+              <img 
+                src={student.profile_photo_url} 
+                alt={student.full_name_english}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-blue-100', 'to-indigo-100');
+                }}
+              />
+            ) : (
+              <User className="w-6 h-6 text-blue-700" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-gray-900 text-sm break-words">{student.full_name_english}</h3>
+            <p className="text-blue-600 font-bold text-xs mt-1 break-words">{student.registration_no}</p>
+            <p className="text-gray-500 text-xs">NIC: {student.nic_id}</p>
+            <div className="flex items-center mt-1">
+              <span className="text-gray-500 text-xs">{student.district}</span>
+              <span className="mx-1">•</span>
+              <span className="text-gray-500 text-xs">{student.gender}</span>
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => onToggleExpand(student.id!)}
+          className="ml-2 p-1 text-gray-400 hover:text-gray-600 flex-shrink-0 transition-colors"
+        >
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1">
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
+          student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+          student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
+          'bg-yellow-100 text-yellow-800 border border-yellow-200'
+        }`}>
+          {student.enrollment_status || 'Pending'}
+        </span>
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          student.training_received
+            ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
+            : 'bg-gray-100 text-gray-800 border border-gray-200'
+        }`}>
+          {student.training_received ? 'Trained' : 'Not Trained'}
+        </span>
+      </div>
+
+      {isExpanded && (
+        <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100">
+            <div className="text-xs font-semibold text-gray-700 mb-2">Registration Details:</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.district_code || 'N/A'}</div>
+                <div className="text-gray-600">District Code</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.course_code || 'N/A'}</div>
+                <div className="text-gray-600">Course Code</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.batch_display || student.batch_code || 'N/A'}</div>
+                <div className="text-gray-600">Batch</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-gray-900">{student.student_number || 'N/A'}</div>
+                <div className="text-gray-600">Student #</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-600">Mobile:</span>
+              <span className="font-medium">{student.mobile_no}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-600">Email:</span>
+              <span className="font-medium text-right">{student.email || 'No email'}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-600">Center:</span>
+              <span className="font-medium text-right">{student.center_name || 'No Center'}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-600">Course:</span>
+              <span className="font-medium text-right">{student.course_name || 'No Course'}</span>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 border border-gray-100">
+            <div className="text-xs font-semibold text-gray-700 mb-2">Education:</div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div>
+                <div className="text-xs font-bold text-gray-900">{student.ol_results?.length || 0}</div>
+                <div className="text-[10px] text-gray-600">O/L Subjects</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-gray-900">{student.al_results?.length || 0}</div>
+                <div className="text-[10px] text-gray-600">A/L Subjects</div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onViewDetails(student)}
+            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 px-3 rounded-lg text-xs font-medium hover:from-blue-600 hover:to-blue-700 transition-all flex items-center justify-center space-x-2"
+          >
+            <Eye className="w-3 h-3" />
+            <span>View Full Details</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Students: React.FC = () => {
   // State Management
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,6 +226,8 @@ const Students: React.FC = () => {
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   
   // Get user role and district
   const userRole = getUserRole();
@@ -145,8 +290,6 @@ const Students: React.FC = () => {
     try {
       // For district managers, get stats only for their district
       if (isDistrictManager && userDistrict) {
-        // You might need to create a separate API endpoint for district-specific stats
-        // For now, we'll filter the stats client-side
         const districtStudents = students.filter(s => s.district === userDistrict);
         
         const districtStats = {
@@ -233,7 +376,9 @@ const Students: React.FC = () => {
         student.registration_no?.toLowerCase().includes(term) ||
         student.email?.toLowerCase().includes(term) ||
         student.mobile_no?.toLowerCase().includes(term) ||
-        student.district?.toLowerCase().includes(term)
+        student.district?.toLowerCase().includes(term) ||
+        student.center_name?.toLowerCase().includes(term) ||
+        student.course_name?.toLowerCase().includes(term)
       );
     }
 
@@ -275,6 +420,256 @@ const Students: React.FC = () => {
       newExpanded.add(studentId);
     }
     setExpandedRows(newExpanded);
+  };
+
+  // Handle view details
+  const handleViewDetails = (student: StudentType) => {
+    setSelectedStudent(student);
+    setShowDetailsModal(true);
+  };
+
+  // Student Details Modal Component
+  const StudentDetailsModal = () => {
+    if (!selectedStudent) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Student Details</h2>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Profile Header */}
+              <div className="flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                <div className={`w-24 h-24 rounded-full border-4 ${
+                  selectedStudent.profile_photo_url ? 'border-blue-300' : 'border-blue-200'
+                } overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mr-6 shadow-lg`}>
+                  {selectedStudent.profile_photo_url ? (
+                    <img 
+                      src={selectedStudent.profile_photo_url} 
+                      alt={selectedStudent.full_name_english}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-blue-100', 'to-indigo-100');
+                      }}
+                    />
+                  ) : (
+                    <User className="w-12 h-12 text-blue-700" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {selectedStudent.full_name_english}
+                  </h1>
+                  <p className="text-blue-600 font-bold text-lg mt-1">
+                    {selectedStudent.registration_no}
+                  </p>
+                  <p className="text-gray-600 mt-2">{selectedStudent.name_with_initials}</p>
+                  <div className="flex items-center mt-2 space-x-4">
+                    <span className="text-gray-600">{selectedStudent.gender}</span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-600">DOB: {formatDate(selectedStudent.date_of_birth)}</span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-600">NIC: {selectedStudent.nic_id}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Registration Information */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-6 rounded-xl border border-gray-200">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Registration Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <div className="mb-4">
+                      <div className="text-xl font-bold text-blue-600 bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+                        {selectedStudent.registration_no}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200">
+                        <div className="text-xs text-blue-700 font-medium">District Code</div>
+                        <div className="font-bold text-gray-900">{selectedStudent.district_code || 'N/A'}</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border border-green-200">
+                        <div className="text-xs text-green-700 font-medium">Course Code</div>
+                        <div className="font-bold text-gray-900">{selectedStudent.course_code || 'N/A'}</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-3 rounded-lg border border-yellow-200">
+                        <div className="text-xs text-yellow-700 font-medium">Batch</div>
+                        <div className="font-bold text-gray-900">{selectedStudent.batch_display || selectedStudent.batch_code || 'N/A'}</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg border border-purple-200">
+                        <div className="text-xs text-purple-700 font-medium">Student #</div>
+                        <div className="font-bold text-gray-900">{selectedStudent.student_number || 'N/A'}</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-3 rounded-lg border border-pink-200">
+                        <div className="text-xs text-pink-700 font-medium">Year</div>
+                        <div className="font-bold text-gray-900">{selectedStudent.registration_year || 'N/A'}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Application</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{formatDate(selectedStudent.date_of_application)}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Date</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{formatDate(selectedStudent.enrollment_date) || 'Not set'}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Status</label>
+                    <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                      selectedStudent.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
+                      selectedStudent.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                      selectedStudent.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
+                      'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                    }`}>
+                      {selectedStudent.enrollment_status || 'Pending'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Information */}
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-xl border border-blue-200">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Personal Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name (English)</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.full_name_english}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name (Sinhala/Tamil)</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.full_name_sinhala || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name with Initials</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.name_with_initials}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.address_line || 'N/A'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile No.</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.mobile_no}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.email || 'Not provided'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Center & Course Information */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Center & Course Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Training Center</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.center_name || 'Not assigned'}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.course_name || 'Not assigned'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Educational Qualifications */}
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl border border-yellow-200">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Educational Qualifications</h3>
+                
+                <div className="mb-4">
+                  <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. O/L Results</h4>
+                  {selectedStudent.ol_results && selectedStudent.ol_results.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedStudent.ol_results.map((result, index) => (
+                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all">
+                          <span className="text-sm">{result.subject} - {result.grade} ({result.year})</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200">No O/L results recorded</div>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. A/L Results</h4>
+                  {selectedStudent.al_results && selectedStudent.al_results.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedStudent.al_results.map((result, index) => (
+                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all">
+                          <span className="text-sm">{result.subject} - {result.grade} ({result.year})</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200">No A/L results recorded</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Training Details */}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-xl border border-emerald-200">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800">Training Details</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center">
+                    <div className={`inline-flex px-3 py-1.5 text-sm font-semibold rounded-full border ${
+                      selectedStudent.training_received
+                        ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200'
+                        : 'bg-gray-100 text-gray-800 border-gray-200'
+                    }`}>
+                      {selectedStudent.training_received ? 'Trained' : 'Not Trained'}
+                    </div>
+                  </div>
+                  
+                  {selectedStudent.training_received && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Training Provider</label>
+                        <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.training_provider || 'Not provided'}</div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Course/Vocation Name</label>
+                        <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.course_vocation_name || 'Not provided'}</div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                        <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.training_duration || 'Not provided'}</div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nature of Training</label>
+                        <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.training_nature || 'Initial'}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading && !students.length) {
@@ -493,8 +888,34 @@ const Students: React.FC = () => {
           </div>
         </div>
 
-        {/* Students Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+        {/* Mobile View */}
+        <div className="md:hidden">
+          {filteredStudents.map((student) => (
+            <MobileStudentCard
+              key={student.id}
+              student={student}
+              isExpanded={expandedRows.has(student.id!)}
+              onToggleExpand={toggleRowExpansion}
+              onViewDetails={handleViewDetails}
+            />
+          ))}
+          
+          {filteredStudents.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {students.length === 0 
+                  ? 'No students available in the system.'
+                  : 'Try adjusting your search or filter criteria.'
+                }
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -514,6 +935,9 @@ const Students: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                   <th className="w-8 px-4 py-3"></th>
                 </tr>
               </thead>
@@ -521,13 +945,26 @@ const Students: React.FC = () => {
                 {filteredStudents.map((student) => (
                   <React.Fragment key={student.id}>
                     <tr 
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => toggleRowExpansion(student.id!)}
+                      className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="w-5 h-5 text-blue-700" />
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${
+                            student.profile_photo_url ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+                          }`}>
+                            {student.profile_photo_url ? (
+                              <img 
+                                src={student.profile_photo_url} 
+                                alt={student.full_name_english}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-blue-100', 'to-indigo-100');
+                                }}
+                              />
+                            ) : (
+                              <User className="w-5 h-5 text-blue-700" />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-900 truncate">
@@ -606,21 +1043,35 @@ const Students: React.FC = () => {
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-4">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleViewDetails(student)}
+                            className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-4 py-4">
-                        <div className="text-gray-400 hover:text-gray-600">
+                        <button
+                          onClick={() => toggleRowExpansion(student.id!)}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
                           {expandedRows.has(student.id!) ? (
                             <ChevronUp className="w-4 h-4" />
                           ) : (
                             <ChevronDown className="w-4 h-4" />
                           )}
-                        </div>
+                        </button>
                       </td>
                     </tr>
                     
                     {/* Expanded Row Details */}
                     {expandedRows.has(student.id!) && (
                       <tr>
-                        <td colSpan={6} className="bg-blue-50 px-6 py-4">
+                        <td colSpan={7} className="bg-blue-50 px-6 py-4">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Personal Information */}
                             <div>
@@ -693,9 +1144,9 @@ const Students: React.FC = () => {
           </div>
         </div>
 
-        {/* No Results Message */}
+        {/* No Results Message for Desktop */}
         {filteredStudents.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
+          <div className="hidden md:block text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
             <Users className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
             <p className="mt-1 text-sm text-gray-500">
@@ -737,6 +1188,9 @@ const Students: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Student Details Modal */}
+      {showDetailsModal && <StudentDetailsModal />}
     </div>
   );
 };

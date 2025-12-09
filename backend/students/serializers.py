@@ -38,6 +38,8 @@ class StudentSerializer(serializers.ModelSerializer):
     course_name = serializers.CharField(source='course.name', read_only=True)
     course_code_display = serializers.CharField(source='course.code', read_only=True)
     batch_display = serializers.CharField(source='batch.batch_name', read_only=True)
+    profile_photo = serializers.ImageField(required=False, allow_null=True, write_only=True)
+    profile_photo_url = serializers.SerializerMethodField(read_only=True)
     registration_components = serializers.SerializerMethodField()
     
     class Meta:
@@ -77,6 +79,8 @@ class StudentSerializer(serializers.ModelSerializer):
             'training_establishment',
             'training_placement_preference', 
             'date_of_application',
+            'profile_photo',  
+            'profile_photo_url',  
             'center', 
             'center_name', 
             'course', 
@@ -94,9 +98,20 @@ class StudentSerializer(serializers.ModelSerializer):
             'batch_year', 
             'student_number', 
             'registration_year',
+            'profile_photo_url' ,
             'created_at', 
             'updated_at'
         ]
+    
+     
+    def get_profile_photo_url(self, obj):
+        """Return the full URL for the profile photo"""
+        if obj.profile_photo and hasattr(obj.profile_photo, 'url'):
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.profile_photo.url)
+            return obj.profile_photo.url
+        return None
     
     def get_registration_components(self, obj):
         """Return registration number components as a dictionary"""

@@ -450,9 +450,11 @@ export interface StudentType {
   registration_no: string;
   district_code?: string;
   course_code?: string;
-  batch?: number | null;  // Added batch field
-  batch_display?: string;  // Added batch_display field
-  batch_code?: string;  // Added batch_code field
+  batch?: number | null;  
+  batch_display?: string;  
+  batch_code?: string;  
+  profile_photo?: File | string | null;  
+  profile_photo_url?: string;  
   batch_year?: string;
   student_number?: number;
   registration_year?: string;
