@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye, 
-  MapPin, Building, ChevronDown, ChevronUp, Info, RefreshCw, 
+import {
+  Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye,
+  MapPin, Building, ChevronDown, ChevronUp, Info, RefreshCw,
   Phone, BookOpen, Upload, Camera, QrCode, IdCard, Printer, Download,
   CheckSquare, Square
 } from 'lucide-react';
-import { 
-  type StudentType, 
+import {
+  type StudentType,
   type EducationalQualificationType,
   type Center,
   type CourseType,
   type RegistrationNumberPreview,
   type BatchType,
-  fetchStudents, 
+  fetchStudents,
   deleteStudent,
   fetchCentersForStudent,
   fetchCoursesForStudent,
@@ -55,12 +55,31 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Helper to safely parse qualifications
+  const parseQualifications = (data: any): EducationalQualificationType[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    try {
+      if (typeof data === 'string') {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+    } catch (e) {
+      console.error('Error parsing qualifications:', e);
+      return [];
+    }
+    return [];
+  };
+
+  const olResults = parseQualifications(student.ol_results);
+  const alResults = parseQualifications(student.al_results);
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3 mb-3 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
           {/* Selection Checkbox */}
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleSelection(student.id!);
@@ -73,13 +92,12 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
               <Square className="w-4 h-4 text-gray-400" />
             )}
           </button>
-          
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
-            student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
-          }`}>
+
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
+            }`}>
             {student.profile_photo_url ? (
-              <img 
-                src={student.profile_photo_url} 
+              <img
+                src={student.profile_photo_url}
                 alt={student.full_name_english}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -110,19 +128,17 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1">
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
           student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-          student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
-          'bg-yellow-100 text-yellow-800 border border-yellow-200'
-        }`}>
+            student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
+              'bg-yellow-100 text-yellow-800 border border-yellow-200'
+          }`}>
           {student.enrollment_status || 'Pending'}
         </span>
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          student.training_received
-            ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
-            : 'bg-gray-100 text-gray-800 border border-gray-200'
-        }`}>
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${student.training_received
+          ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
+          : 'bg-gray-100 text-gray-800 border border-gray-200'
+          }`}>
           {student.training_received ? 'Trained' : 'Not Trained'}
         </span>
       </div>
@@ -174,14 +190,34 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
 
           <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-2 border border-gray-100">
             <div className="text-xs font-semibold text-gray-700 mb-1">Education:</div>
-            <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="space-y-2">
               <div>
-                <div className="text-xs font-bold text-gray-900">{student.ol_results?.length || 0}</div>
-                <div className="text-[10px] text-gray-600">O/L Subjects</div>
+                <div className="text-[10px] font-semibold text-gray-600 mb-0.5">O/L Results ({olResults.length}):</div>
+                {olResults.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {olResults.map((res, i) => (
+                      <span key={i} className="inline-block px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] text-gray-800">
+                        {res.subject}: {res.grade}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-gray-400 italic">No results</div>
+                )}
               </div>
               <div>
-                <div className="text-xs font-bold text-gray-900">{student.al_results?.length || 0}</div>
-                <div className="text-[10px] text-gray-600">A/L Subjects</div>
+                <div className="text-[10px] font-semibold text-gray-600 mb-0.5">A/L Results ({alResults.length}):</div>
+                {alResults.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {alResults.map((res, i) => (
+                      <span key={i} className="inline-block px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] text-gray-800">
+                        {res.subject}: {res.grade}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-gray-400 italic">No results</div>
+                )}
               </div>
             </div>
           </div>
@@ -209,7 +245,7 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
                     center_name: student.center_name || 'Not assigned',
                     enrollment_status: student.enrollment_status || 'Pending'
                   };
-                  
+
                   // Create downloadable QR code JSON
                   const qrString = JSON.stringify(qrData, null, 2);
                   const blob = new Blob([qrString], { type: 'application/json' });
@@ -281,18 +317,18 @@ const DataEntryStudents: React.FC = () => {
   const [districtCodes, setDistrictCodes] = useState<any[]>([]);
   const [courseCodes, setCourseCodes] = useState<any[]>([]);
   const [batches, setBatches] = useState<BatchType[]>([]);
-  
+
   // Profile photo states
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
-  
+
   // QR Code and ID Card states
   const [showIDCard, setShowIDCard] = useState(false);
   const [selectedIDCardStudent, setSelectedIDCardStudent] = useState<StudentType | null>(null);
   const [showBulkIDCardGenerator, setShowBulkIDCardGenerator] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [bulkPrintLoading, setBulkPrintLoading] = useState(false);
-  
+
   const [regComponents, setRegComponents] = useState({
     district_code: '',
     course_code: '',
@@ -350,35 +386,35 @@ const DataEntryStudents: React.FC = () => {
     const loadUserInfo = async () => {
       const district = getUserDistrict();
       const role = getUserRole();
-      
+
       setUserDistrict(district);
       setUserRole(role);
-      
+
       if (role === 'data_entry' && district) {
         setFormData(prev => ({
           ...prev,
           district: district
         }));
       }
-      
+
       try {
         const formats = await fetchRegistrationFormats();
         setRegistrationFormats(formats);
       } catch (error) {
         console.error('Error loading registration formats:', error);
       }
-      
+
       try {
         const [districtCodesRes, courseCodesRes, batchesRes] = await Promise.all([
           fetchAvailableDistrictCodes(),
           fetchAvailableCourseCodes(),
           fetchAvailableBatches()
         ]);
-        
+
         setDistrictCodes(districtCodesRes);
         setCourseCodes(courseCodesRes);
         setBatches(batchesRes);
-        
+
         // Set default batch (first active batch)
         if (batchesRes.length > 0) {
           const defaultBatch = batchesRes[0];
@@ -412,7 +448,7 @@ const DataEntryStudents: React.FC = () => {
         batch_id: formData.batch || undefined
       });
       setRegistrationPreview(preview);
-      
+
       if (isAutoGenerateRegNo && !manualRegNo) {
         setFormData(prev => ({
           ...prev,
@@ -437,7 +473,7 @@ const DataEntryStudents: React.FC = () => {
       const timer = setTimeout(() => {
         generateRegistrationPreview();
       }, 500);
-      
+
       return () => clearTimeout(timer);
     }
   }, [formData.district, formData.course, formData.enrollment_date, formData.batch, isAutoGenerateRegNo, manualRegNo]);
@@ -447,10 +483,10 @@ const DataEntryStudents: React.FC = () => {
       ...prev,
       [field]: value
     }));
-    
+
     setFormData(prev => {
       const updated = { ...prev };
-      
+
       switch (field) {
         case 'district_code':
           updated.district_code = value;
@@ -473,13 +509,13 @@ const DataEntryStudents: React.FC = () => {
           updated.registration_year = value;
           break;
       }
-      
-      if (updated.district_code && updated.course_code && updated.batch_year && 
-          updated.student_number && updated.registration_year) {
+
+      if (updated.district_code && updated.course_code && updated.batch_year &&
+        updated.student_number && updated.registration_year) {
         const studentNumStr = updated.student_number.toString().padStart(4, '0');
         updated.registration_no = `${updated.district_code}/${updated.course_code}/${updated.batch_year}/${studentNumStr}/${updated.registration_year}`;
       }
-      
+
       return updated;
     });
   };
@@ -529,8 +565,8 @@ const DataEntryStudents: React.FC = () => {
 
   const handleCenterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const centerId = e.target.value ? parseInt(e.target.value) : null;
-    setFormData({ 
-      ...formData, 
+    setFormData({
+      ...formData,
       center: centerId,
       course: null // Reset course when center changes
     });
@@ -543,9 +579,9 @@ const DataEntryStudents: React.FC = () => {
 
   const handleCourseChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const courseId = e.target.value ? parseInt(e.target.value) : null;
-    setFormData({ 
-      ...formData, 
-      course: courseId 
+    setFormData({
+      ...formData,
+      course: courseId
     });
   };
 
@@ -556,24 +592,24 @@ const DataEntryStudents: React.FC = () => {
     try {
       // Create FormData for file upload
       const formDataObj = new FormData();
-      
+
       // Prepare form data for submission
       const submissionData = { ...formData };
-      
+
       // Ensure center and course are just IDs (not objects)
       if (submissionData.center && typeof submissionData.center === 'object') {
         submissionData.center = (submissionData.center as any).id || submissionData.center;
       }
-      
+
       if (submissionData.course && typeof submissionData.course === 'object') {
         submissionData.course = (submissionData.course as any).id || submissionData.course;
       }
-      
+
       // Ensure batch is just ID
       if (submissionData.batch && typeof submissionData.batch === 'object') {
         submissionData.batch = (submissionData.batch as any).id || submissionData.batch;
       }
-      
+
       // Append all form data
       Object.entries(submissionData).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
@@ -581,7 +617,7 @@ const DataEntryStudents: React.FC = () => {
           if (value === '' && key !== 'registration_no') {
             return;
           }
-          
+
           if (Array.isArray(value)) {
             formDataObj.append(key, JSON.stringify(value));
           } else if (typeof value === 'boolean') {
@@ -589,9 +625,9 @@ const DataEntryStudents: React.FC = () => {
           } else if (value && typeof value === 'object') {
             // Check if it's a File or Blob object
             const objValue = value as any;
-            if (objValue instanceof File || objValue instanceof Blob || 
-                (objValue.constructor && objValue.constructor.name === 'File') ||
-                (objValue.constructor && objValue.constructor.name === 'Blob')) {
+            if (objValue instanceof File || objValue instanceof Blob ||
+              (objValue.constructor && objValue.constructor.name === 'File') ||
+              (objValue.constructor && objValue.constructor.name === 'Blob')) {
               formDataObj.append(key, objValue);
             } else {
               formDataObj.append(key, JSON.stringify(value));
@@ -601,15 +637,15 @@ const DataEntryStudents: React.FC = () => {
           }
         }
       });
-      
+
       // Append profile photo only if a new one was uploaded
       if (profilePhoto) {
         formDataObj.append('profile_photo', profilePhoto);
       }
       // If editing without changing photo, don't send anything
-      
+
       let updatedStudent;
-      
+
       if (editingStudent && editingStudent.id) {
         const response = await api.patch(`/api/students/${editingStudent.id}/`, formDataObj, {
           headers: {
@@ -625,9 +661,9 @@ const DataEntryStudents: React.FC = () => {
         });
         updatedStudent = response.data;
       }
-      
+
       if (editingStudent && editingStudent.id) {
-        setStudents(students.map(student => 
+        setStudents(students.map(student =>
           student.id === editingStudent.id ? updatedStudent : student
         ));
       } else {
@@ -639,9 +675,9 @@ const DataEntryStudents: React.FC = () => {
       setEditingStudent(null);
     } catch (error: any) {
       console.error('Error saving student:', error);
-      const errorMessage = error.response?.data?.detail || 
-                          error.response?.data?.message || 
-                          (typeof error.response?.data === 'object' ? JSON.stringify(error.response.data) : 'Error saving student. Please try again.');
+      const errorMessage = error.response?.data?.detail ||
+        error.response?.data?.message ||
+        (typeof error.response?.data === 'object' ? JSON.stringify(error.response.data) : 'Error saving student. Please try again.');
       alert(errorMessage);
     } finally {
       setLoading(false);
@@ -669,23 +705,23 @@ const DataEntryStudents: React.FC = () => {
       al_results: student.al_results || [],
       batch: student.batch || null,
       // Handle center - extract just the ID if it's an object
-      center: typeof student.center === 'object' && student.center !== null 
-        ? (student.center as any).id || student.center 
+      center: typeof student.center === 'object' && student.center !== null
+        ? (student.center as any).id || student.center
         : student.center,
       // Handle course - extract just the ID if it's an object
-      course: typeof student.course === 'object' && student.course !== null 
-        ? (student.course as any).id || student.course 
+      course: typeof student.course === 'object' && student.course !== null
+        ? (student.course as any).id || student.course
         : student.course,
       // Don't include profile_photo in formData state
     });
-    
+
     // Set profile photo preview if exists
     if (student.profile_photo_url) {
       setProfilePhotoPreview(student.profile_photo_url);
     } else {
       setProfilePhotoPreview(null);
     }
-    
+
     if (student.registration_no) {
       const parts = student.registration_no.split('/');
       if (parts.length === 5) {
@@ -698,16 +734,16 @@ const DataEntryStudents: React.FC = () => {
         });
       }
     }
-    
+
     setEditingStudent(student);
     setShowForm(true);
     setIsAutoGenerateRegNo(false);
     setManualRegNo(true);
-    
+
     // Load courses if center is set
     if (student.center) {
-      const centerId = typeof student.center === 'object' && student.center !== null 
-        ? (student.center as any).id || student.center 
+      const centerId = typeof student.center === 'object' && student.center !== null
+        ? (student.center as any).id || student.center
         : student.center;
       if (centerId) {
         loadCourses(Number(centerId));
@@ -727,7 +763,7 @@ const DataEntryStudents: React.FC = () => {
 
   const resetForm = () => {
     const defaultBatch = batches.length > 0 ? batches[0].id : null;
-    
+
     setFormData({
       full_name_english: '',
       full_name_sinhala: '',
@@ -765,7 +801,7 @@ const DataEntryStudents: React.FC = () => {
       date_of_application: new Date().toISOString().split('T')[0],
       // Don't include profile_photo here
     });
-    
+
     setRegComponents({
       district_code: '',
       course_code: '',
@@ -773,17 +809,17 @@ const DataEntryStudents: React.FC = () => {
       student_number: '',
       registration_year: new Date().getFullYear().toString()
     });
-    
+
     // Reset profile photo
     setProfilePhoto(null);
     setProfilePhotoPreview(null);
-    
+
     setEditingStudent(null);
     setCourses([]);
     setRegistrationPreview(null);
     setIsAutoGenerateRegNo(true);
     setManualRegNo(false);
-    
+
     setTimeout(() => {
       generateRegistrationPreview();
     }, 100);
@@ -797,7 +833,7 @@ const DataEntryStudents: React.FC = () => {
         year: parseInt(newOlYear),
         type: 'OL'
       };
-      
+
       setFormData(prev => ({
         ...prev,
         ol_results: [...(prev.ol_results || []), newResult]
@@ -816,7 +852,7 @@ const DataEntryStudents: React.FC = () => {
         year: parseInt(newAlYear),
         type: 'AL'
       };
-      
+
       setFormData(prev => ({
         ...prev,
         al_results: [...(prev.al_results || []), newResult]
@@ -842,8 +878,8 @@ const DataEntryStudents: React.FC = () => {
   };
 
   const toggleStudentSelection = (studentId: number) => {
-    setSelectedStudents(prev => 
-      prev.includes(studentId) 
+    setSelectedStudents(prev =>
+      prev.includes(studentId)
         ? prev.filter(id => id !== studentId)
         : [...prev, studentId]
     );
@@ -874,7 +910,7 @@ const DataEntryStudents: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       alert(`Successfully generated ${selectedStudents.length} ID card(s)`);
     } catch (error) {
       console.error('Error bulk printing ID cards:', error);
@@ -898,21 +934,20 @@ const DataEntryStudents: React.FC = () => {
         </label>
         <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6">
           <div className="relative">
-            <div className={`w-32 h-32 rounded-full border-3 ${
-              profilePhotoPreview || editingStudent?.profile_photo_url
-                ? 'border-green-300 shadow-lg'
-                : 'border-dashed border-gray-300'
-            } overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center transition-all duration-300`}>
+            <div className={`w-32 h-32 rounded-full border-3 ${profilePhotoPreview || editingStudent?.profile_photo_url
+              ? 'border-green-300 shadow-lg'
+              : 'border-dashed border-gray-300'
+              } overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center transition-all duration-300`}>
               {profilePhotoPreview ? (
-                <img 
-                  src={profilePhotoPreview} 
-                  alt="Profile preview" 
+                <img
+                  src={profilePhotoPreview}
+                  alt="Profile preview"
                   className="w-full h-full object-cover"
                 />
               ) : editingStudent?.profile_photo_url ? (
-                <img 
-                  src={editingStudent.profile_photo_url} 
-                  alt="Profile" 
+                <img
+                  src={editingStudent.profile_photo_url}
+                  alt="Profile"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
@@ -940,7 +975,7 @@ const DataEntryStudents: React.FC = () => {
               </button>
             )}
           </div>
-          
+
           <div className="flex-1">
             <div className="mb-3">
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -959,13 +994,13 @@ const DataEntryStudents: React.FC = () => {
                         alert('File size too large. Maximum size is 2MB.');
                         return;
                       }
-                      
+
                       // Validate file type
                       if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
                         alert('Only JPG and PNG files are allowed.');
                         return;
                       }
-                      
+
                       setProfilePhoto(file);
                       const reader = new FileReader();
                       reader.onloadend = () => {
@@ -1012,7 +1047,7 @@ const DataEntryStudents: React.FC = () => {
           <Info className="w-4 h-4 mr-2 text-yellow-600" />
           Manual Registration Number Editing
         </h4>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -1033,7 +1068,7 @@ const DataEntryStudents: React.FC = () => {
             </select>
             <p className="text-xs text-gray-500 mt-1">e.g., MT (Matara)</p>
           </div>
-          
+
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Course Code *
@@ -1053,7 +1088,7 @@ const DataEntryStudents: React.FC = () => {
             </select>
             <p className="text-xs text-gray-500 mt-1">e.g., WP (Web Programming)</p>
           </div>
-          
+
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Batch *
@@ -1072,7 +1107,7 @@ const DataEntryStudents: React.FC = () => {
             </select>
             <p className="text-xs text-gray-500 mt-1">e.g., 01 - 1st Batch</p>
           </div>
-          
+
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Student Number *
@@ -1088,7 +1123,7 @@ const DataEntryStudents: React.FC = () => {
             />
             <p className="text-xs text-gray-500 mt-1">4 digits (0001-9999)</p>
           </div>
-          
+
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Year *
@@ -1104,7 +1139,7 @@ const DataEntryStudents: React.FC = () => {
             <p className="text-xs text-gray-500 mt-1">Enrollment year</p>
           </div>
         </div>
-        
+
         {formData.registration_no && (
           <div className="bg-white p-3 sm:p-4 rounded-lg border border-yellow-100 shadow-sm">
             <div className="text-sm font-semibold text-gray-700 mb-1">
@@ -1140,18 +1175,18 @@ const DataEntryStudents: React.FC = () => {
 
   const RegistrationPreviewSection = () => {
     const [selectedBatch, setSelectedBatch] = useState<string>(batches.length > 0 ? batches[0].id.toString() : '');
-    
+
     const handleBatchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const batchId = e.target.value;
       setSelectedBatch(batchId);
-      
+
       const batch = batches.find(b => b.id.toString() === batchId);
       if (batch) {
         setFormData(prev => ({
           ...prev,
           batch: batch.id
         }));
-        
+
         setTimeout(() => {
           generateRegistrationPreview();
         }, 100);
@@ -1177,7 +1212,7 @@ const DataEntryStudents: React.FC = () => {
             Refresh
           </button>
         </div>
-        
+
         <div className="mb-3">
           <label className="block text-xs font-medium text-gray-700 mb-1">
             Select Batch
@@ -1195,7 +1230,7 @@ const DataEntryStudents: React.FC = () => {
           </select>
           <p className="text-xs text-gray-500 mt-1">Choose the batch for registration</p>
         </div>
-        
+
         <div className="mb-2">
           <div className="text-lg sm:text-xl font-bold text-blue-900 mb-2 bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
             {registrationPreview.full_registration}
@@ -1210,7 +1245,7 @@ const DataEntryStudents: React.FC = () => {
             <div className="bg-pink-50 p-2 rounded"><span className="font-medium text-pink-700">Year:</span> {registrationPreview.year}</div>
           </div>
         </div>
-        
+
         <div className="text-xs text-gray-500 italic bg-white/50 p-2 rounded border border-blue-100">
           This number will be assigned when you save the student record.
         </div>
@@ -1230,7 +1265,7 @@ const DataEntryStudents: React.FC = () => {
         <div className="text-xs text-gray-700 mb-2">
           <code className="bg-green-100 px-3 py-1.5 rounded-lg border border-green-200 font-mono">{registrationFormats.format}</code>
         </div>
-        
+
         <div className="text-xs text-gray-600">
           <div className="font-medium mb-2 text-gray-700">Examples:</div>
           {registrationFormats.examples.map((example: any, index: number) => (
@@ -1240,7 +1275,7 @@ const DataEntryStudents: React.FC = () => {
             </div>
           ))}
         </div>
-        
+
         <div className="text-xs text-green-600 mt-3 p-2 bg-green-50 rounded border border-green-100">
           {registrationFormats.note}
         </div>
@@ -1348,12 +1383,11 @@ const DataEntryStudents: React.FC = () => {
             <div className="space-y-6">
               {/* Profile Header */}
               <div className="flex items-center bg-gradient-to-r from-green-50 to-blue-50 p-4 sm:p-6 rounded-xl border border-green-200">
-                <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 ${
-                  selectedStudent.profile_photo_url ? 'border-green-300' : 'border-green-200'
-                } overflow-hidden bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center mr-4 sm:mr-6 shadow-lg`}>
+                <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 ${selectedStudent.profile_photo_url ? 'border-green-300' : 'border-green-200'
+                  } overflow-hidden bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center mr-4 sm:mr-6 shadow-lg`}>
                   {selectedStudent.profile_photo_url ? (
-                    <img 
-                      src={selectedStudent.profile_photo_url} 
+                    <img
+                      src={selectedStudent.profile_photo_url}
                       alt={selectedStudent.full_name_english}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -1422,12 +1456,11 @@ const DataEntryStudents: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Status</label>
-                    <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                      selectedStudent.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
+                    <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${selectedStudent.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
                       selectedStudent.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                      selectedStudent.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
-                      'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                    }`}>
+                        selectedStudent.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
+                          'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                      }`}>
                       {selectedStudent.enrollment_status || 'Pending'}
                     </div>
                   </div>
@@ -1528,7 +1561,7 @@ const DataEntryStudents: React.FC = () => {
               {/* Educational Qualifications */}
               <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 sm:p-6 rounded-xl border border-yellow-200">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Educational Qualifications</h3>
-                
+
                 <div className="mb-4">
                   <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. O/L Results</h4>
                   {selectedStudent.ol_results && selectedStudent.ol_results.length > 0 ? (
@@ -1565,15 +1598,14 @@ const DataEntryStudents: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Training Details</h3>
                 <div className="space-y-4">
                   <div className="flex items-center">
-                    <div className={`inline-flex px-3 py-1.5 text-sm font-semibold rounded-full border ${
-                      selectedStudent.training_received
-                        ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200'
-                        : 'bg-gray-100 text-gray-800 border-gray-200'
-                    }`}>
+                    <div className={`inline-flex px-3 py-1.5 text-sm font-semibold rounded-full border ${selectedStudent.training_received
+                      ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200'
+                      : 'bg-gray-100 text-gray-800 border-gray-200'
+                      }`}>
                       {selectedStudent.training_received ? 'Trained' : 'Not Trained'}
                     </div>
                   </div>
-                  
+
                   {selectedStudent.training_received && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -1691,7 +1723,7 @@ const DataEntryStudents: React.FC = () => {
                 </button>
               </div>
             )}
-            <button 
+            <button
               onClick={() => setShowBulkIDCardGenerator(true)}
               disabled={students.length === 0}
               className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2.5 rounded-xl flex items-center space-x-2 hover:from-purple-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl text-sm sm:text-base disabled:opacity-50"
@@ -1699,7 +1731,7 @@ const DataEntryStudents: React.FC = () => {
               <Printer className="w-5 h-5" />
               <span>Bulk Print ID Cards</span>
             </button>
-            <button 
+            <button
               onClick={() => {
                 resetForm();
                 setShowForm(true);
@@ -1743,7 +1775,7 @@ const DataEntryStudents: React.FC = () => {
                   </div>
 
                   <RegistrationFormatInfo />
-                  
+
                   {/* Registration Number Options */}
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Registration Number</h3>
@@ -1774,7 +1806,7 @@ const DataEntryStudents: React.FC = () => {
                           Registration number will be automatically generated
                         </p>
                       </div>
-                      
+
                       <div className="p-3 rounded-lg border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-all cursor-pointer"
                         onClick={() => {
                           setManualRegNo(true);
@@ -1801,13 +1833,13 @@ const DataEntryStudents: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {manualRegNo ? (
                     <ManualRegistrationSection />
                   ) : (
                     <RegistrationPreviewSection />
                   )}
-                  
+
                   {/* Personal Information */}
                   <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Personal Information</h3>
@@ -1854,8 +1886,8 @@ const DataEntryStudents: React.FC = () => {
                         </label>
                         <select
                           value={formData.gender || 'Male'}
-                          onChange={(e) => setFormData({ 
-                            ...formData, 
+                          onChange={(e) => setFormData({
+                            ...formData,
                             gender: e.target.value as 'Male' | 'Female' | 'Other'
                           })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm"
@@ -1917,9 +1949,8 @@ const DataEntryStudents: React.FC = () => {
                           value={formData.district || ''}
                           onChange={(e) => setFormData({ ...formData, district: e.target.value })}
                           readOnly={userRole === 'data_entry'}
-                          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm ${
-                            userRole === 'data_entry' ? 'bg-gray-100 cursor-not-allowed' : ''
-                          }`}
+                          className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm ${userRole === 'data_entry' ? 'bg-gray-100 cursor-not-allowed' : ''
+                            }`}
                         />
                         {userRole === 'data_entry' && (
                           <p className="text-xs text-gray-500 mt-2">
@@ -2009,7 +2040,7 @@ const DataEntryStudents: React.FC = () => {
                   {/* Educational Qualifications */}
                   <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-xl border border-yellow-200">
                     <h3 className="text-lg font-semibold mb-4 text-gray-800">Educational Qualifications</h3>
-                    
+
                     {/* O/L Results */}
                     <div className="mb-6">
                       <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. O/L Results</h4>
@@ -2136,7 +2167,7 @@ const DataEntryStudents: React.FC = () => {
                           Training Received
                         </label>
                       </div>
-                      
+
                       {(formData.training_received) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
@@ -2264,8 +2295,8 @@ const DataEntryStudents: React.FC = () => {
                     <X className="w-6 h-6" />
                   </button>
                 </div>
-                <StudentIDCard 
-                  student={selectedIDCardStudent} 
+                <StudentIDCard
+                  student={selectedIDCardStudent}
                   onClose={() => {
                     setShowIDCard(false);
                     setSelectedIDCardStudent(null);
@@ -2359,12 +2390,11 @@ const DataEntryStudents: React.FC = () => {
                 onClick={() => handleViewDetails(student)}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${
-                    student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
+                    }`}>
                     {student.profile_photo_url ? (
-                      <img 
-                        src={student.profile_photo_url} 
+                      <img
+                        src={student.profile_photo_url}
                         alt={student.full_name_english}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -2383,18 +2413,16 @@ const DataEntryStudents: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    student.training_received ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span className={`text-xs px-2 py-1 rounded-full ${student.training_received ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
                     {student.training_received ? 'Trained' : 'Not Trained'}
                   </span>
                   {student.enrollment_status && (
-                    <span className={`block text-xs px-2 py-1 rounded-full mt-1 ${
-                      student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800' :
+                    <span className={`block text-xs px-2 py-1 rounded-full mt-1 ${student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800' :
                       student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                      student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
+                        student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                      }`}>
                       {student.enrollment_status}
                     </span>
                   )}
@@ -2419,7 +2447,7 @@ const DataEntryStudents: React.FC = () => {
                 isSelected={selectedStudents.includes(student.id!)}
               />
             ))}
-            
+
             {filteredStudents.length === 0 && (
               <div className="text-center text-gray-500 py-8 text-sm">
                 {loading ? 'Loading...' : 'No student records found.'}
@@ -2469,7 +2497,7 @@ const DataEntryStudents: React.FC = () => {
                   <tr key={student.id} className="hover:bg-gradient-to-r hover:from-green-50/50 hover:to-blue-50/50 transition-all">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <button 
+                        <button
                           onClick={() => toggleStudentSelection(student.id!)}
                           className="mr-3"
                         >
@@ -2480,12 +2508,11 @@ const DataEntryStudents: React.FC = () => {
                           )}
                         </button>
                         <div className="flex items-center">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden ${
-                            student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
-                          }`}>
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
+                            }`}>
                             {student.profile_photo_url ? (
-                              <img 
-                                src={student.profile_photo_url} 
+                              <img
+                                src={student.profile_photo_url}
                                 alt={student.full_name_english}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -2537,12 +2564,11 @@ const DataEntryStudents: React.FC = () => {
                         {student.course_code_display && ` (${student.course_code_display})`}
                       </div>
                       {student.enrollment_status && (
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
-                          student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
                           student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                          student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
-                          'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                        }`}>
+                            student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
+                              'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                          }`}>
                           {student.enrollment_status}
                         </span>
                       )}
@@ -2552,20 +2578,51 @@ const DataEntryStudents: React.FC = () => {
                       <div className="text-xs text-gray-500">{student.email}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        <span className="font-medium">O/L:</span> {student.ol_results?.length || 0} subjects
-                      </div>
-                      <div className="text-sm text-gray-900">
-                        <span className="font-medium">A/L:</span> {student.al_results?.length || 0} subjects
+                      <div className="space-y-2">
+                        <div>
+                          <div className="text-xs font-semibold text-gray-500 mb-1">G.C.E. O/L</div>
+                          {(() => {
+                            const results = Array.isArray(student.ol_results) ? student.ol_results : (typeof student.ol_results === 'string' ? JSON.parse(student.ol_results) : []) as EducationalQualificationType[];
+
+                            return results && results.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {results.map((res, i) => (
+                                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200" title={`${res.year}`}>
+                                    {res.subject}: {res.grade}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">No results</span>
+                            );
+                          })()}
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-gray-500 mb-1">G.C.E. A/L</div>
+                          {(() => {
+                            const results = Array.isArray(student.al_results) ? student.al_results : (typeof student.al_results === 'string' ? JSON.parse(student.al_results) : []) as EducationalQualificationType[];
+
+                            return results && results.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {results.map((res, i) => (
+                                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200" title={`${res.year}`}>
+                                    {res.subject}: {res.grade}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">No results</span>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="mb-2">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-lg ${
-                          student.training_received
-                            ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
-                            : 'bg-gray-100 text-gray-800 border border-gray-200'
-                        }`}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-lg ${student.training_received
+                          ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
+                          : 'bg-gray-100 text-gray-800 border border-gray-200'
+                          }`}>
                           {student.training_received ? (
                             <>
                               <span>Trained</span>
@@ -2586,28 +2643,28 @@ const DataEntryStudents: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex space-x-2">
-                        <button 
+                        <button
                           onClick={() => handleViewDetails(student)}
                           className="text-blue-600 hover:text-blue-800 transition-all transform hover:scale-110 p-2 rounded-lg hover:bg-blue-50"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleEdit(student)}
                           className="text-green-600 hover:text-green-800 transition-all transform hover:scale-110 p-2 rounded-lg hover:bg-green-50"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleShowIDCard(student)}
                           className="text-purple-600 hover:text-purple-800 transition-all transform hover:scale-110 p-2 rounded-lg hover:bg-purple-50"
                           title="ID Card"
                         >
                           <IdCard className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => student.id && handleDelete(student.id)}
                           className="text-red-600 hover:text-red-800 transition-all transform hover:scale-110 p-2 rounded-lg hover:bg-red-50"
                           title="Delete"

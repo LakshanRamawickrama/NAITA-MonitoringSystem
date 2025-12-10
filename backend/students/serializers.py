@@ -1,4 +1,5 @@
 # students/serializers.py - COMPLETE FIXED VERSION
+import json
 from rest_framework import serializers
 from django.utils import timezone
 from datetime import datetime
@@ -138,6 +139,33 @@ class StudentSerializer(serializers.ModelSerializer):
         ).data
         return representation
     
+    def to_internal_value(self, data):
+        # Create a mutable copy of the data
+        if hasattr(data, 'dict'):
+            mutable_data = data.dict()
+        else:
+            mutable_data = data.copy()
+
+        # Handle ol_results if it's a JSON string
+        if 'ol_results' in mutable_data:
+            ol_results = mutable_data['ol_results']
+            if isinstance(ol_results, str):
+                try:
+                    mutable_data['ol_results'] = json.loads(ol_results)
+                except json.JSONDecodeError:
+                    mutable_data['ol_results'] = []
+        
+        # Handle al_results if it's a JSON string
+        if 'al_results' in mutable_data:
+            al_results = mutable_data['al_results']
+            if isinstance(al_results, str):
+                try:
+                    mutable_data['al_results'] = json.loads(al_results)
+                except json.JSONDecodeError:
+                    mutable_data['al_results'] = []
+
+        return super().to_internal_value(mutable_data)
+
     def validate(self, data):
         request = self.context.get('request')
         
