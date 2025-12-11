@@ -99,7 +99,7 @@ const BulkIDCardGenerator: React.FC<BulkIDCardGeneratorProps> = ({ students, onC
     try {
       if (format === 'grid') {
         const doc = new jsPDF('p', 'mm', 'a4'); // Portrait
-        const cardWidth = 85;
+        const cardWidth = 85.6;
         const cardHeight = 54;
         const startX = 10;
         const startY = 10;
@@ -176,7 +176,7 @@ const BulkIDCardGenerator: React.FC<BulkIDCardGeneratorProps> = ({ students, onC
 
           // Add to PDF
           // Centered on A4 Landscape
-          const cardWidth = 85;
+          const cardWidth = 85.6;
           const cardHeight = 54;
           const startX = (297 - (cardWidth * 2 + 10)) / 2;
           const startY = (210 - cardHeight) / 2;
