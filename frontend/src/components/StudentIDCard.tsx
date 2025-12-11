@@ -1,5 +1,6 @@
 // src/components/StudentIDCard.tsx
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { User, MapPin, Building, BookOpen, Calendar, Download, Printer } from 'lucide-react';
 import { type StudentType } from '../api/api';
 import { QRCodeSVG } from 'qrcode.react';
@@ -67,16 +68,24 @@ const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showAct
 
       const cardWidth = 85;
       const cardHeight = 54;
-      const margin = 10;
+
+      // Calculate centering for A4 Landscape (297mm x 210mm)
+      // Gap between cards = 10mm
+      const gap = 10;
+      const totalWidth = (cardWidth * 2) + gap;
+
+      const startX = (297 - totalWidth) / 2;
+      const startY = (210 - cardHeight) / 2;
 
       // Add Front
       pdf.setFontSize(10);
-      pdf.text(`Student ID Card - ${student.full_name_english}`, margin, margin);
-      pdf.addImage(frontImgData, 'PNG', margin, margin + 5, cardWidth, cardHeight);
+      // Center title above cards
+      const title = `Student ID Card - ${student.full_name_english}`;
+      const titleWidth = pdf.getStringUnitWidth(title) * 10 / pdf.internal.scaleFactor;
+      pdf.text(title, (297 - titleWidth) / 2, startY - 10);
 
-      // Add Back (next to it or below)
-      // Let's put it next into it
-      pdf.addImage(backImgData, 'PNG', margin + cardWidth + 10, margin + 5, cardWidth, cardHeight);
+      pdf.addImage(frontImgData, 'PNG', startX, startY, cardWidth, cardHeight);
+      pdf.addImage(backImgData, 'PNG', startX + cardWidth + gap, startY, cardWidth, cardHeight);
 
       pdf.save(`student_id_card_${student.registration_no || 'naita'}.pdf`);
 
@@ -249,33 +258,25 @@ const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showAct
             /* Show printable area */
             .printable-card-area {
               visibility: visible !important;
-              display: block !important;
+              display: flex !important;
+              justify-content: center !important;
+              align-items: center !important;
               position: absolute !important;
               left: 0 !important;
               top: 0 !important;
               width: 100% !important;
+              height: 100vh !important;
               z-index: 9999 !important;
+              gap: 20px !important;
+              background: white !important;
             }
             
             .printable-card-area * {
               visibility: visible !important;
             }
-
-            .print-page-break {
-              break-after: page; 
-              page-break-after: always;
-            }
-            
-            .print-page-container {
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-              width: 100%;
-            }
             
             @page {
-              size: auto;
+              size: landscape;
               margin: 0mm;
             }
           }
@@ -349,15 +350,18 @@ const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showAct
         )}
       </div>
 
-      {/* Hidden Print/Download View - Off-screen but rendered */}
-      <div className="printable-card-area fixed left-[-10000px] top-0">
-        <div className="print-page-container print-page-break" id="printable-card-front">
-          <CardFront />
-        </div>
-        <div className="print-page-container" id="printable-card-back">
-          <CardBack />
-        </div>
-      </div>
+      {/* Hidden Print/Download View - Off-screen but rendered via Portal */}
+      {createPortal(
+        <div className="printable-card-area fixed left-[-10000px] top-0 flex gap-4">
+          <div id="printable-card-front">
+            <CardFront />
+          </div>
+          <div id="printable-card-back">
+            <CardBack />
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 };
