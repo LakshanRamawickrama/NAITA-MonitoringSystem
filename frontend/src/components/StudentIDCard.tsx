@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import { User, MapPin, Building, BookOpen, Calendar, Download, Printer } from 'lucide-react';
 import { type StudentType } from '../api/api';
 import { QRCodeSVG } from 'qrcode.react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface StudentIDCardProps {
   student: StudentType;
@@ -11,8 +13,156 @@ interface StudentIDCardProps {
   showActions?: boolean;
 }
 
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+// Exported for Bulk Generator
+export interface CardProps {
+  student: StudentType;
+  qrData?: string;
+}
+
+export const CardFront: React.FC<CardProps> = ({ student, qrData }) => (
+  <div className="w-[340px] h-[210px] bg-white border-2 border-black rounded-lg p-2 overflow-hidden relative">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="border-b-2 border-black pb-1 mb-1 text-center">
+        <div className="flex items-center justify-center gap-1">
+          <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-800 bg-white">
+            <img
+              src="/naita-logo.png"
+              alt="NAITA Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div>
+            <h2 className="text-xs font-bold text-black">STUDENT ID CARD</h2>
+            <p className="text-[8px] text-gray-700">Vocational Training Authority</p>
+            <p className="text-[8px] text-gray-600">NAITA Logistics Program</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-row flex-1 space-x-2">
+        {/* Photo and Name */}
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full border-2 border-black overflow-hidden bg-gray-100 flex items-center justify-center mb-1">
+            {student.profile_photo_url ? (
+              <img
+                src={student.profile_photo_url}
+                alt={student.full_name_english}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="w-8 h-8 text-gray-600" />
+            )}
+          </div>
+          <p className="text-[8px] font-bold text-gray-800">PHOTO</p>
+        </div>
+
+        {/* Details */}
+        <div className="flex-1 space-y-0.5 text-[9px]">
+          <p className="font-bold text-black border-b border-gray-300 pb-0.5">{student.full_name_english}</p>
+          <div className="flex items-start">
+            <span className="font-bold text-gray-800 mr-1 min-w-[40px]">Reg No:</span>
+            <span className="font-bold text-black">{student.registration_no}</span>
+          </div>
+          <div className="flex items-start">
+            <span className="font-bold text-gray-800 mr-1 min-w-[40px]">NIC:</span>
+            <span className="text-black">{student.nic_id}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1">
+            <div className="flex items-center">
+              <BookOpen className="w-3 h-3 mr-1 text-gray-700" />
+              <span>{student.course_name || 'Not assigned'}</span>
+            </div>
+            <div className="flex items-center">
+              <Building className="w-3 h-3 mr-1 text-gray-700" />
+              <span>{student.center_name || 'Not assigned'}</span>
+            </div>
+            <div className="flex items-center">
+              <MapPin className="w-3 h-3 mr-1 text-gray-700" />
+              <span>{student.district}</span>
+            </div>
+            <div className="flex items-center">
+              <Calendar className="w-3 h-3 mr-1 text-gray-700" />
+              <span>{student.enrollment_date ? new Date(student.enrollment_date).toLocaleDateString() : 'Not specified'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* QR Code */}
+        <div className="flex flex-col items-center">
+          <div className="border-2 border-black p-0.5 bg-white mb-1">
+            {qrData && (
+              <QRCodeSVG
+                value={qrData}
+                size={60}
+                level="H"
+                includeMargin={true}
+                fgColor="#000000"
+                bgColor="#ffffff"
+              />
+            )}
+          </div>
+          <p className="text-[8px] text-gray-600">Scan to verify</p>
+          <p className="text-[8px] text-gray-700">ID: {student.id}</p>
+        </div>
+      </div>
+
+      {/* Signature Area */}
+      <div className="flex justify-between items-end text-[8px] mt-1 border-t border-dashed border-gray-400 pt-0.5">
+        <div>
+          <p className="font-bold text-black">STUDENT SIGN</p>
+          <div className="border-t border-gray-400 w-16"></div>
+        </div>
+        <div className="text-right">
+          <p className="font-bold text-black">AUTHORIZED SIGN</p>
+          <div className="border-t border-gray-400 w-16 ml-auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+export const CardBack: React.FC<CardProps> = () => (
+  <div className="w-[340px] h-[210px] bg-white border-2 border-black rounded-lg p-2 overflow-hidden relative">
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="border-b-2 border-black pb-1 mb-1 text-center">
+        <div className="flex items-center justify-center gap-1">
+          <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-800 bg-white">
+            <img
+              src="/naita-logo.png"
+              alt="NAITA Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div>
+            <h2 className="text-xs font-bold text-black">STUDENT ID CARD</h2>
+            <p className="text-[8px] text-gray-700">Vocational Training Authority</p>
+            <p className="text-[8px] text-gray-600">NAITA Logistics Program</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Back Content */}
+      <div className="flex-1 space-y-0.5 text-[7px] text-gray-800 leading-tight">
+        <p className="font-bold text-center border-b border-gray-200 pb-0.5 mb-0.5">Terms and Conditions</p>
+        <p>This card is the property of NAITA and must be returned upon completion of the course or upon request.</p>
+        <p>Report loss or theft immediately to the center coordinator.</p>
+        <p>Valid only during the course duration. Misuse may result in disciplinary action.</p>
+        <p>If found, please return to:</p>
+        <p>NAITA, 971 Sri Jayawardenepura Mawatha, Welikada, Rajagiriya, Sri Lanka</p>
+        <p>Contact: +94 11 288 8782 | info@naita.gov.lk</p>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center text-[8px] border-t border-dashed border-gray-400 pt-0.5">
+        <p>www.naita.gov.lk</p>
+        <p>Generated: {new Date().toLocaleDateString()}</p>
+      </div>
+    </div>
+  </div>
+);
 
 const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showActions = true }) => {
   const [qrData, setQRData] = useState<string>('');
@@ -101,151 +251,6 @@ const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showAct
     window.print();
   };
 
-  const CardFront = () => (
-    <div className="w-[340px] h-[210px] bg-white border-2 border-black rounded-lg p-2 overflow-hidden relative">
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="border-b-2 border-black pb-1 mb-1 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-800 bg-white">
-              <img
-                src="/naita-logo.png"
-                alt="NAITA Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h2 className="text-xs font-bold text-black">STUDENT ID CARD</h2>
-              <p className="text-[8px] text-gray-700">Vocational Training Authority</p>
-              <p className="text-[8px] text-gray-600">NAITA Logistics Program</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="flex flex-row flex-1 space-x-2">
-          {/* Photo and Name */}
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full border-2 border-black overflow-hidden bg-gray-100 flex items-center justify-center mb-1">
-              {student.profile_photo_url ? (
-                <img
-                  src={student.profile_photo_url}
-                  alt={student.full_name_english}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-8 h-8 text-gray-600" />
-              )}
-            </div>
-            <p className="text-[8px] font-bold text-gray-800">PHOTO</p>
-          </div>
-
-          {/* Details */}
-          <div className="flex-1 space-y-0.5 text-[9px]">
-            <p className="font-bold text-black border-b border-gray-300 pb-0.5">{student.full_name_english}</p>
-            <div className="flex items-start">
-              <span className="font-bold text-gray-800 mr-1 min-w-[40px]">Reg No:</span>
-              <span className="font-bold text-black">{student.registration_no}</span>
-            </div>
-            <div className="flex items-start">
-              <span className="font-bold text-gray-800 mr-1 min-w-[40px]">NIC:</span>
-              <span className="text-black">{student.nic_id}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1">
-              <div className="flex items-center">
-                <BookOpen className="w-3 h-3 mr-1 text-gray-700" />
-                <span>{student.course_name || 'Not assigned'}</span>
-              </div>
-              <div className="flex items-center">
-                <Building className="w-3 h-3 mr-1 text-gray-700" />
-                <span>{student.center_name || 'Not assigned'}</span>
-              </div>
-              <div className="flex items-center">
-                <MapPin className="w-3 h-3 mr-1 text-gray-700" />
-                <span>{student.district}</span>
-              </div>
-              <div className="flex items-center">
-                <Calendar className="w-3 h-3 mr-1 text-gray-700" />
-                <span>{student.enrollment_date ? new Date(student.enrollment_date).toLocaleDateString() : 'Not specified'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* QR Code */}
-          <div className="flex flex-col items-center">
-            <div className="border-2 border-black p-0.5 bg-white mb-1">
-              {qrData && (
-                <QRCodeSVG
-                  value={qrData}
-                  size={60}
-                  level="H"
-                  includeMargin={true}
-                  fgColor="#000000"
-                  bgColor="#ffffff"
-                />
-              )}
-            </div>
-            <p className="text-[8px] text-gray-600">Scan to verify</p>
-            <p className="text-[8px] text-gray-700">ID: {student.id}</p>
-          </div>
-        </div>
-
-        {/* Signature Area */}
-        <div className="flex justify-between items-end text-[8px] mt-1 border-t border-dashed border-gray-400 pt-0.5">
-          <div>
-            <p className="font-bold text-black">STUDENT SIGN</p>
-            <div className="border-t border-gray-400 w-16"></div>
-          </div>
-          <div className="text-right">
-            <p className="font-bold text-black">AUTHORIZED SIGN</p>
-            <div className="border-t border-gray-400 w-16 ml-auto"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const CardBack = () => (
-    <div className="w-[340px] h-[210px] bg-white border-2 border-black rounded-lg p-2 overflow-hidden relative">
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="border-b-2 border-black pb-1 mb-1 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-800 bg-white">
-              <img
-                src="/naita-logo.png"
-                alt="NAITA Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <h2 className="text-xs font-bold text-black">STUDENT ID CARD</h2>
-              <p className="text-[8px] text-gray-700">Vocational Training Authority</p>
-              <p className="text-[8px] text-gray-600">NAITA Logistics Program</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Back Content */}
-        <div className="flex-1 space-y-0.5 text-[7px] text-gray-800 leading-tight">
-          <p className="font-bold text-center border-b border-gray-200 pb-0.5 mb-0.5">Terms and Conditions</p>
-          <p>This card is the property of NAITA and must be returned upon completion of the course or upon request.</p>
-          <p>Report loss or theft immediately to the center coordinator.</p>
-          <p>Valid only during the course duration. Misuse may result in disciplinary action.</p>
-          <p>If found, please return to:</p>
-          <p>NAITA, 971 Sri Jayawardenepura Mawatha, Welikada, Rajagiriya, Sri Lanka</p>
-          <p>Contact: +94 11 288 8782 | info@naita.gov.lk</p>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center text-[8px] border-t border-dashed border-gray-400 pt-0.5">
-          <p>www.naita.gov.lk</p>
-          <p>Generated: {new Date().toLocaleDateString()}</p>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <style>
@@ -296,7 +301,7 @@ const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showAct
               className="absolute w-full h-full backface-hidden"
               style={{ backfaceVisibility: 'hidden' }}
             >
-              <CardFront />
+              <CardFront student={student} qrData={qrData} />
             </div>
 
             {/* Back Side Wrapper */}
@@ -305,7 +310,7 @@ const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showAct
               className="absolute w-full h-full backface-hidden"
               style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             >
-              <CardBack />
+              <CardBack student={student} />
             </div>
           </div>
         </div>
@@ -354,10 +359,10 @@ const StudentIDCard: React.FC<StudentIDCardProps> = ({ student, onClose, showAct
       {createPortal(
         <div className="printable-card-area fixed left-[-10000px] top-0 flex gap-4">
           <div id="printable-card-front">
-            <CardFront />
+            <CardFront student={student} qrData={qrData} />
           </div>
           <div id="printable-card-back">
-            <CardBack />
+            <CardBack student={student} />
           </div>
         </div>,
         document.body
