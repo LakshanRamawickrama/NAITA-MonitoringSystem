@@ -17,7 +17,7 @@ class UserListSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "username", "email", "first_name", "last_name",
-            "role", "center", "district", "epf_no", "is_active", "is_staff", "last_login"
+            "role", "center", "district", "epf_no", "phone_number", "is_active", "is_staff", "last_login"
         ]
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -35,7 +35,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "username", "email", "password", "first_name", "last_name",
-            "role", "center_id", "district", "epf_no", "is_active", "is_staff"
+            "role", "center_id", "district", "epf_no", "phone_number", "is_active", "is_staff"
         ]
 
     def validate(self, data):

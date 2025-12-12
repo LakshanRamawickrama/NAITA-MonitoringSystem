@@ -27,6 +27,7 @@ interface UserType {
   center: { id: number; name: string; district: string | null } | null;
   district: string | null;
   epf_no: string | null;
+  phone_number: string | null;
   is_active: boolean;
   is_staff: boolean;
   last_login: string | null;
@@ -56,7 +57,7 @@ const Users: React.FC = () => {
   // Forms
   const initialForm = {
     username: "", email: "", password: "", first_name: "", last_name: "",
-    role: "", center_id: "", district: "", epf_no: "", is_active: true, is_staff: false
+    role: "", center_id: "", district: "", epf_no: "", phone_number: "", is_active: true, is_staff: false
   };
   const [addForm, setAddForm] = useState(initialForm);
   const [editForm, setEditForm] = useState(initialForm);
@@ -119,32 +120,32 @@ const Users: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        setLoading(true); 
+        setLoading(true);
         setError("");
-        
+
         const [u, c] = await Promise.all([fetchUsers(), fetchCenters()]);
-        
+
         // Filter users based on role permissions
         let filteredUsers = u;
-        
+
         if (isTrainingOfficer) {
           // Training officers can only see instructors in their district
-          filteredUsers = u.filter(user => 
-            user.role === 'instructor' && 
+          filteredUsers = u.filter(user =>
+            user.role === 'instructor' &&
             user.district === userDistrict
           );
         } else if (isDistrictManager) {
           // District managers can see all non-admin users in their district
-          filteredUsers = u.filter(user => 
-            user.district === userDistrict && 
+          filteredUsers = u.filter(user =>
+            user.district === userDistrict &&
             user.role !== 'admin'
           );
         }
-        
+
         // Filter out any users without IDs for safety
         const validUsers = filteredUsers.filter(user => user.id != null);
-        
-        setUsers(validUsers); 
+
+        setUsers(validUsers);
         setCenters(c);
       } catch (e: any) {
         const msg = e.response?.data?.detail || "Failed to load data";
@@ -170,77 +171,78 @@ const Users: React.FC = () => {
       toast.error("Cannot edit user: ID is missing");
       return;
     }
-    
+
     // Check if training officer is trying to edit non-instructor
     if (isTrainingOfficer && u.role !== 'instructor') {
       toast.error("Training officers can only edit instructors");
       return;
     }
-    
+
     // Check if district manager/training officer is trying to edit user from different district
     if ((isDistrictManager || isTrainingOfficer) && u.district !== userDistrict) {
       toast.error("You can only edit users in your district");
       return;
     }
-    
+
     setSelectedUser(u);
     setEditForm({
-      username: u.username, 
-      email: u.email, 
+      username: u.username,
+      email: u.email,
       password: "",
-      first_name: u.first_name, 
+      first_name: u.first_name,
       last_name: u.last_name,
-      role: u.role, 
+      role: u.role,
       center_id: u.center?.id?.toString() || "",
       district: u.district || "",
       epf_no: u.epf_no || "",
-      is_active: u.is_active, 
+      phone_number: u.phone_number || "",
+      is_active: u.is_active,
       is_staff: u.is_staff
     });
     setShowEdit(true);
   };
 
-  const openPwd = (u: UserType) => { 
+  const openPwd = (u: UserType) => {
     if (!u.id) {
       toast.error("Cannot change password: User ID is missing");
       return;
     }
-    
+
     // Check permissions
     if (isTrainingOfficer && u.role !== 'instructor') {
       toast.error("Training officers can only change passwords for instructors");
       return;
     }
-    
+
     if ((isDistrictManager || isTrainingOfficer) && u.district !== userDistrict) {
       toast.error("You can only change passwords for users in your district");
       return;
     }
-    
-    setSelectedUser(u); 
-    setPwdForm({ new_password: "" }); 
-    setShowPwd(true); 
+
+    setSelectedUser(u);
+    setPwdForm({ new_password: "" });
+    setShowPwd(true);
   };
 
-  const openDelete = (u: UserType) => { 
+  const openDelete = (u: UserType) => {
     if (!u.id) {
       toast.error("Cannot delete user: ID is missing");
       return;
     }
-    
+
     // Check permissions
     if (isTrainingOfficer && u.role !== 'instructor') {
       toast.error("Training officers can only delete instructors");
       return;
     }
-    
+
     if ((isDistrictManager || isTrainingOfficer) && u.district !== userDistrict) {
       toast.error("You can only delete users in your district");
       return;
     }
-    
-    setSelectedUser(u); 
-    setShowDelete(true); 
+
+    setSelectedUser(u);
+    setShowDelete(true);
   };
 
   /* ========== EFFECT FOR EPF FIELD ========== */
@@ -264,21 +266,21 @@ const Users: React.FC = () => {
 
   /* ========== CRUD ========== */
   const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     setFormErrors({});
-    
+
     // Check permissions based on role
     if (isTrainingOfficer && addForm.role !== 'instructor') {
       toast.error("Training officers can only add instructors");
       return;
     }
-    
+
     if (isDistrictManager && addForm.role === 'district_manager') {
       setFormErrors({ role: "District managers cannot create other district managers." });
       toast.error("District managers cannot create other district managers.");
       return;
     }
-    
+
     try {
       const payload: any = {
         username: addForm.username.trim(),
@@ -288,10 +290,11 @@ const Users: React.FC = () => {
         last_name: addForm.last_name.trim(),
         role: addForm.role,
         district: addForm.district.trim(),
+        phone_number: addForm.phone_number.trim(),
         is_active: addForm.is_active,
         is_staff: addForm.is_staff
       };
-      
+
       // Add EPF only for non-instructor roles, auto-uppercase
       if (addForm.role !== 'instructor') {
         payload.epf_no = addForm.epf_no.trim().toUpperCase();
@@ -304,28 +307,28 @@ const Users: React.FC = () => {
 
       const nu = await createUser(payload);
       setUsers(p => [...p, nu]);
-      setShowAdd(false); 
+      setShowAdd(false);
       resetForm();
       toast.success("User created successfully");
-    } catch (err: any) { 
-      handleApiError(err); 
+    } catch (err: any) {
+      handleApiError(err);
     }
   };
 
   const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     setFormErrors({});
     if (!selectedUser || !selectedUser.id) {
       toast.error("Cannot update: User ID is missing");
       return;
     }
-    
+
     // Check permissions
     if (isTrainingOfficer && editForm.role !== 'instructor') {
       toast.error("Training officers can only edit instructors");
       return;
     }
-    
+
     try {
       const payload: any = {
         username: editForm.username.trim(),
@@ -334,10 +337,11 @@ const Users: React.FC = () => {
         last_name: editForm.last_name.trim(),
         role: editForm.role,
         district: editForm.district.trim(),
+        phone_number: editForm.phone_number.trim(),
         is_active: editForm.is_active,
         is_staff: editForm.is_staff
       };
-      
+
       // Add EPF only for non-instructor roles, auto-uppercase
       if (editForm.role !== 'instructor') {
         payload.epf_no = editForm.epf_no.trim().toUpperCase();
@@ -350,16 +354,16 @@ const Users: React.FC = () => {
 
       const upd = await updateUser(selectedUser.id, payload);
       setUsers(p => p.map(u => u.id === selectedUser.id ? upd : u));
-      setShowEdit(false); 
+      setShowEdit(false);
       resetForm();
       toast.success("User updated");
-    } catch (err: any) { 
-      handleApiError(err); 
+    } catch (err: any) {
+      handleApiError(err);
     }
   };
 
   const handlePwd = async (e: React.FormEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     setFormErrors({});
     if (!selectedUser || !selectedUser.id) {
       toast.error("Cannot change password: User ID is missing");
@@ -367,11 +371,11 @@ const Users: React.FC = () => {
     }
     try {
       await changePassword(selectedUser.id, pwdForm.new_password);
-      setShowPwd(false); 
+      setShowPwd(false);
       resetForm();
       toast.success("Password changed");
-    } catch (err: any) { 
-      handleApiError(err); 
+    } catch (err: any) {
+      handleApiError(err);
     }
   };
 
@@ -381,16 +385,16 @@ const Users: React.FC = () => {
       setShowDelete(false);
       return;
     }
-    
+
     setDeleteLoading(true);
     try {
       await deleteUser(selectedUser.id);
-      
+
       // Update local state
       setUsers(prevUsers => prevUsers.filter(u => u.id !== selectedUser.id));
       setShowDelete(false);
       setSelectedUser(null);
-      
+
       toast.success(`${selectedUser.username} deleted successfully`);
     } catch (err: any) {
       let errorMessage = "Delete failed";
@@ -403,7 +407,7 @@ const Users: React.FC = () => {
           errorMessage = err.response.data.detail;
         }
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setDeleteLoading(false);
@@ -429,11 +433,11 @@ const Users: React.FC = () => {
       const district = u.district?.toLowerCase() || "";
       const epf = u.epf_no?.toLowerCase() || "";
       return u.username.toLowerCase().includes(s) ||
-             u.email.toLowerCase().includes(s) ||
-             name.includes(s) || 
-             center.includes(s) ||
-             district.includes(s) ||
-             epf.includes(s);
+        u.email.toLowerCase().includes(s) ||
+        name.includes(s) ||
+        center.includes(s) ||
+        district.includes(s) ||
+        epf.includes(s);
     })
     .filter(u => roleFilter ? u.role === roleFilter : true)
     .filter(u => statusFilter ? (u.is_active ? "Active" : "Inactive") === statusFilter : true)
@@ -468,6 +472,15 @@ const Users: React.FC = () => {
       )
     },
     {
+      key: "phone_number",
+      label: "Phone",
+      render: (phone: string | null) => (
+        <span className="text-sm text-gray-600 font-medium">
+          {phone || "—"}
+        </span>
+      )
+    },
+    {
       key: "role",
       label: "Role",
       render: (v: string) => {
@@ -489,9 +502,9 @@ const Users: React.FC = () => {
         );
       }
     },
-    { 
-      key: "epf_no", 
-      label: "EPF No", 
+    {
+      key: "epf_no",
+      label: "EPF No",
       render: (epf: string | null, row: UserType) => (
         <div className="flex items-center">
           <User className="w-4 h-4 mr-1 text-gray-400" />
@@ -502,22 +515,22 @@ const Users: React.FC = () => {
             )}
           </div>
         </div>
-      ) 
+      )
     },
-    { 
-      key: "district", 
-      label: "District", 
+    {
+      key: "district",
+      label: "District",
       render: (d: string | null) => (
         <div className="flex items-center">
           <MapPin className="w-4 h-4 mr-1 text-gray-400" />
           <span className="text-sm font-medium">{d || "—"}</span>
         </div>
-      ) 
+      )
     },
-    { 
-      key: "center", 
-      label: "Center", 
-      render: (c: any) => <span className="text-sm font-medium">{c?.name || "—"}</span> 
+    {
+      key: "center",
+      label: "Center",
+      render: (c: any) => <span className="text-sm font-medium">{c?.name || "—"}</span>
     },
     {
       key: "is_active",
@@ -533,21 +546,21 @@ const Users: React.FC = () => {
       label: "Actions",
       render: (_: any, row: UserType) => {
         // Check if user can perform actions on this row
-        const canEdit = isAdmin || 
+        const canEdit = isAdmin ||
           (isDistrictManager && row.district === userDistrict && row.role !== 'admin') ||
           (isTrainingOfficer && row.role === 'instructor' && row.district === userDistrict);
-        
+
         const canDelete = canEdit; // Same permission for delete
-        
+
         if (!canEdit && !canDelete) {
           return <span className="text-sm text-gray-400">No actions</span>;
         }
-        
+
         return (
           <div className="flex space-x-2">
             {canEdit && (
-              <button 
-                onClick={() => openEdit(row)} 
+              <button
+                onClick={() => openEdit(row)}
                 className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded"
                 title="Edit"
               >
@@ -555,8 +568,8 @@ const Users: React.FC = () => {
               </button>
             )}
             {canEdit && (
-              <button 
-                onClick={() => openPwd(row)} 
+              <button
+                onClick={() => openPwd(row)}
                 className="text-orange-600 hover:text-orange-800 p-1 hover:bg-orange-50 rounded"
                 title="Change Password"
               >
@@ -564,8 +577,8 @@ const Users: React.FC = () => {
               </button>
             )}
             {canDelete && (
-              <button 
-                onClick={() => openDelete(row)} 
+              <button
+                onClick={() => openDelete(row)}
                 className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
                 title="Delete"
               >
@@ -605,7 +618,7 @@ const Users: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
             <p className="text-gray-600 mt-1">Manage system users and permissions</p>
-            
+
             {/* Role-specific messages */}
             {isDistrictManager && userDistrict && (
               <p className="text-sm text-green-600 mt-1 flex items-center">
@@ -613,14 +626,14 @@ const Users: React.FC = () => {
                 Managing all non-admin users in: <strong className="ml-1">{userDistrict}</strong> district
               </p>
             )}
-            
+
             {isTrainingOfficer && userDistrict && (
               <p className="text-sm text-yellow-600 mt-1 flex items-center">
                 <Filter className="w-3 h-3 mr-1" />
                 Managing instructors only in: <strong className="ml-1">{userDistrict}</strong> district
               </p>
             )}
-            
+
             {isAdmin && (
               <p className="text-sm text-purple-600 mt-1 flex items-center">
                 <Shield className="w-3 h-3 mr-1" />
@@ -628,30 +641,30 @@ const Users: React.FC = () => {
               </p>
             )}
           </div>
-          
+
           {/* Add User Button with permissions */}
           {(isAdmin || isDistrictManager || isTrainingOfficer) && (
-            <button 
-              onClick={() => { 
-                resetForm(); 
-                
+            <button
+              onClick={() => {
+                resetForm();
+
                 // Auto-fill based on role
                 if (isDistrictManager && userDistrict) {
-                  setAddForm(prev => ({ 
-                    ...prev, 
+                  setAddForm(prev => ({
+                    ...prev,
                     district: userDistrict,
                     role: roleOptions[0]?.value || ""
                   }));
                 } else if (isTrainingOfficer && userDistrict) {
                   // Training officers can only add instructors
-                  setAddForm(prev => ({ 
-                    ...prev, 
+                  setAddForm(prev => ({
+                    ...prev,
                     district: userDistrict,
                     role: "instructor" // Force instructor role
                   }));
                 }
-                
-                setShowAdd(true); 
+
+                setShowAdd(true);
               }}
               className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 flex items-center space-x-2 shadow-sm transition"
             >
@@ -667,17 +680,17 @@ const Users: React.FC = () => {
         <div className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search…" 
-              value={searchTerm} 
+            <input
+              type="text"
+              placeholder="Search…"
+              value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
             />
           </div>
-          
-          <select 
-            value={roleFilter} 
+
+          <select
+            value={roleFilter}
             onChange={e => setRoleFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
           >
@@ -699,9 +712,9 @@ const Users: React.FC = () => {
             )}
             <option value="instructor">Instructor</option>
           </select>
-          
-          <select 
-            value={statusFilter} 
+
+          <select
+            value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
           >
@@ -709,9 +722,9 @@ const Users: React.FC = () => {
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
-          
-          <select 
-            value={districtFilter} 
+
+          <select
+            value={districtFilter}
             onChange={e => setDistrictFilter(e.target.value)}
             className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
             disabled={!isAdmin && (isDistrictManager || isTrainingOfficer)} // Disabled for non-admins
@@ -731,17 +744,17 @@ const Users: React.FC = () => {
               <p className="text-sm font-medium">Training Officer View</p>
             </div>
             <p className="text-sm mt-1">
-              You can only view and manage instructors in your district ({userDistrict}). 
+              You can only view and manage instructors in your district ({userDistrict}).
               You cannot see or manage other user roles.
             </p>
           </div>
         )}
 
-        <DataTable 
-          columns={columns} 
-          data={paginated} 
+        <DataTable
+          columns={columns}
+          data={paginated}
           currentPage={currentPage}
-          totalPages={totalPages} 
+          totalPages={totalPages}
           onPageChange={setCurrentPage}
         />
       </div>
@@ -758,53 +771,55 @@ const Users: React.FC = () => {
               <Input label="First Name" value={addForm.first_name} onChange={v => setAddForm({ ...addForm, first_name: v })} />
               <Input label="Last Name" value={addForm.last_name} onChange={v => setAddForm({ ...addForm, last_name: v })} />
             </div>
-            
+
             {/* Role selection - limited for training officers */}
-            <Select 
-              label="Role *" 
-              options={roleOptions} 
-              value={addForm.role} 
-              onChange={v => setAddForm({ ...addForm, role: v })} 
-              error={formErrors.role} 
-              required 
+            <Select
+              label="Role *"
+              options={roleOptions}
+              value={addForm.role}
+              onChange={v => setAddForm({ ...addForm, role: v })}
+              error={formErrors.role}
+              required
               disabled={isTrainingOfficer} // Training officers can only add instructors
             />
-            
+
             {/* EPF Number Field - Always show but conditionally required */}
             <div className={addForm.role === 'instructor' ? 'opacity-50' : ''}>
-              <Input 
-                label={addForm.role === 'instructor' ? "EPF Number (Not required for instructors)" : "EPF Number *"} 
-                value={addForm.epf_no} 
+              <Input
+                label={addForm.role === 'instructor' ? "EPF Number (Not required for instructors)" : "EPF Number *"}
+                value={addForm.epf_no}
                 onChange={v => {
                   // Auto-uppercase EPF numbers for consistency
                   setAddForm({ ...addForm, epf_no: v.toUpperCase() })
-                }} 
-                error={formErrors.epf_no} 
+                }}
+                error={formErrors.epf_no}
                 required={addForm.role !== 'instructor'}
                 disabled={addForm.role === 'instructor'}
                 placeholder="e.g., GAL/89/78, 12345, AB-1234/X"
               />
               <p className="text-xs text-gray-500 mt-1">
-                {addForm.role === 'instructor' 
+                {addForm.role === 'instructor'
                   ? "Instructors do not require EPF numbers"
                   : "Enter EPF number in any format (letters, numbers, special characters allowed)"}
               </p>
             </div>
-            
+
+            <Input label="Phone Number" value={addForm.phone_number} onChange={v => setAddForm({ ...addForm, phone_number: v })} />
+
             {/* District field - auto-filled for non-admins */}
             {isAdmin && (
               <Input label="District" value={addForm.district} onChange={v => setAddForm({ ...addForm, district: v })} error={formErrors.district} />
             )}
             {(isDistrictManager || isTrainingOfficer) && (
-              <Input 
-                label="District" 
-                value={addForm.district} 
-                onChange={v => setAddForm({ ...addForm, district: v })} 
-                error={formErrors.district} 
-                disabled 
+              <Input
+                label="District"
+                value={addForm.district}
+                onChange={v => setAddForm({ ...addForm, district: v })}
+                error={formErrors.district}
+                disabled
               />
             )}
-            
+
             <Select label="Center (Optional)" options={[{ value: "", label: "No Center" }, ...centers.map(c => ({ value: c.id.toString(), label: c.name }))]} value={addForm.center_id} onChange={v => setAddForm({ ...addForm, center_id: v })} />
             <Checkboxes active={addForm.is_active} staff={addForm.is_staff} onActive={v => setAddForm({ ...addForm, is_active: v })} onStaff={v => setAddForm({ ...addForm, is_staff: v })} />
             <ModalFooter onCancel={() => { setShowAdd(false); resetForm(); }} submitText={isTrainingOfficer ? "Create Instructor" : "Create User"} />
@@ -822,53 +837,55 @@ const Users: React.FC = () => {
               <Input label="First Name" value={editForm.first_name} onChange={v => setEditForm({ ...editForm, first_name: v })} />
               <Input label="Last Name" value={editForm.last_name} onChange={v => setEditForm({ ...editForm, last_name: v })} />
             </div>
-            
+
             {/* Role selection - limited for training officers */}
-            <Select 
-              label="Role *" 
-              options={roleOptions} 
-              value={editForm.role} 
-              onChange={v => setEditForm({ ...editForm, role: v })} 
-              error={formErrors.role} 
-              required 
+            <Select
+              label="Role *"
+              options={roleOptions}
+              value={editForm.role}
+              onChange={v => setEditForm({ ...editForm, role: v })}
+              error={formErrors.role}
+              required
               disabled={isTrainingOfficer} // Training officers can only edit instructors
             />
-            
+
             {/* EPF Number Field - Always show but conditionally required */}
             <div className={editForm.role === 'instructor' ? 'opacity-50' : ''}>
-              <Input 
-                label={editForm.role === 'instructor' ? "EPF Number (Not required for instructors)" : "EPF Number *"} 
-                value={editForm.epf_no} 
+              <Input
+                label={editForm.role === 'instructor' ? "EPF Number (Not required for instructors)" : "EPF Number *"}
+                value={editForm.epf_no}
                 onChange={v => {
                   // Auto-uppercase EPF numbers for consistency
                   setEditForm({ ...editForm, epf_no: v.toUpperCase() })
-                }} 
-                error={formErrors.epf_no} 
+                }}
+                error={formErrors.epf_no}
                 required={editForm.role !== 'instructor'}
                 disabled={editForm.role === 'instructor'}
                 placeholder="e.g., GAL/89/78, 12345, AB-1234/X"
               />
               <p className="text-xs text-gray-500 mt-1">
-                {editForm.role === 'instructor' 
+                {editForm.role === 'instructor'
                   ? "Instructors do not require EPF numbers"
                   : "Enter EPF number in any format (letters, numbers, special characters allowed)"}
               </p>
             </div>
-            
+
+            <Input label="Phone Number" value={editForm.phone_number} onChange={v => setEditForm({ ...editForm, phone_number: v })} />
+
             {/* District field - auto-filled for non-admins */}
             {isAdmin && (
               <Input label="District" value={editForm.district} onChange={v => setEditForm({ ...editForm, district: v })} error={formErrors.district} />
             )}
             {(isDistrictManager || isTrainingOfficer) && (
-              <Input 
-                label="District" 
-                value={editForm.district} 
-                onChange={v => setEditForm({ ...editForm, district: v })} 
-                error={formErrors.district} 
-                disabled 
+              <Input
+                label="District"
+                value={editForm.district}
+                onChange={v => setEditForm({ ...editForm, district: v })}
+                error={formErrors.district}
+                disabled
               />
             )}
-            
+
             <Select label="Center (Optional)" options={[{ value: "", label: "No Center" }, ...centers.map(c => ({ value: c.id.toString(), label: c.name }))]} value={editForm.center_id} onChange={v => setEditForm({ ...editForm, center_id: v })} />
             <Checkboxes active={editForm.is_active} staff={editForm.is_staff} onActive={v => setEditForm({ ...editForm, is_active: v })} onStaff={v => setEditForm({ ...editForm, is_staff: v })} />
             <ModalFooter onCancel={() => { setShowEdit(false); resetForm(); }} submitText="Save Changes" />
@@ -947,27 +964,27 @@ const Modal = ({ title, onClose, children }: ModalProps) => (
   </div>
 );
 
-type InputProps = { 
-  label: string; 
-  type?: string; 
-  value: string; 
-  onChange: (v: string) => void; 
-  error?: string; 
-  required?: boolean; 
-  minLength?: number; 
-  disabled?: boolean; 
-  placeholder?: string; 
+type InputProps = {
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+  required?: boolean;
+  minLength?: number;
+  disabled?: boolean;
+  placeholder?: string;
 };
 const Input = ({ label, type = "text", value, onChange, error, required, minLength, disabled, placeholder }: InputProps) => (
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
     <input
-      type={type} 
-      value={value} 
+      type={type}
+      value={value}
       onChange={e => onChange(e.target.value)}
-      required={required} 
-      minLength={minLength} 
-      disabled={disabled} 
+      required={required}
+      minLength={minLength}
+      disabled={disabled}
       placeholder={placeholder}
       className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"} ${disabled ? "bg-gray-100 cursor-not-allowed opacity-70" : ""}`}
     />
@@ -976,12 +993,12 @@ const Input = ({ label, type = "text", value, onChange, error, required, minLeng
 );
 
 // UPDATED SELECT COMPONENT WITH DISABLED PROP
-type SelectProps = { 
-  label: string; 
-  options: { value: string; label: string }[]; 
-  value: string; 
-  onChange: (v: string) => void; 
-  error?: string; 
+type SelectProps = {
+  label: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
   required?: boolean;
   disabled?: boolean; // Added disabled prop
 };
@@ -989,8 +1006,8 @@ const Select = ({ label, options, value, onChange, error, required, disabled }: 
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
     <select
-      value={value} 
-      onChange={e => onChange(e.target.value)} 
+      value={value}
+      onChange={e => onChange(e.target.value)}
       required={required}
       disabled={disabled}
       className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition ${error ? "border-red-500" : "border-gray-300"} ${options.length === 1 ? "bg-gray-50" : ""} ${disabled ? "bg-gray-100 cursor-not-allowed opacity-70" : ""}`}
@@ -1001,29 +1018,29 @@ const Select = ({ label, options, value, onChange, error, required, disabled }: 
   </div>
 );
 
-type CheckboxesProps = { 
-  active: boolean; 
-  staff: boolean; 
-  onActive: (v: boolean) => void; 
-  onStaff: (v: boolean) => void; 
+type CheckboxesProps = {
+  active: boolean;
+  staff: boolean;
+  onActive: (v: boolean) => void;
+  onStaff: (v: boolean) => void;
 };
 const Checkboxes = ({ active, staff, onActive, onStaff }: CheckboxesProps) => (
   <div className="flex items-center space-x-8">
     <label className="flex items-center cursor-pointer">
-      <input 
-        type="checkbox" 
-        checked={active} 
-        onChange={e => onActive(e.target.checked)} 
-        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300" 
+      <input
+        type="checkbox"
+        checked={active}
+        onChange={e => onActive(e.target.checked)}
+        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300"
       />
       <span className="ml-2 text-sm text-gray-700">Active</span>
     </label>
     <label className="flex items-center cursor-pointer">
-      <input 
-        type="checkbox" 
-        checked={staff} 
-        onChange={e => onStaff(e.target.checked)} 
-        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300" 
+      <input
+        type="checkbox"
+        checked={staff}
+        onChange={e => onStaff(e.target.checked)}
+        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 border-gray-300"
       />
       <span className="ml-2 text-sm text-gray-700">Staff</span>
     </label>
@@ -1033,15 +1050,15 @@ const Checkboxes = ({ active, staff, onActive, onStaff }: CheckboxesProps) => (
 type ModalFooterProps = { onCancel: () => void; submitText: string; };
 const ModalFooter = ({ onCancel, submitText }: ModalFooterProps) => (
   <div className="flex justify-end space-x-3 pt-4 border-t">
-    <button 
-      type="button" 
-      onClick={onCancel} 
+    <button
+      type="button"
+      onClick={onCancel}
       className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition"
     >
       Cancel
     </button>
-    <button 
-      type="submit" 
+    <button
+      type="submit"
       className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm transition"
     >
       {submitText}

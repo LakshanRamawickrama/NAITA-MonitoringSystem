@@ -1,15 +1,15 @@
 // Updated Instructor.tsx - Fixed active status display
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Mail, Phone, User, ChevronDown, Loader, 
-  Users, BookOpen, CheckCircle, 
+import {
+  Search, Mail, Phone, User, ChevronDown, Loader,
+  Users, BookOpen, CheckCircle,
   XCircle, Filter, Plus, Building,
   AlertTriangle,
   UserCheck,
   UserX
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { 
+import {
   fetchUsers,
   fetchCenters,
   fetchCourses,
@@ -39,99 +39,98 @@ const DeactivationConfirmModal: React.FC<{
   isSelf,
   loading = false
 }) => {
-  if (!isOpen) return null;
-  
-  const title = isCurrentlyActive ? 'Deactivate Instructor' : 'Activate Instructor';
-  
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        <div className="flex items-start mb-4">
-          <div className={`p-3 rounded-full ${isCurrentlyActive ? 'bg-red-100' : 'bg-green-100'} mr-4`}>
-            {isCurrentlyActive ? (
-              <UserX className="w-6 h-6 text-red-600" />
-            ) : (
-              <UserCheck className="w-6 h-6 text-green-600" />
-            )}
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Instructor: <span className="font-medium">{instructorName}</span>
-            </p>
-          </div>
-        </div>
-        
-        {isSelf && isCurrentlyActive ? (
-          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0" />
-              <p className="text-sm text-yellow-800">
-                <strong>Warning:</strong> You are about to deactivate your own account.
-                This will immediately log you out and you won't be able to login again
-                until another administrator reactivates your account.
+    if (!isOpen) return null;
+
+    const title = isCurrentlyActive ? 'Deactivate Instructor' : 'Activate Instructor';
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="flex items-start mb-4">
+            <div className={`p-3 rounded-full ${isCurrentlyActive ? 'bg-red-100' : 'bg-green-100'} mr-4`}>
+              {isCurrentlyActive ? (
+                <UserX className="w-6 h-6 text-red-600" />
+              ) : (
+                <UserCheck className="w-6 h-6 text-green-600" />
+              )}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Instructor: <span className="font-medium">{instructorName}</span>
               </p>
             </div>
           </div>
-        ) : (
-          <div className="mb-4">
-            <p className="text-sm text-gray-700">
-              {isCurrentlyActive ? (
-                <>
-                  Are you sure you want to deactivate this instructor?
-                  <ul className="mt-2 ml-4 list-disc text-gray-600 space-y-1">
-                    <li>They will be immediately logged out of all sessions</li>
-                    <li>Cannot login until reactivated by an administrator</li>
-                    <li>Cannot access any dashboard features</li>
-                    <li>Will receive an email notification</li>
-                  </ul>
-                </>
+
+          {isSelf && isCurrentlyActive ? (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0" />
+                <p className="text-sm text-yellow-800">
+                  <strong>Warning:</strong> You are about to deactivate your own account.
+                  This will immediately log you out and you won't be able to login again
+                  until another administrator reactivates your account.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <p className="text-sm text-gray-700">
+                {isCurrentlyActive ? (
+                  <>
+                    Are you sure you want to deactivate this instructor?
+                    <ul className="mt-2 ml-4 list-disc text-gray-600 space-y-1">
+                      <li>They will be immediately logged out of all sessions</li>
+                      <li>Cannot login until reactivated by an administrator</li>
+                      <li>Cannot access any dashboard features</li>
+                      <li>Will receive an email notification</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to activate this instructor?
+                    <ul className="mt-2 ml-4 list-disc text-gray-600 space-y-1">
+                      <li>They will be able to login immediately</li>
+                      <li>Access will be restored to all features</li>
+                      <li>Will receive an activation notification email</li>
+                    </ul>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onConfirm();
+              }}
+              disabled={loading || (isSelf && isCurrentlyActive)}
+              className={`px-4 py-2 rounded-lg text-white transition-colors flex items-center justify-center min-w-[120px] ${isCurrentlyActive
+                  ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-300'
+                  : 'bg-green-600 hover:bg-green-700 disabled:bg-green-300'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {loading ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : isCurrentlyActive ? (
+                'Deactivate'
               ) : (
-                <>
-                  Are you sure you want to activate this instructor?
-                  <ul className="mt-2 ml-4 list-disc text-gray-600 space-y-1">
-                    <li>They will be able to login immediately</li>
-                    <li>Access will be restored to all features</li>
-                    <li>Will receive an activation notification email</li>
-                  </ul>
-                </>
+                'Activate'
               )}
-            </p>
+            </button>
           </div>
-        )}
-        
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => {
-              onConfirm();
-            }}
-            disabled={loading || (isSelf && isCurrentlyActive)}
-            className={`px-4 py-2 rounded-lg text-white transition-colors flex items-center justify-center min-w-[120px] ${
-              isCurrentlyActive
-                ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-300'
-                : 'bg-green-600 hover:bg-green-700 disabled:bg-green-300'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {loading ? (
-              <Loader className="w-4 h-4 animate-spin" />
-            ) : isCurrentlyActive ? (
-              'Deactivate'
-            ) : (
-              'Activate'
-            )}
-          </button>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 interface InstructorWithDetails extends UserType {
   specialization?: string;
@@ -154,7 +153,7 @@ const Instructors: React.FC = () => {
   const [specializationFilter, setSpecializationFilter] = useState<string>('all');
   const [specializations, setSpecializations] = useState<string[]>([]);
   const [allCenters, setAllCenters] = useState<Center[]>([]);
-  
+
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedInstructor, setSelectedInstructor] = useState<{
@@ -166,7 +165,7 @@ const Instructors: React.FC = () => {
 
   useEffect(() => {
     loadAllData();
-    
+
     // Check current user's account status on mount
     checkCurrentUserStatus();
   }, []);
@@ -176,7 +175,7 @@ const Instructors: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) return;
-      
+
       const status = await checkAccountStatus();
       if (!status.is_active) {
         toast.error('Your account has been deactivated. Please contact your administrator.');
@@ -193,42 +192,42 @@ const Instructors: React.FC = () => {
   const loadAllData = async () => {
     try {
       setLoading(true);
-      
+
       // Load all data in parallel
       const [users, courses, centers] = await Promise.all([
         fetchUsers(),
         fetchCourses(),
         fetchCenters()
       ]);
-      
+
       setAllUsers(users);
       setAllCenters(centers);
-      
+
       // Filter only users with role='instructor'
       const instructorUsers = users.filter(user => user.role === 'instructor');
-      
+
       // Calculate course and student counts for each instructor
       const instructorsData: InstructorWithDetails[] = instructorUsers.map(user => {
         // Get courses for this instructor
         const instructorCourses = courses.filter(course => course.instructor === user.id);
-        
+
         // Calculate total students
         const totalStudents = instructorCourses.reduce((sum, course) => sum + (course.students || 0), 0);
-        
+
         // Get active courses (Active or Approved status)
-        const activeCourses = instructorCourses.filter(course => 
+        const activeCourses = instructorCourses.filter(course =>
           course.status === 'Active' || course.status === 'Approved'
         );
-        
+
         // Get specialization from course categories or use district
         const courseCategories = instructorCourses
           .map(c => c.category)
           .filter(Boolean) as string[];
-        
-        const specialization = courseCategories.length > 0 
-          ? courseCategories[0] 
+
+        const specialization = courseCategories.length > 0
+          ? courseCategories[0]
           : user.center?.district || user.district || 'General';
-        
+
         return {
           ...user,
           specialization,
@@ -238,18 +237,18 @@ const Instructors: React.FC = () => {
           total_students: totalStudents,
         };
       });
-      
+
       setInstructors(instructorsData);
       calculateStats(instructorsData);
-      
+
       // Extract unique specializations
       const uniqueSpecializations = Array.from(
         new Set(instructorsData.map(i => i.specialization || 'General'))
       );
       setSpecializations(uniqueSpecializations);
-      
+
       toast.success(`Loaded ${instructorUsers.length} instructors`);
-      
+
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
@@ -262,38 +261,38 @@ const Instructors: React.FC = () => {
     const total_instructors = instructorsData.length;
     const active_instructors = instructorsData.filter(i => i.is_active).length;
     const inactive_instructors = instructorsData.filter(i => !i.is_active).length;
-    
+
     // Calculate average courses per instructor using real data
-    const totalCourses = instructorsData.reduce((sum, i) => 
+    const totalCourses = instructorsData.reduce((sum, i) =>
       sum + (i.active_courses_count || 0), 0
     );
     const average_courses = totalCourses / total_instructors || 0;
-    
+
     // Calculate average students per instructor
-    const totalStudents = instructorsData.reduce((sum, i) => 
+    const totalStudents = instructorsData.reduce((sum, i) =>
       sum + (i.total_students || 0), 0
     );
     const average_students = totalStudents / total_instructors || 0;
-    
+
     // Calculate top specializations based on actual data
     const specializationCount: Record<string, number> = {};
     instructorsData.forEach(instructor => {
       const spec = instructor.specialization || 'General';
       specializationCount[spec] = (specializationCount[spec] || 0) + 1;
     });
-    
+
     const top_specializations = Object.entries(specializationCount)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-    
+
     // Calculate distribution by district
     const districtDistribution: Record<string, number> = {};
     instructorsData.forEach(instructor => {
       const district = instructor.district || 'Not assigned';
       districtDistribution[district] = (districtDistribution[district] || 0) + 1;
     });
-    
+
     setStats({
       total_instructors,
       active_instructors,
@@ -324,29 +323,29 @@ const Instructors: React.FC = () => {
 
     try {
       setDeletingId(selectedInstructor.id);
-      
+
       // Call the new toggle status endpoint
       const response = await toggleInstructorStatus(selectedInstructor.id);
-      
+
       // Update local state
       setInstructors(prev => prev.map(instructor =>
-        instructor.id === selectedInstructor.id 
-          ? { ...instructor, is_active: response.is_active } 
+        instructor.id === selectedInstructor.id
+          ? { ...instructor, is_active: response.is_active }
           : instructor
       ));
-      
+
       // Recalculate stats
       calculateStats(instructors.map(instructor =>
-        instructor.id === selectedInstructor.id 
-          ? { ...instructor, is_active: response.is_active } 
+        instructor.id === selectedInstructor.id
+          ? { ...instructor, is_active: response.is_active }
           : instructor
       ));
-      
+
       toast.success(response.detail);
-      
+
       // Check if deactivating current user
       const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-      
+
       if (selectedInstructor.id === currentUserId && !response.is_active) {
         setTimeout(() => {
           toast.error('Your account has been deactivated. You will be logged out.');
@@ -354,21 +353,21 @@ const Instructors: React.FC = () => {
           window.location.href = '/login';
         }, 2000);
       }
-      
+
       // Close modal
       setModalOpen(false);
       setSelectedInstructor(null);
-      
+
     } catch (error: any) {
       console.error('Error updating instructor status:', error);
       const errorMessage = error.response?.data?.detail || 'Failed to update instructor status';
       toast.error(errorMessage);
-      
+
       // Special handling for self-deactivation attempt
       if (error.response?.status === 400 && error.response?.data?.detail?.includes('own account')) {
         toast.error('You cannot deactivate your own account. Please ask another administrator.');
       }
-      
+
       // Check permissions error
       if (error.response?.status === 403) {
         toast.error('You do not have permission to perform this action.');
@@ -384,24 +383,24 @@ const Instructors: React.FC = () => {
 
   const filteredInstructors = instructors.filter(instructor => {
     const fullName = `${instructor.first_name || ''} ${instructor.last_name || ''}`.toLowerCase().trim();
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       fullName.includes(searchTerm.toLowerCase()) ||
       instructor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       instructor.specialization?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
+
+    const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'active' && instructor.is_active) ||
       (statusFilter === 'inactive' && !instructor.is_active);
-    
-    const matchesSpecialization = specializationFilter === 'all' || 
+
+    const matchesSpecialization = specializationFilter === 'all' ||
       instructor.specialization === specializationFilter;
-    
+
     return matchesSearch && matchesStatus && matchesSpecialization;
   });
 
   const getInstructorCenters = (instructor: InstructorWithDetails) => {
     const centers: Center[] = [];
-    
+
     // Add user's assigned center if available
     if (instructor.center) {
       const userCenter = allCenters.find(c => c.id === instructor.center?.id);
@@ -409,7 +408,7 @@ const Instructors: React.FC = () => {
         centers.push(userCenter);
       }
     }
-    
+
     // Add centers from instructor's courses
     if (instructor.courses) {
       instructor.courses.forEach(course => {
@@ -421,7 +420,7 @@ const Instructors: React.FC = () => {
         }
       });
     }
-    
+
     return centers;
   };
 
@@ -440,7 +439,7 @@ const Instructors: React.FC = () => {
   // Get status action button
   const getStatusActionButton = (instructor: InstructorWithDetails) => {
     const isSelf = isCurrentUser(instructor.id);
-    
+
     return (
       <button
         onClick={(e) => {
@@ -448,11 +447,10 @@ const Instructors: React.FC = () => {
           openStatusModal(instructor);
         }}
         disabled={deletingId === instructor.id}
-        className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${
-          instructor.is_active
+        className={`px-4 py-2 rounded-lg transition-colors flex items-center justify-center ${instructor.is_active
             ? 'bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50'
             : 'bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50'
-        } ${isSelf && instructor.is_active ? 'cursor-not-allowed opacity-60' : ''}`}
+          } ${isSelf && instructor.is_active ? 'cursor-not-allowed opacity-60' : ''}`}
         title={isSelf && instructor.is_active ? "You cannot deactivate your own account" : ""}
       >
         {deletingId === instructor.id ? (
@@ -502,10 +500,10 @@ const Instructors: React.FC = () => {
               onClick={() => {
                 // Get current user role
                 const userRole = localStorage.getItem("user_role") || "";
-                
+
                 // Define paths for different roles
                 let usersPagePath = '/dashboard/admin/users';
-                
+
                 if (userRole === 'district_manager') {
                   usersPagePath = '/dashboard/manager/users';
                 } else if (userRole === 'training_officer') {
@@ -513,7 +511,7 @@ const Instructors: React.FC = () => {
                 } else if (userRole === 'admin') {
                   usersPagePath = '/dashboard/admin/users';
                 }
-                
+
                 window.location.href = usersPagePath;
               }}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
@@ -654,35 +652,32 @@ const Instructors: React.FC = () => {
             <div className="space-y-4">
               {filteredInstructors.map((instructor) => {
                 const instructorCourses = instructor.courses || [];
-                const activeCourses = instructorCourses.filter(course => 
+                const activeCourses = instructorCourses.filter(course =>
                   course.status === 'Active' || course.status === 'Approved'
                 );
                 const totalStudents = instructor.total_students || 0;
                 const instructorCenters = getInstructorCenters(instructor);
-                
+
                 return (
-                  <div 
-                    key={instructor.id} 
+                  <div
+                    key={instructor.id}
                     className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden"
                   >
-                    <div 
+                    <div
                       className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50"
                       onClick={() => toggleExpanded(instructor.id)}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          instructor.is_active ? 'bg-blue-100' : 'bg-gray-100'
-                        }`}>
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${instructor.is_active ? 'bg-blue-100' : 'bg-gray-100'
+                          }`}>
                           {instructor.first_name && instructor.last_name ? (
-                            <span className={`font-semibold ${
-                              instructor.is_active ? 'text-blue-700' : 'text-gray-500'
-                            }`}>
+                            <span className={`font-semibold ${instructor.is_active ? 'text-blue-700' : 'text-gray-500'
+                              }`}>
                               {instructor.first_name[0]}{instructor.last_name[0]}
                             </span>
                           ) : (
-                            <User className={`w-6 h-6 ${
-                              instructor.is_active ? 'text-blue-500' : 'text-gray-400'
-                            }`} />
+                            <User className={`w-6 h-6 ${instructor.is_active ? 'text-blue-500' : 'text-gray-400'
+                              }`} />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -717,16 +712,14 @@ const Instructors: React.FC = () => {
                           </p>
                           <p className="text-xs text-gray-500 whitespace-nowrap">{totalStudents} Student{totalStudents !== 1 ? 's' : ''}</p>
                         </div>
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 whitespace-nowrap ${
-                          instructor.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 whitespace-nowrap ${instructor.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
                           <span className={`w-2 h-2 rounded-full ${instructor.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
                           {instructor.is_active ? 'Active' : 'Inactive'}
                         </div>
-                        <ChevronDown 
-                          className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ${
-                            expandedInstructor === instructor.id ? 'rotate-180' : ''
-                          }`} 
+                        <ChevronDown
+                          className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ${expandedInstructor === instructor.id ? 'rotate-180' : ''
+                            }`}
                         />
                       </div>
                     </div>
@@ -746,7 +739,7 @@ const Instructors: React.FC = () => {
                             <p className="text-xs font-medium text-gray-500 mb-1">Phone</p>
                             <p className="font-medium flex items-center gap-2 truncate">
                               <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <span className="truncate">{instructor.phone || 'Not provided'}</span>
+                              <span className="truncate">{instructor.phone_number || 'Not provided'}</span>
                             </p>
                           </div>
                           <div className="bg-white p-3 rounded-lg border border-gray-200">
@@ -772,9 +765,8 @@ const Instructors: React.FC = () => {
                           <div className="bg-white p-3 rounded-lg border border-gray-200">
                             <p className="text-xs font-medium text-gray-500 mb-1">Status</p>
                             <div className="font-medium">
-                              <span className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 w-fit ${
-                                instructor.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2 w-fit ${instructor.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
                                 <span className={`w-2.5 h-2.5 rounded-full ${instructor.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
                                 {instructor.is_active ? 'Active' : 'Inactive'}
                               </span>
@@ -801,13 +793,12 @@ const Instructors: React.FC = () => {
                                         <p className="font-medium text-gray-900 truncate">{course.name}</p>
                                         <p className="text-sm text-gray-500 truncate">{course.code} • {course.duration}</p>
                                       </div>
-                                      <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                                        course.status === 'Active' ? 'bg-green-100 text-green-800' :
-                                        course.status === 'Approved' ? 'bg-blue-100 text-blue-800' :
-                                        course.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                        course.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                                        'bg-gray-100 text-gray-800'
-                                      }`}>
+                                      <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${course.status === 'Active' ? 'bg-green-100 text-green-800' :
+                                          course.status === 'Approved' ? 'bg-blue-100 text-blue-800' :
+                                            course.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                              course.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                                'bg-gray-100 text-gray-800'
+                                        }`}>
                                         {course.status}
                                       </span>
                                     </div>
@@ -937,7 +928,7 @@ const Instructors: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               {stats?.top_specializations && Object.keys(stats.top_specializations).length > 0 && (
                 <div className="text-xs text-gray-500 max-w-md">
                   <span className="font-medium">Top specializations:</span>{' '}
@@ -946,7 +937,7 @@ const Instructors: React.FC = () => {
                     .join(', ')}
                 </div>
               )}
-              
+
               {stats?.district_distribution && Object.keys(stats.district_distribution).length > 0 && (
                 <div className="text-xs text-gray-500 max-w-md">
                   <span className="font-medium">By district:</span>{' '}
@@ -976,7 +967,7 @@ const Instructors: React.FC = () => {
                     onClick={() => {
                       const userRole = localStorage.getItem("user_role") || "";
                       let usersPath = '/dashboard/admin/users';
-                      
+
                       if (userRole === 'district_manager') {
                         usersPath = '/dashboard/manager/users';
                       } else if (userRole === 'training_officer') {
@@ -984,7 +975,7 @@ const Instructors: React.FC = () => {
                       } else if (userRole === 'admin') {
                         usersPath = '/dashboard/admin/users';
                       }
-                      
+
                       window.location.href = usersPath;
                     }}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
