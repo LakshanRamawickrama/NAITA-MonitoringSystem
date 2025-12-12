@@ -1356,10 +1356,19 @@ const DataEntryStudents: React.FC = () => {
 
               {/* Registration Information */}
               <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 sm:p-6 rounded-xl border border-blue-200">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
-                  <Info className="w-5 h-5 mr-2 text-green-600" />
-                  Registration Information
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                    <Info className="w-5 h-5 mr-2 text-green-600" />
+                    Registration Information
+                  </h3>
+                  <button
+                    onClick={() => handleShowIDCard(selectedStudent)}
+                    className="flex items-center space-x-2 bg-white text-purple-600 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-50 transition text-sm font-medium"
+                  >
+                    <IdCard className="w-4 h-4" />
+                    <span>Generate ID Card</span>
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <div className="mb-4">
@@ -1506,33 +1515,79 @@ const DataEntryStudents: React.FC = () => {
               <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 sm:p-6 rounded-xl border border-yellow-200">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Educational Qualifications</h3>
 
-                <div className="mb-4">
+
+
+                <div>
                   <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. O/L Results</h4>
                   {selectedStudent.ol_results && selectedStudent.ol_results.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedStudent.ol_results.map((result, index) => (
-                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all">
-                          <span className="text-sm">{result.subject} - {result.grade} ({result.year})</span>
-                        </div>
-                      ))}
+                    <div className="overflow-hidden border border-gray-200 rounded-lg">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedStudent.ol_results.map((result, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 text-sm text-gray-900">{result.subject}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 font-medium">
+                                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${result.grade === 'A' ? 'bg-green-100 text-green-800' :
+                                  result.grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                    result.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                      result.grade === 'S' ? 'bg-gray-100 text-gray-800' :
+                                        'bg-red-100 text-red-800'
+                                  }`}>
+                                  {result.grade}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-500">{result.year}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   ) : (
-                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200">No O/L results recorded</div>
+                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200 italic">No O/L results recorded</div>
                   )}
                 </div>
 
-                <div>
+                <div className="mt-4">
                   <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. A/L Results</h4>
                   {selectedStudent.al_results && selectedStudent.al_results.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedStudent.al_results.map((result, index) => (
-                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all">
-                          <span className="text-sm">{result.subject} - {result.grade} ({result.year})</span>
-                        </div>
-                      ))}
+                    <div className="overflow-hidden border border-gray-200 rounded-lg">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedStudent.al_results.map((result, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 text-sm text-gray-900">{result.subject}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 font-medium">
+                                <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${result.grade === 'A' ? 'bg-green-100 text-green-800' :
+                                  result.grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                    result.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                      result.grade === 'S' ? 'bg-gray-100 text-gray-800' :
+                                        'bg-red-100 text-red-800'
+                                  }`}>
+                                  {result.grade}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-500">{result.year}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   ) : (
-                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200">No A/L results recorded</div>
+                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200 italic">No A/L results recorded</div>
                   )}
                 </div>
               </div>
@@ -1581,49 +1636,7 @@ const DataEntryStudents: React.FC = () => {
                 </div>
               </div>
 
-              {/* QR Code Section */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 sm:p-6 rounded-xl border border-blue-200">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">QR Code Information</h3>
-                <div className="text-center">
-                  <p className="text-gray-600 mb-4">Scan this QR code for attendance tracking:</p>
-                  <div className="bg-white p-4 rounded-lg border-2 border-green-300 inline-block">
-                    {/* QR Code would be generated here */}
-                    <div className="w-40 h-40 bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center rounded-lg">
-                      <QrCode className="w-20 h-20 text-green-600" />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-3">Student ID: {selectedStudent.id} | Registration No: {selectedStudent.registration_no}</p>
-                  <div className="mt-4 flex justify-center space-x-3">
-                    <button
-                      onClick={() => handleShowIDCard(selectedStudent)}
-                      className="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-purple-700 transition"
-                    >
-                      <IdCard className="w-4 h-4" />
-                      <span>Generate ID Card</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        const qrData = {
-                          student_id: selectedStudent.id,
-                          registration_no: selectedStudent.registration_no,
-                          full_name: selectedStudent.full_name_english
-                        };
-                        const qrString = JSON.stringify(qrData, null, 2);
-                        const blob = new Blob([qrString], { type: 'application/json' });
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `qr_${selectedStudent.registration_no}.json`;
-                        link.click();
-                      }}
-                      className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download QR</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
@@ -2456,13 +2469,9 @@ const DataEntryStudents: React.FC = () => {
                             const results = Array.isArray(student.ol_results) ? student.ol_results : (typeof student.ol_results === 'string' ? JSON.parse(student.ol_results) : []) as EducationalQualificationType[];
 
                             return results && results.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {results.map((res, i) => (
-                                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200" title={`${res.year}`}>
-                                    {res.subject}: {res.grade}
-                                  </span>
-                                ))}
-                              </div>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                {results.length} Subjects
+                              </span>
                             ) : (
                               <span className="text-xs text-gray-400 italic">No results</span>
                             );
@@ -2474,13 +2483,9 @@ const DataEntryStudents: React.FC = () => {
                             const results = Array.isArray(student.al_results) ? student.al_results : (typeof student.al_results === 'string' ? JSON.parse(student.al_results) : []) as EducationalQualificationType[];
 
                             return results && results.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {results.map((res, i) => (
-                                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200" title={`${res.year}`}>
-                                    {res.subject}: {res.grade}
-                                  </span>
-                                ))}
-                              </div>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
+                                {results.length} Subjects
+                              </span>
                             ) : (
                               <span className="text-xs text-gray-400 italic">No results</span>
                             );
