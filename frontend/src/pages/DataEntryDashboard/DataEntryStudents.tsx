@@ -3,7 +3,6 @@ import {
   Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye,
   MapPin, Building, ChevronDown, ChevronUp, Info, RefreshCw,
   Phone, BookOpen, Upload, Camera, QrCode, IdCard, Printer, Download,
-  CheckSquare, Square
 } from 'lucide-react';
 import {
   type StudentType,
@@ -23,7 +22,7 @@ import {
   fetchAvailableDistrictCodes,
   fetchAvailableCourseCodes,
   fetchAvailableBatches,
-  bulkGenerateIDCards
+
 } from '../../api/api';
 import api from '../../api/api';
 
@@ -40,8 +39,7 @@ interface MobileStudentCardProps {
   onEdit: (student: StudentType) => void;
   onDelete: (id: number) => void;
   onShowIDCard: (student: StudentType) => void;
-  onToggleSelection: (studentId: number) => void;
-  isSelected: boolean;
+
 }
 
 const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
@@ -50,8 +48,7 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
   onEdit,
   onDelete,
   onShowIDCard,
-  onToggleSelection,
-  isSelected
+
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -79,19 +76,7 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
       <div className="flex justify-between items-start">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
           {/* Selection Checkbox */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelection(student.id!);
-            }}
-            className="mt-1"
-          >
-            {isSelected ? (
-              <CheckSquare className="w-4 h-4 text-green-600" />
-            ) : (
-              <Square className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
+
 
           <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
             }`}>
@@ -326,8 +311,8 @@ const DataEntryStudents: React.FC = () => {
   const [showIDCard, setShowIDCard] = useState(false);
   const [selectedIDCardStudent, setSelectedIDCardStudent] = useState<StudentType | null>(null);
   const [showBulkIDCardGenerator, setShowBulkIDCardGenerator] = useState(false);
-  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
-  const [bulkPrintLoading, setBulkPrintLoading] = useState(false);
+
+
 
   const [regComponents, setRegComponents] = useState({
     district_code: '',
@@ -525,8 +510,7 @@ const DataEntryStudents: React.FC = () => {
       setLoading(true);
       const data = await fetchStudents(searchTerm);
       setStudents(data);
-      // Clear selections when loading new students
-      setSelectedStudents([]);
+
     } catch (error) {
       console.error('Error fetching students:', error);
       alert('Error loading students. Please try again.');
@@ -690,8 +674,7 @@ const DataEntryStudents: React.FC = () => {
     try {
       await deleteStudent(id);
       setStudents(students.filter(student => student.id !== id));
-      // Remove from selected students if selected
-      setSelectedStudents(prev => prev.filter(studentId => studentId !== id));
+
     } catch (error: any) {
       console.error('Error deleting student:', error);
       alert(error.response?.data?.detail || 'Error deleting student. Please try again.');
@@ -877,48 +860,9 @@ const DataEntryStudents: React.FC = () => {
     }));
   };
 
-  const toggleStudentSelection = (studentId: number) => {
-    setSelectedStudents(prev =>
-      prev.includes(studentId)
-        ? prev.filter(id => id !== studentId)
-        : [...prev, studentId]
-    );
-  };
 
-  const selectAllStudents = () => {
-    if (selectedStudents.length === filteredStudents.length) {
-      setSelectedStudents([]);
-    } else {
-      setSelectedStudents(filteredStudents.map(s => s.id!).filter(Boolean));
-    }
-  };
 
-  const handleBulkPrint = async () => {
-    if (selectedStudents.length === 0) {
-      alert('Please select students to print ID cards');
-      return;
-    }
 
-    setBulkPrintLoading(true);
-    try {
-      const blob = await bulkGenerateIDCards(selectedStudents);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `student_id_cards_${new Date().getTime()}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      alert(`Successfully generated ${selectedStudents.length} ID card(s)`);
-    } catch (error) {
-      console.error('Error bulk printing ID cards:', error);
-      alert('Failed to generate bulk ID cards');
-    } finally {
-      setBulkPrintLoading(false);
-    }
-  };
 
   const filteredStudents = students;
 
@@ -1710,19 +1654,7 @@ const DataEntryStudents: React.FC = () => {
             )}
           </div>
           <div className="flex flex-wrap gap-3">
-            {selectedStudents.length > 0 && (
-              <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
-                <span className="text-sm font-medium text-blue-700">
-                  {selectedStudents.length} selected
-                </span>
-                <button
-                  onClick={() => setSelectedStudents([])}
-                  className="text-xs text-blue-600 hover:text-blue-800"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
+
             <button
               onClick={() => setShowBulkIDCardGenerator(true)}
               disabled={students.length === 0}
@@ -2335,46 +2267,7 @@ const DataEntryStudents: React.FC = () => {
           </div>
         </div>
 
-        {/* Bulk Actions Bar */}
-        {selectedStudents.length > 0 && (
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl shadow-lg p-4 mb-6 border border-blue-200">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <CheckSquare className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {selectedStudents.length} student{selectedStudents.length !== 1 ? 's' : ''} selected
-                  </h3>
-                  <p className="text-sm text-gray-600">Perform bulk actions on selected students</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={selectAllStudents}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium"
-                >
-                  {selectedStudents.length === filteredStudents.length ? 'Deselect All' : 'Select All'}
-                </button>
-                <button
-                  onClick={handleBulkPrint}
-                  disabled={bulkPrintLoading}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition flex items-center space-x-2 disabled:opacity-50 text-sm font-medium"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>{bulkPrintLoading ? 'Generating...' : 'Print ID Cards'}</span>
-                </button>
-                <button
-                  onClick={() => setSelectedStudents([])}
-                  className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition text-sm font-medium"
-                >
-                  Clear Selection
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Recent Records */}
         <div className="mb-6">
@@ -2443,8 +2336,7 @@ const DataEntryStudents: React.FC = () => {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onShowIDCard={handleShowIDCard}
-                onToggleSelection={toggleStudentSelection}
-                isSelected={selectedStudents.includes(student.id!)}
+
               />
             ))}
 
@@ -2460,17 +2352,7 @@ const DataEntryStudents: React.FC = () => {
               <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    <button
-                      onClick={selectAllStudents}
-                      className="flex items-center"
-                    >
-                      {selectedStudents.length === filteredStudents.length ? (
-                        <CheckSquare className="w-4 h-4 text-green-600 mr-2" />
-                      ) : (
-                        <Square className="w-4 h-4 text-gray-400 mr-2" />
-                      )}
-                      Student Info
-                    </button>
+                    Student Info
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Registration Details
@@ -2496,41 +2378,30 @@ const DataEntryStudents: React.FC = () => {
                 {filteredStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-gradient-to-r hover:from-green-50/50 hover:to-blue-50/50 transition-all">
                     <td className="px-6 py-4">
+
                       <div className="flex items-center">
-                        <button
-                          onClick={() => toggleStudentSelection(student.id!)}
-                          className="mr-3"
-                        >
-                          {selectedStudents.includes(student.id!) ? (
-                            <CheckSquare className="w-4 h-4 text-green-600" />
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
+                          }`}>
+                          {student.profile_photo_url ? (
+                            <img
+                              src={student.profile_photo_url}
+                              alt={student.full_name_english}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-green-100', 'to-blue-100');
+                              }}
+                            />
                           ) : (
-                            <Square className="w-4 h-4 text-gray-400" />
+                            <User className="w-6 h-6 text-green-600" />
                           )}
-                        </button>
-                        <div className="flex items-center">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-green-100 to-blue-100'
-                            }`}>
-                            {student.profile_photo_url ? (
-                              <img
-                                src={student.profile_photo_url}
-                                alt={student.full_name_english}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.parentElement?.classList.add('bg-gradient-to-br', 'from-green-100', 'to-blue-100');
-                                }}
-                              />
-                            ) : (
-                              <User className="w-6 h-6 text-green-600" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-green-600">{student.registration_no}</div>
-                            <div className="text-sm font-semibold text-gray-900">{student.full_name_english}</div>
-                            <div className="text-xs text-gray-500">{student.name_with_initials}</div>
-                            <div className="text-xs text-gray-400">NIC: {student.nic_id}</div>
-                            <div className="text-xs text-gray-400">Gender: {student.gender} | DOB: {student.date_of_birth}</div>
-                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-green-600">{student.registration_no}</div>
+                          <div className="text-sm font-semibold text-gray-900">{student.full_name_english}</div>
+                          <div className="text-xs text-gray-500">{student.name_with_initials}</div>
+                          <div className="text-xs text-gray-400">NIC: {student.nic_id}</div>
+                          <div className="text-xs text-gray-400">Gender: {student.gender} | DOB: {student.date_of_birth}</div>
                         </div>
                       </div>
                     </td>
@@ -2694,7 +2565,7 @@ const DataEntryStudents: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
