@@ -477,7 +477,7 @@ export interface StudentType {
   divisional_secretariat: string;
   grama_niladhari_division: string;
   village: string;
-  residence_type: string;
+  marital_status: string;
   mobile_no: string;
   email: string;
   ol_results: EducationalQualificationType[];

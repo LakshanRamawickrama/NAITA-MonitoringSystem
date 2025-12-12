@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Mail, Phone, BookOpen, User, AlertCircle, Calendar, TrendingUp, MessageCircle, X, Eye, Send, ChevronDown, ChevronUp } from 'lucide-react';
-import { 
-  fetchMyCourses, 
+import {
+  fetchMyCourses,
   fetchStudentAttendanceStats,
   fetchStudentById,
   type StudentType,
-  type StudentAttendanceStats, 
-  type CourseType 
+  type StudentAttendanceStats,
+  type CourseType
 } from '../../api/api';
 
 // Update the interface to include StudentType details
@@ -69,12 +69,11 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
       {/* Student Header */}
       <div className="flex justify-between items-start">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
-            profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
-          }`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+            }`}>
             {profilePhotoUrl ? (
-              <img 
-                src={profilePhotoUrl} 
+              <img
+                src={profilePhotoUrl}
                 alt={fullName}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -180,11 +179,11 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
 };
 
 // Student Details Popup Component (Improved for Mobile)
-const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({ 
-  student, 
-  isOpen, 
-  onClose, 
-  onSendMessage 
+const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
+  student,
+  isOpen,
+  onClose,
+  onSendMessage
 }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'attendance' | 'performance'>('details');
   const [message, setMessage] = useState('');
@@ -214,12 +213,11 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
         {/* Header */}
         <div className="flex justify-between items-start border-b border-gray-200 px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex items-start space-x-2 sm:space-x-3 flex-1 min-w-0">
-            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden ${
-              profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
-            }`}>
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden ${profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+              }`}>
               {profilePhotoUrl ? (
-                <img 
-                  src={profilePhotoUrl} 
+                <img
+                  src={profilePhotoUrl}
                   alt={fullName}
                   className="w-full h-full object-cover"
                   onError={(e) => {
@@ -266,11 +264,10 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 flex flex-col items-center py-2 sm:py-3 px-1 border-b-2 font-medium text-xs ${
-                  activeTab === tab.id
-                    ? 'border-green-500 text-green-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={`flex-1 flex flex-col items-center py-2 sm:py-3 px-1 border-b-2 font-medium text-xs ${activeTab === tab.id
+                  ? 'border-green-500 text-green-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
               >
                 <tab.icon className="w-3 h-3 sm:w-4 sm:h-4 mb-1" />
                 <span className="text-xs">{tab.label}</span>
@@ -296,17 +293,17 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                     { label: 'Phone', value: student.phone },
                     { label: 'Address', value: address || 'Not specified' },
                     { label: 'District', value: district || 'Not specified' },
+                    { label: 'Marital Status', value: studentDetails?.marital_status || 'Not specified' },
                     { label: 'Enrollment Status', value: student.enrollment_status, isStatus: true }
                   ].map((item, index) => (
                     <div key={index} className="flex justify-between items-center py-1 sm:py-2 border-b border-gray-200 last:border-b-0">
                       <span className="text-gray-600 text-xs sm:text-sm">{item.label}:</span>
                       {item.isStatus ? (
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          item.value === 'Enrolled' ? 'bg-green-100 text-green-800' :
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.value === 'Enrolled' ? 'bg-green-100 text-green-800' :
                           item.value === 'Completed' ? 'bg-blue-100 text-blue-800' :
-                          item.value === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
+                            item.value === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                          }`}>
                           {item.value}
                         </span>
                       ) : (
@@ -318,6 +315,82 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
               </div>
 
               <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Educational Qualifications</h3>
+
+                {/* O/L Results */}
+                {studentDetails?.ol_results && studentDetails.ol_results.length > 0 ? (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">G.C.E. O/L Results ({studentDetails.ol_results[0].year})</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {studentDetails.ol_results.map((result, index) => (
+                            <tr key={index}>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">{result.subject}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${result.grade === 'A' ? 'bg-green-100 text-green-800' :
+                                    result.grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                      result.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                        result.grade === 'S' ? 'bg-gray-100 text-gray-800' :
+                                          'bg-red-100 text-red-800'
+                                  }`}>
+                                  {result.grade}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 text-sm text-gray-500 italic">No O/L results available</div>
+                )}
+
+                {/* A/L Results */}
+                {studentDetails?.al_results && studentDetails.al_results.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">G.C.E. A/L Results ({studentDetails.al_results[0].year})</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                        <thead className="bg-gray-100">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {studentDetails.al_results.map((result, index) => (
+                            <tr key={index}>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">{result.subject}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${result.grade === 'A' ? 'bg-green-100 text-green-800' :
+                                    result.grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                      result.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                        result.grade === 'S' ? 'bg-gray-100 text-gray-800' :
+                                          'bg-red-100 text-red-800'
+                                  }`}>
+                                  {result.grade}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 italic">No A/L results available</div>
+                )}
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Academic Information</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center py-1 sm:py-2 border-b border-gray-200">
@@ -325,10 +398,9 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                     <div className="flex items-center space-x-2">
                       <div className="w-12 sm:w-16 bg-gray-200 rounded-full h-2">
                         <div
-                          className={`h-2 rounded-full ${
-                            student.attendance_percentage >= 80 ? 'bg-green-600' :
+                          className={`h-2 rounded-full ${student.attendance_percentage >= 80 ? 'bg-green-600' :
                             student.attendance_percentage >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                          }`}
+                            }`}
                           style={{ width: `${student.attendance_percentage}%` }}
                         ></div>
                       </div>
@@ -337,11 +409,10 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                   </div>
                   <div className="flex justify-between items-center py-1 sm:py-2 border-b border-gray-200">
                     <span className="text-gray-600 text-xs sm:text-sm">Status:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      student.status === 'active' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${student.status === 'active' ? 'bg-green-100 text-green-800' :
                       student.status === 'at-risk' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        'bg-red-100 text-red-800'
+                      }`}>
                       {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                     </span>
                   </div>
@@ -391,7 +462,7 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
                 <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Attendance Trend</h4>
                 <div className="space-y-2">
@@ -401,12 +472,11 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                   </div>
                   <div className="flex justify-between text-xs sm:text-sm">
                     <span>Recommendation:</span>
-                    <span className={`font-medium ${
-                      student.attendance_percentage >= 80 ? 'text-green-600' :
+                    <span className={`font-medium ${student.attendance_percentage >= 80 ? 'text-green-600' :
                       student.attendance_percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
+                      }`}>
                       {student.attendance_percentage >= 80 ? 'Excellent' :
-                       student.attendance_percentage >= 60 ? 'Needs Improvement' : 'Critical'}
+                        student.attendance_percentage >= 60 ? 'Needs Improvement' : 'Critical'}
                     </span>
                   </div>
                 </div>
@@ -417,7 +487,7 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
           {activeTab === 'performance' && (
             <div className="space-y-3 sm:space-y-4">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900">Performance Analysis</h3>
-              
+
               <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
                 <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Attendance Performance</h4>
                 <div className="space-y-2 sm:space-y-3">
@@ -433,7 +503,7 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
                 <h4 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Progress Indicators</h4>
                 <div className="space-y-3 sm:space-y-4">
@@ -443,8 +513,8 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                       <span>{student.attendance_percentage >= 80 ? '✅ Achieved' : '❌ Not Met'}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-600 h-2 rounded-full" 
+                      <div
+                        className="bg-green-600 h-2 rounded-full"
                         style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
                       ></div>
                     </div>
@@ -455,8 +525,8 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
                       <span>{student.attendance_percentage >= 60 ? '✅ Met' : '❌ Below'}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-yellow-600 h-2 rounded-full" 
+                      <div
+                        className="bg-yellow-600 h-2 rounded-full"
                         style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
                       ></div>
                     </div>
@@ -494,12 +564,12 @@ const StudentDetailsPopup: React.FC<StudentDetailsPopupProps> = ({
 };
 
 // Message Popup Component (Improved for Mobile)
-const MessagePopup: React.FC<MessagePopupProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSend, 
-  students, 
-  type 
+const MessagePopup: React.FC<MessagePopupProps> = ({
+  isOpen,
+  onClose,
+  onSend,
+  students,
+  type
 }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
@@ -592,7 +662,7 @@ const InstructorStudents: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [coursesLoading, setCoursesLoading] = useState(true);
-  
+
   // Popup states
   const [selectedStudent, setSelectedStudent] = useState<EnhancedStudentStats | null>(null);
   const [showStudentPopup, setShowStudentPopup] = useState(false);
@@ -646,12 +716,12 @@ const InstructorStudents: React.FC = () => {
 
   const loadStudentStats = async () => {
     if (!selectedCourse) return;
-    
+
     setLoading(true);
     try {
       // First fetch attendance stats
       const studentStats = await fetchStudentAttendanceStats(selectedCourse);
-      
+
       // Then fetch detailed information for each student
       const enhancedStudents = await Promise.all(
         studentStats.map(async (stat) => {
@@ -670,7 +740,7 @@ const InstructorStudents: React.FC = () => {
           }
         })
       );
-      
+
       setStudents(enhancedStudents);
       calculateOverallStats(enhancedStudents);
     } catch (error) {
@@ -688,11 +758,11 @@ const InstructorStudents: React.FC = () => {
     const atRisk = studentList.filter(s => s.status === 'at-risk').length;
     const excellent = studentList.filter(s => s.attendance_percentage >= 90).length;
 
-    setAttendanceStats({ 
-      average, 
-      atRisk, 
+    setAttendanceStats({
+      average,
+      atRisk,
       excellent,
-      total: studentList.length 
+      total: studentList.length
     });
   };
 
@@ -725,15 +795,15 @@ const InstructorStudents: React.FC = () => {
 
   const filteredStudents = students.filter(student => {
     const studentName = student.student_details?.full_name_english || student.name;
-    const matchesSearch = 
+    const matchesSearch =
       studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (student.student_details?.name_with_initials && 
-       student.student_details.name_with_initials.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (student.student_details?.name_with_initials &&
+        student.student_details.name_with_initials.toLowerCase().includes(searchTerm.toLowerCase())) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.nic.includes(searchTerm);
-    
+
     const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -769,8 +839,8 @@ const InstructorStudents: React.FC = () => {
                   <span className="text-gray-500 text-xs sm:text-sm">Loading your courses...</span>
                 </div>
               ) : (
-                <select 
-                  value={selectedCourse || ''} 
+                <select
+                  value={selectedCourse || ''}
                   onChange={(e) => setSelectedCourse(Number(e.target.value))}
                   className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:ring-1 sm:focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   disabled={courses.length === 0}
@@ -785,16 +855,16 @@ const InstructorStudents: React.FC = () => {
               )}
               {selectedCourse && (
                 <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                  {courses.find(c => c.id === selectedCourse)?.center_details?.district || 'No district info'} • 
+                  {courses.find(c => c.id === selectedCourse)?.center_details?.district || 'No district info'} •
                   {courses.find(c => c.id === selectedCourse)?.center_details?.name || 'No center info'}
                 </p>
               )}
             </div>
-            
+
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Filter by Status</label>
-              <select 
-                value={statusFilter} 
+              <select
+                value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm focus:ring-1 sm:focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 disabled={students.length === 0}
@@ -900,14 +970,14 @@ const InstructorStudents: React.FC = () => {
                     onSendMessage={(student) => openMessagePopup('individual', student)}
                   />
                 ))}
-                
+
                 {filteredStudents.length === 0 && students.length > 0 && (
                   <div className="text-center py-8">
                     <Search className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
                     <p className="text-gray-500 text-base sm:text-lg">No students match your search criteria</p>
                   </div>
                 )}
-                
+
                 {students.length === 0 && selectedCourse && (
                   <div className="text-center py-8">
                     <User className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
@@ -949,17 +1019,16 @@ const InstructorStudents: React.FC = () => {
                       const profilePhotoUrl = student.student_details?.profile_photo_url;
                       const fullName = student.student_details?.full_name_english || student.name;
                       const gender = student.student_details?.gender;
-                      
+
                       return (
                         <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mr-3 flex-shrink-0 overflow-hidden ${
-                                profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
-                              }`}>
+                              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mr-3 flex-shrink-0 overflow-hidden ${profilePhotoUrl ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+                                }`}>
                                 {profilePhotoUrl ? (
-                                  <img 
-                                    src={profilePhotoUrl} 
+                                  <img
+                                    src={profilePhotoUrl}
                                     alt={fullName}
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
@@ -1000,10 +1069,9 @@ const InstructorStudents: React.FC = () => {
                             <div className="flex items-center">
                               <div className="w-16 sm:w-20 bg-gray-200 rounded-full h-2 mr-2">
                                 <div
-                                  className={`h-2 rounded-full ${
-                                    student.attendance_percentage >= 80 ? 'bg-green-600' :
+                                  className={`h-2 rounded-full ${student.attendance_percentage >= 80 ? 'bg-green-600' :
                                     student.attendance_percentage >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                                  }`}
+                                    }`}
                                   style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
                                 ></div>
                               </div>
@@ -1012,11 +1080,10 @@ const InstructorStudents: React.FC = () => {
                           </td>
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                student.status === 'active' ? 'bg-green-100 text-green-800' :
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${student.status === 'active' ? 'bg-green-100 text-green-800' :
                                 student.status === 'at-risk' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}
+                                  'bg-red-100 text-red-800'
+                                }`}
                             >
                               {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                             </span>
@@ -1052,14 +1119,14 @@ const InstructorStudents: React.FC = () => {
                     })}
                   </tbody>
                 </table>
-                
+
                 {filteredStudents.length === 0 && students.length > 0 && (
                   <div className="text-center py-12">
                     <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500 text-lg">No students match your search criteria</p>
                   </div>
                 )}
-                
+
                 {students.length === 0 && selectedCourse && (
                   <div className="text-center py-12">
                     <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -1080,7 +1147,7 @@ const InstructorStudents: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <button 
+                <button
                   onClick={() => openMessagePopup('bulk')}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm sm:text-base"
                 >
@@ -1089,7 +1156,7 @@ const InstructorStudents: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-4 sm:mt-6">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Course Summary</h3>
               <div className="space-y-2 text-xs sm:text-sm text-gray-600">

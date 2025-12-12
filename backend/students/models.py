@@ -119,7 +119,12 @@ class Student(models.Model):
     divisional_secretariat = models.CharField(max_length=100)
     grama_niladhari_division = models.CharField(max_length=100)
     village = models.CharField(max_length=100)
-    residence_type = models.CharField(max_length=50, blank=True)
+    marital_status = models.CharField(max_length=20, choices=[
+        ('Single', 'Single'),
+        ('Married', 'Married'),
+        ('Divorced', 'Divorced'),
+        ('Widowed', 'Widowed')
+    ], blank=True)
     
     # Contact Information
     mobile_no = models.CharField(

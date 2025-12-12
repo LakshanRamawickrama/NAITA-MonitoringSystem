@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Users, 
+import {
+  Search,
+  Users,
   ChevronDown,
   ChevronUp,
   CheckCircle,
@@ -13,9 +13,9 @@ import {
   RefreshCw,
   Eye,
 } from 'lucide-react';
-import { 
-  type StudentType, 
-  fetchStudents, 
+import {
+  type StudentType,
+  fetchStudents,
   fetchStudentStats,
   fetchCenters,
   fetchCourses,
@@ -80,12 +80,11 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
     <div className="bg-white border border-gray-200 rounded-lg p-4 mb-3 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start">
         <div className="flex items-start space-x-3 flex-1 min-w-0">
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${
-            student.profile_photo_url ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
-          }`}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+            }`}>
             {student.profile_photo_url ? (
-              <img 
-                src={student.profile_photo_url} 
+              <img
+                src={student.profile_photo_url}
                 alt={student.full_name_english}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -117,19 +116,17 @@ const MobileStudentCard: React.FC<MobileStudentCardProps> = ({
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1">
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${student.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
           student.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-          student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
-          'bg-yellow-100 text-yellow-800 border border-yellow-200'
-        }`}>
+            student.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
+              'bg-yellow-100 text-yellow-800 border border-yellow-200'
+          }`}>
           {student.enrollment_status || 'Pending'}
         </span>
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          student.training_received
-            ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
-            : 'bg-gray-100 text-gray-800 border border-gray-200'
-        }`}>
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${student.training_received
+          ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
+          : 'bg-gray-100 text-gray-800 border border-gray-200'
+          }`}>
           {student.training_received ? 'Trained' : 'Not Trained'}
         </span>
       </div>
@@ -227,7 +224,7 @@ const Students: React.FC = () => {
   const [districts, setDistricts] = useState<string[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentType | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  
+
   // Get user role and district
   const userRole = getUserRole();
   const userDistrict = getUserDistrict();
@@ -263,7 +260,7 @@ const Students: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // For district managers, only fetch students from their district
       if (isDistrictManager && userDistrict) {
         const studentsData = await fetchStudents('', { district: userDistrict });
@@ -275,7 +272,7 @@ const Students: React.FC = () => {
         setStudents(studentsData);
         setFilteredStudents(studentsData);
       }
-      
+
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || 'Failed to load students';
       setError(errorMsg);
@@ -290,7 +287,7 @@ const Students: React.FC = () => {
       // For district managers, get stats only for their district
       if (isDistrictManager && userDistrict) {
         const districtStudents = students.filter(s => s.district === userDistrict);
-        
+
         const districtStats = {
           total_students: districtStudents.length,
           enrolled_students: districtStudents.filter(s => s.enrollment_status === 'Enrolled').length,
@@ -298,7 +295,7 @@ const Students: React.FC = () => {
           pending_students: districtStudents.filter(s => s.enrollment_status === 'Pending').length,
           completed_students: districtStudents.filter(s => s.enrollment_status === 'Completed').length,
         };
-        
+
         setStats(districtStats);
       } else {
         const statsData = await fetchStudentStats();
@@ -313,7 +310,7 @@ const Students: React.FC = () => {
     try {
       // Load all centers from API
       const centersData = await fetchCenters();
-      
+
       // For district managers, filter centers by their district
       if (isDistrictManager && userDistrict) {
         const districtCenters = centersData.filter(c => c.district === userDistrict);
@@ -321,18 +318,18 @@ const Students: React.FC = () => {
       } else {
         setCenters(centersData);
       }
-      
+
       // Load all courses from API
       const coursesData = await fetchCourses();
       setCourses(coursesData);
-      
+
       // Load batches from API
       const batchesData = await fetchAvailableBatches();
       setBatches(batchesData);
-      
+
       // Extract districts based on user role
       let allDistricts: string[] = [];
-      
+
       if (isDistrictManager && userDistrict) {
         // District managers only see their district
         allDistricts = [userDistrict];
@@ -341,21 +338,21 @@ const Students: React.FC = () => {
         const uniqueDistrictsFromCenters = centersData
           .map(c => c.district)
           .filter((district): district is string => district !== null && district !== undefined && district.trim() !== '');
-        
+
         // Also get districts from students to ensure coverage
         const studentsData = await fetchStudents();
         const uniqueDistrictsFromStudents = studentsData
           .map(s => s.district)
           .filter((district): district is string => district !== null && district !== undefined && district.trim() !== '');
-        
+
         // Combine and deduplicate districts
         allDistricts = Array.from(
           new Set([...uniqueDistrictsFromCenters, ...uniqueDistrictsFromStudents])
         ).sort();
       }
-      
+
       setDistricts(allDistricts);
-      
+
     } catch (error) {
       console.error('Failed to load filter options:', error);
       toast.error('Failed to load filter options');
@@ -450,12 +447,11 @@ const Students: React.FC = () => {
             <div className="space-y-6">
               {/* Profile Header */}
               <div className="flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
-                <div className={`w-24 h-24 rounded-full border-4 ${
-                  selectedStudent.profile_photo_url ? 'border-blue-300' : 'border-blue-200'
-                } overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mr-6 shadow-lg`}>
+                <div className={`w-24 h-24 rounded-full border-4 ${selectedStudent.profile_photo_url ? 'border-blue-300' : 'border-blue-200'
+                  } overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mr-6 shadow-lg`}>
                   {selectedStudent.profile_photo_url ? (
-                    <img 
-                      src={selectedStudent.profile_photo_url} 
+                    <img
+                      src={selectedStudent.profile_photo_url}
                       alt={selectedStudent.full_name_english}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -528,12 +524,11 @@ const Students: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Enrollment Status</label>
-                    <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
-                      selectedStudent.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
+                    <div className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${selectedStudent.enrollment_status === 'Enrolled' ? 'bg-green-100 text-green-800 border border-green-200' :
                       selectedStudent.enrollment_status === 'Completed' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                      selectedStudent.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
-                      'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                    }`}>
+                        selectedStudent.enrollment_status === 'Dropped' ? 'bg-red-100 text-red-800 border border-red-200' :
+                          'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                      }`}>
                       {selectedStudent.enrollment_status || 'Pending'}
                     </div>
                   </div>
@@ -542,6 +537,7 @@ const Students: React.FC = () => {
 
               {/* Personal Information */}
               <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-xl border border-blue-200">
+
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -557,6 +553,10 @@ const Students: React.FC = () => {
                     <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.name_with_initials}</div>
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Marital Status</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.marital_status || 'Single'}</div>
+                  </div>
+                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                     <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.address_line || 'N/A'}</div>
                   </div>
@@ -596,36 +596,78 @@ const Students: React.FC = () => {
               {/* Educational Qualifications */}
               <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl border border-yellow-200">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Educational Qualifications</h3>
-                
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. O/L Results</h4>
-                  {selectedStudent.ol_results && selectedStudent.ol_results.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedStudent.ol_results.map((result, index) => (
-                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all">
-                          <span className="text-sm">{result.subject} - {result.grade} ({result.year})</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200">No O/L results recorded</div>
-                  )}
-                </div>
 
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-3 text-base">G.C.E. A/L Results</h4>
-                  {selectedStudent.al_results && selectedStudent.al_results.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedStudent.al_results.map((result, index) => (
-                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-all">
-                          <span className="text-sm">{result.subject} - {result.grade} ({result.year})</span>
-                        </div>
-                      ))}
+                {/* O/L Results */}
+                {selectedStudent.ol_results && selectedStudent.ol_results.length > 0 ? (
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-700 mb-2 text-base">G.C.E. O/L Results ({selectedStudent.ol_results[0].year})</h4>
+                    <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedStudent.ol_results.map((result, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{result.subject}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${result.grade === 'A' ? 'bg-green-100 text-green-800' :
+                                  result.grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                    result.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                      result.grade === 'S' ? 'bg-gray-100 text-gray-800' :
+                                        'bg-red-100 text-red-800'
+                                  }`}>
+                                  {result.grade}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  ) : (
-                    <div className="text-gray-500 text-sm bg-white p-3 rounded-lg border border-gray-200">No A/L results recorded</div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 text-sm text-gray-500 bg-white p-3 rounded-lg border border-gray-200">No O/L results recorded</div>
+                )}
+
+                {/* A/L Results */}
+                {selectedStudent.al_results && selectedStudent.al_results.length > 0 ? (
+                  <div>
+                    <h4 className="font-medium text-gray-700 mb-2 text-base">G.C.E. A/L Results ({selectedStudent.al_results[0].year})</h4>
+                    <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {selectedStudent.al_results.map((result, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{result.subject}</td>
+                              <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${result.grade === 'A' ? 'bg-green-100 text-green-800' :
+                                  result.grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                                    result.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                                      result.grade === 'S' ? 'bg-gray-100 text-gray-800' :
+                                        'bg-red-100 text-red-800'
+                                  }`}>
+                                  {result.grade}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 bg-white p-3 rounded-lg border border-gray-200">No A/L results recorded</div>
+                )}
               </div>
 
               {/* Training Details */}
@@ -633,15 +675,14 @@ const Students: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">Training Details</h3>
                 <div className="space-y-4">
                   <div className="flex items-center">
-                    <div className={`inline-flex px-3 py-1.5 text-sm font-semibold rounded-full border ${
-                      selectedStudent.training_received
-                        ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200'
-                        : 'bg-gray-100 text-gray-800 border-gray-200'
-                    }`}>
+                    <div className={`inline-flex px-3 py-1.5 text-sm font-semibold rounded-full border ${selectedStudent.training_received
+                      ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border-green-200'
+                      : 'bg-gray-100 text-gray-800 border-gray-200'
+                      }`}>
                       {selectedStudent.training_received ? 'Trained' : 'Not Trained'}
                     </div>
                   </div>
-                  
+
                   {selectedStudent.training_received && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -667,7 +708,7 @@ const Students: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div >
     );
   };
 
@@ -710,7 +751,7 @@ const Students: React.FC = () => {
                 {isDistrictManager ? `${userDistrict} District Students` : 'Student Management'}
               </h1>
               <p className="text-gray-600 mt-2">
-                {isDistrictManager 
+                {isDistrictManager
                   ? `View and monitor students in ${userDistrict} district`
                   : 'View and monitor all registered students'
                 }
@@ -786,11 +827,11 @@ const Students: React.FC = () => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
+
             {districts.length > 1 ? (
               <select
                 value={filters.district}
-                onChange={(e) => setFilters({...filters, district: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, district: e.target.value })}
                 className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="All Districts">All Districts</option>
@@ -809,7 +850,7 @@ const Students: React.FC = () => {
 
             <select
               value={filters.enrollment_status}
-              onChange={(e) => setFilters({...filters, enrollment_status: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, enrollment_status: e.target.value })}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {enrollmentStatuses.map((status) => (
@@ -821,7 +862,7 @@ const Students: React.FC = () => {
 
             <select
               value={filters.training_received}
-              onChange={(e) => setFilters({...filters, training_received: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, training_received: e.target.value })}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {trainingStatuses.map((status) => (
@@ -836,7 +877,7 @@ const Students: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <select
               value={filters.center}
-              onChange={(e) => setFilters({...filters, center: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, center: e.target.value })}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="All Centers">All Centers</option>
@@ -849,7 +890,7 @@ const Students: React.FC = () => {
 
             <select
               value={filters.course}
-              onChange={(e) => setFilters({...filters, course: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, course: e.target.value })}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="All Courses">All Courses</option>
@@ -862,7 +903,7 @@ const Students: React.FC = () => {
 
             <select
               value={filters.batch}
-              onChange={(e) => setFilters({...filters, batch: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, batch: e.target.value })}
               className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="All Batches">All Batches</option>
@@ -898,13 +939,13 @@ const Students: React.FC = () => {
               onViewDetails={handleViewDetails}
             />
           ))}
-          
+
           {filteredStudents.length === 0 && (
             <div className="text-center py-12 bg-white rounded-lg shadow-md border border-gray-200">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
               <p className="mt-1 text-sm text-gray-500">
-                {students.length === 0 
+                {students.length === 0
                   ? 'No students available in the system.'
                   : 'Try adjusting your search or filter criteria.'
                 }
@@ -937,23 +978,22 @@ const Students: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
-                  <th className="w-8 px-4 py-3"></th>
+
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredStudents.map((student) => (
                   <React.Fragment key={student.id}>
-                    <tr 
+                    <tr
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${
-                            student.profile_photo_url ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
-                          }`}>
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ${student.profile_photo_url ? '' : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+                            }`}>
                             {student.profile_photo_url ? (
-                              <img 
-                                src={student.profile_photo_url} 
+                              <img
+                                src={student.profile_photo_url}
                                 alt={student.full_name_english}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -1053,89 +1093,11 @@ const Students: React.FC = () => {
                           </button>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <button
-                          onClick={() => toggleRowExpansion(student.id!)}
-                          className="text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          {expandedRows.has(student.id!) ? (
-                            <ChevronUp className="w-4 h-4" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
-                          )}
-                        </button>
-                      </td>
+
                     </tr>
-                    
+
                     {/* Expanded Row Details */}
-                    {expandedRows.has(student.id!) && (
-                      <tr>
-                        <td colSpan={7} className="bg-blue-50 px-6 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Personal Information */}
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-900 mb-2">Personal Information</h4>
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <span className="text-gray-500">Name in Sinhala:</span>
-                                  <span className="ml-2 text-gray-900">{student.full_name_sinhala || 'N/A'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Name with Initials:</span>
-                                  <span className="ml-2 text-gray-900">{student.name_with_initials}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Address:</span>
-                                  <span className="ml-2 text-gray-900">{student.address_line || 'N/A'}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Educational Qualifications */}
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-900 mb-2">Education</h4>
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <span className="text-gray-500">O/L Results:</span>
-                                  <span className="ml-2 text-gray-900">
-                                    {student.ol_results?.length || 0} subjects
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">A/L Results:</span>
-                                  <span className="ml-2 text-gray-900">
-                                    {student.al_results?.length || 0} subjects
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Training Nature:</span>
-                                  <span className="ml-2 text-gray-900">{student.training_nature}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Additional Information */}
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-900 mb-2">Additional Information</h4>
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <span className="text-gray-500">Training Provider:</span>
-                                  <span className="ml-2 text-gray-900">{student.training_provider || 'N/A'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Training Duration:</span>
-                                  <span className="ml-2 text-gray-900">{student.training_duration || 'N/A'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Placement Preference:</span>
-                                  <span className="ml-2 text-gray-900">{student.training_placement_preference}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
+
                   </React.Fragment>
                 ))}
               </tbody>
@@ -1149,7 +1111,7 @@ const Students: React.FC = () => {
             <Users className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No students found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {students.length === 0 
+              {students.length === 0
                 ? 'No students available in the system.'
                 : 'Try adjusting your search or filter criteria.'
               }

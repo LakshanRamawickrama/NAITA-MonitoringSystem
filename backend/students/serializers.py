@@ -67,7 +67,7 @@ class StudentSerializer(serializers.ModelSerializer):
             'divisional_secretariat', 
             'grama_niladhari_division', 
             'village', 
-            'residence_type',
+            'marital_status',
             'mobile_no', 
             'email', 
             'ol_results', 

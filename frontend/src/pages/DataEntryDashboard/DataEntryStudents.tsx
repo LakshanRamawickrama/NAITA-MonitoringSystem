@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Search, Filter, Edit, Trash2, User, Clock, Save, X, Eye,
   MapPin, Building, ChevronDown, ChevronUp, Info, RefreshCw,
-  Phone, BookOpen, Upload, Camera, QrCode, IdCard, Printer, Download,
+  Phone, BookOpen, Upload, Camera, QrCode, IdCard, Printer,
 } from 'lucide-react';
 import {
   type StudentType,
@@ -334,7 +334,7 @@ const DataEntryStudents: React.FC = () => {
     divisional_secretariat: '',
     grama_niladhari_division: '',
     village: '',
-    residence_type: '',
+    marital_status: 'Single',
     mobile_no: '',
     email: '',
     ol_results: [],
@@ -418,8 +418,10 @@ const DataEntryStudents: React.FC = () => {
     loadCenters();
   }, []);
 
-  const generateRegistrationPreview = async () => {
-    if (!formData.district) {
+  const generateRegistrationPreview = async (overrides?: Partial<StudentType>) => {
+    const data = { ...formData, ...overrides };
+
+    if (!data.district) {
       setRegistrationPreview(null);
       return;
     }
@@ -427,10 +429,10 @@ const DataEntryStudents: React.FC = () => {
     try {
       setIsGeneratingPreview(true);
       const preview = await previewRegistrationNumber({
-        district: formData.district,
-        course_id: formData.course || undefined,
-        enrollment_date: formData.enrollment_date || undefined,
-        batch_id: formData.batch || undefined
+        district: data.district,
+        course_id: data.course || undefined,
+        enrollment_date: data.enrollment_date || undefined,
+        batch_id: data.batch || undefined
       });
       setRegistrationPreview(preview);
 
@@ -759,7 +761,7 @@ const DataEntryStudents: React.FC = () => {
       divisional_secretariat: '',
       grama_niladhari_division: '',
       village: '',
-      residence_type: '',
+      marital_status: 'Single',
       mobile_no: '',
       email: '',
       ol_results: [],
@@ -1118,22 +1120,19 @@ const DataEntryStudents: React.FC = () => {
   };
 
   const RegistrationPreviewSection = () => {
-    const [selectedBatch, setSelectedBatch] = useState<string>(batches.length > 0 ? batches[0].id.toString() : '');
-
     const handleBatchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const batchId = e.target.value;
-      setSelectedBatch(batchId);
 
       const batch = batches.find(b => b.id.toString() === batchId);
       if (batch) {
+        const batchIdNum = batch.id;
         setFormData(prev => ({
           ...prev,
-          batch: batch.id
+          batch: batchIdNum
         }));
 
-        setTimeout(() => {
-          generateRegistrationPreview();
-        }, 100);
+        // Pass override to generate immediately without waiting for state update
+        generateRegistrationPreview({ batch: batchIdNum });
       }
     };
 
@@ -1148,7 +1147,7 @@ const DataEntryStudents: React.FC = () => {
           </h4>
           <button
             type="button"
-            onClick={generateRegistrationPreview}
+            onClick={() => generateRegistrationPreview()}
             disabled={isGeneratingPreview}
             className="text-xs text-blue-600 hover:text-blue-800 flex items-center transition-colors"
           >
@@ -1162,7 +1161,7 @@ const DataEntryStudents: React.FC = () => {
             Select Batch
           </label>
           <select
-            value={selectedBatch}
+            value={formData.batch?.toString() || ''}
             onChange={handleBatchChange}
             className="w-full md:w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
           >
@@ -1447,6 +1446,10 @@ const DataEntryStudents: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">NIC/ID Card No.</label>
                     <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.nic_id}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Marital Status</label>
+                    <div className="text-gray-900 bg-white p-2 rounded border border-gray-200">{selectedStudent.marital_status || 'Single'}</div>
                   </div>
                 </div>
               </div>
@@ -1866,6 +1869,21 @@ const DataEntryStudents: React.FC = () => {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm"
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Marital Status
+                        </label>
+                        <select
+                          value={formData.marital_status || 'Single'}
+                          onChange={(e) => setFormData({ ...formData, marital_status: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm"
+                        >
+                          <option value="Single">Single</option>
+                          <option value="Married">Married</option>
+                          <option value="Divorced">Divorced</option>
+                          <option value="Widowed">Widowed</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
@@ -1936,17 +1954,7 @@ const DataEntryStudents: React.FC = () => {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Residence Type
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.residence_type || ''}
-                          onChange={(e) => setFormData({ ...formData, residence_type: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 hover:border-green-400 transition-all text-sm"
-                        />
-                      </div>
+
                     </div>
                   </div>
 
