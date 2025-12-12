@@ -34,7 +34,7 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
           { path: '/dashboard/manager/courses', label: 'Courses', icon: '📚' },
           { path: '/dashboard/manager/users', label: 'Users', icon: '👥' },
           { path: '/dashboard/manager/students', label: 'Students', icon: '👨‍🎓' },
-          { path: '/dashboard/manager/instructors', label: 'Instructors', icon: '👨‍🏫' },  
+          { path: '/dashboard/manager/instructors', label: 'Instructors', icon: '👨‍🏫' },
           { path: '/dashboard/manager/approvals_dm', label: 'Approvals', icon: '✅' },
           { path: '/dashboard/manager/reports', label: 'Reports', icon: '📈' }
         ];
@@ -43,7 +43,7 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
           { path: '/dashboard/training_officer', label: 'Overview', icon: '📊' },
           { path: '/dashboard/training_officer/courses', label: 'Courses', icon: '📚' },
           { path: '/dashboard/training_officer/users', label: 'Users', icon: '👥' },
-          { path: '/dashboard/training_officer/instructors', label: 'Instructors', icon: '👨‍🏫' },  
+          { path: '/dashboard/training_officer/instructors', label: 'Instructors', icon: '👨‍🏫' },
           { path: '/dashboard/training_officer/reports', label: 'Reports', icon: '📈' }
         ];
       case 'data_entry':
@@ -57,13 +57,13 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
           { path: '/dashboard/instructor/courses', label: 'My Courses', icon: '📚' },
           { path: '/dashboard/instructor/student', label: 'Students', icon: '👨‍🎓' },
           { path: '/dashboard/instructor/attendance', label: 'Attendance', icon: '📝' },
-        ]; 
+        ];
       default:
         return [];
     }
   };
 
-  
+
   const handleLogout = () => {
     localStorage.clear();
     navigate("/");
@@ -74,18 +74,17 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar - Hidden on mobile, visible on md+ */}
-      <div 
-        className={`hidden md:block bg-white shadow-lg border-r border-gray-200 transition-all duration-300 ${
-          isSidebarCollapsed ? 'w-20' : 'w-64'
-        }`}
+      <div
+        className={`hidden md:flex md:flex-col bg-white shadow-lg border-r border-gray-200 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'
+          }`}
       >
         {/* Logo Section */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-transparent rounded-full flex items-center justify-center flex-shrink-0">
-              <img 
-                src="/naita-logo.png" 
-                alt="NAITA Logo" 
+              <img
+                src="/naita-logo.png"
+                alt="NAITA Logo"
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -101,7 +100,7 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
               <span className="text-xl font-bold text-gray-900">NAITA MIS</span>
             )}
           </div>
-          
+
           {/* Collapse Button */}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -112,16 +111,15 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto overflow-x-hidden">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors group ${
-                location.pathname === item.path
+              className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors group ${location.pathname === item.path
                   ? 'text-green-600 bg-green-50 border-r-2 border-green-600'
                   : 'text-gray-700 hover:text-green-600 hover:bg-gray-50'
-              } ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                } ${isSidebarCollapsed ? 'justify-center' : ''}`}
               title={isSidebarCollapsed ? item.label : ''}
             >
               <span className="text-lg mr-3">{item.icon}</span>
@@ -153,9 +151,8 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
             )}
             <button
               onClick={handleLogout}
-              className={`p-2 text-gray-400 hover:text-red-600 transition-colors ${
-                isSidebarCollapsed ? 'mt-2' : ''
-              }`}
+              className={`p-2 text-gray-400 hover:text-red-600 transition-colors ${isSidebarCollapsed ? 'mt-2' : ''
+                }`}
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
@@ -170,9 +167,9 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
         <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-transparent rounded-full flex items-center justify-center flex-shrink-0">
-              <img 
-                src="/naita-logo.png" 
-                alt="NAITA Logo" 
+              <img
+                src="/naita-logo.png"
+                alt="NAITA Logo"
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -202,11 +199,10 @@ const SharedNavbar: React.FC<NavbarProps> = ({ userRole, userName, children }) =
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                    location.pathname === item.path
+                  className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${location.pathname === item.path
                       ? 'text-green-600 bg-green-50'
                       : 'text-gray-700 hover:text-green-600 hover:bg-gray-50'
-                  }`}
+                    }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <span className="text-lg mr-3">{item.icon}</span>
