@@ -767,7 +767,9 @@ class InstructorListView(generics.ListAPIView):
         
         # Filter by district for district managers and training officers
         if user.role in ['district_manager', 'training_officer'] and user.district:
-            queryset = queryset.filter(district=user.district)
+            # Normalize district name (remove 'District' suffix if present to allow broader matching)
+            search_district = user.district.replace(" District", "").strip()
+            queryset = queryset.filter(district__icontains=search_district)
         
         # Apply filters from query parameters
         status_filter = self.request.query_params.get('status')

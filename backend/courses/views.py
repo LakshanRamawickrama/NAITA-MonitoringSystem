@@ -4,8 +4,8 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Course, CourseApproval
-from .serializers import CourseSerializer, CourseApprovalSerializer
+from .models import Course, CourseApproval, CourseCategory, CourseDuration
+from .serializers import CourseSerializer, CourseApprovalSerializer, CourseCategorySerializer, CourseDurationSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import PermissionDenied
 from django.utils import timezone
@@ -395,15 +395,35 @@ def reject_course_view(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def course_categories_view(request):
-    """Get all unique course categories"""
+    """Get all configured course categories"""
     try:
-        categories = Course.objects.exclude(category__isnull=True).exclude(category='').values_list('category', flat=True).distinct()
-        logger.info(f"Found {len(categories)} unique course categories")
-        return Response(list(categories))
+        categories = CourseCategory.objects.all()
+        serializer = CourseCategorySerializer(categories, many=True)
+        return Response([c['name'] for c in serializer.data])
     except Exception as e:
         logger.error(f"Error in course_categories_view: {str(e)}")
+        # Fallback to existing categories in courses
+        try:
+            categories = Course.objects.exclude(category__isnull=True).exclude(category='').values_list('category', flat=True).distinct()
+            return Response(list(categories))
+        except:
+            return Response(
+                {'error': 'Failed to load course categories'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def course_durations_view(request):
+    """Get all configured course durations"""
+    try:
+        durations = CourseDuration.objects.all()
+        serializer = CourseDurationSerializer(durations, many=True)
+        return Response([d['duration'] for d in serializer.data])
+    except Exception as e:
+        logger.error(f"Error in course_durations_view: {str(e)}")
         return Response(
-            {'error': 'Failed to load course categories'}, 
+            {'error': 'Failed to load course durations'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

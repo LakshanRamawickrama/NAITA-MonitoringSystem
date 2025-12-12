@@ -16,6 +16,7 @@ urlpatterns = [
     
     # Course categories
     path('categories/', views.course_categories_view, name='course-categories'),
+    path('durations/', views.course_durations_view, name='course-durations'),
     
     # Course ViewSet endpoints
     path('', views.CourseViewSet.as_view({'get': 'list', 'post': 'create'}), name='courses-list'),

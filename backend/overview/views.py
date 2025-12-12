@@ -132,6 +132,25 @@ class OverviewView(APIView):
             'center_performance_data': center_performance_data,
             'recent_activities': recent_activities,
             'trends': trends,
+            'district_summary': {
+                'total_districts': Center.objects.values('district').distinct().count(),
+                'active_districts': Course.objects.filter(status='Active').values('district').distinct().count(),
+                'new_districts_week': Center.objects.filter(created_at__gte=timezone.now() - timedelta(days=7)).values('district').distinct().count()
+            },
+            'training_summary': {
+                'active_courses': Course.objects.filter(status='Active').count(),
+                'completed_month': Course.objects.filter(
+                    progress=100,
+                    updated_at__year=timezone.now().year,
+                    updated_at__month=timezone.now().month
+                ).count(),
+                'upcoming': Course.objects.filter(status='Pending').count()
+            },
+            'system_stats': {
+                'active_users': User.objects.filter(is_active=True).count(),
+                'api_status': 'Operational',
+                'database_status': 'Healthy'
+            }
         }
 
     def get_district_enrollment_data(self, district):

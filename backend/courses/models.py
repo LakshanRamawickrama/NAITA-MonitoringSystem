@@ -4,6 +4,29 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+class CourseCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name_plural = "Course Categories"
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+class CourseDuration(models.Model):
+    duration = models.CharField(max_length=50, unique=True, help_text="e.g., '3 months', '1 year'")
+    order = models.PositiveIntegerField(default=0, help_text="Display order (lower numbers appear first)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['order', 'duration']
+    
+    def __str__(self):
+        return self.duration
+
 class Course(models.Model):
     COURSE_STATUS_CHOICES = [
         ('Pending', 'Pending'),

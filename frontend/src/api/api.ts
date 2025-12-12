@@ -75,20 +75,20 @@ export const refreshToken = async (): Promise<{ access: string }> => {
 };
 
 // Add to User API section
-export const toggleInstructorStatus = async (id: number): Promise<{ 
-  detail: string; 
-  is_active: boolean; 
-  instructor: UserType 
+export const toggleInstructorStatus = async (id: number): Promise<{
+  detail: string;
+  is_active: boolean;
+  instructor: UserType
 }> => {
   const res = await api.post(`/api/users/${id}/toggle-status/`);
   return res.data;
 };
 
-export const checkAccountStatus = async (): Promise<{ 
-  is_active: boolean; 
-  email: string; 
-  role: string; 
-  message: string 
+export const checkAccountStatus = async (): Promise<{
+  is_active: boolean;
+  email: string;
+  role: string;
+  message: string
 }> => {
   const res = await api.get("/api/account/status/");
   return res.data;
@@ -169,7 +169,11 @@ export const changePassword = async (id: number, new_password: string): Promise<
 
 export const fetchInstructors = async (): Promise<UserType[]> => {
   const res = await api.get("/api/instructors/");
-  return res.data;
+  // Handle both paginated and non-paginated responses
+  if (res.data && res.data.results && Array.isArray(res.data.results)) {
+    return res.data.results;
+  }
+  return Array.isArray(res.data) ? res.data : [];
 };
 
 export const fetchUsersByRole = async (role?: string): Promise<UserType[]> => {
@@ -301,6 +305,11 @@ export const fetchCourseById = async (id: number): Promise<CourseType> => {
 
 export const fetchCourseCategories = async (): Promise<string[]> => {
   const res = await api.get("/api/courses/categories/");
+  return res.data;
+};
+
+export const fetchCourseDurations = async (): Promise<string[]> => {
+  const res = await api.get("/api/courses/durations/");
   return res.data;
 };
 
@@ -449,11 +458,11 @@ export interface StudentType {
   registration_no: string;
   district_code?: string;
   course_code?: string;
-  batch?: number | null;  
-  batch_display?: string;  
-  batch_code?: string;  
-  profile_photo?: File | string | null;  
-  profile_photo_url?: string;  
+  batch?: number | null;
+  batch_display?: string;
+  batch_code?: string;
+  profile_photo?: File | string | null;
+  profile_photo_url?: string;
   batch_year?: string;
   student_number?: number;
   registration_year?: string;
@@ -540,7 +549,7 @@ export const generateStudentIDCard = async (studentId: number): Promise<Blob> =>
 
 // Bulk generate student ID cards
 export const bulkGenerateIDCards = async (studentIds: number[]): Promise<Blob> => {
-  const res = await api.post(`/api/students/bulk-id-cards/`, 
+  const res = await api.post(`/api/students/bulk-id-cards/`,
     { student_ids: studentIds },
     { responseType: 'blob' }
   );
@@ -595,7 +604,7 @@ export const exportStudents = async (format: 'csv' | 'excel' = 'csv'): Promise<B
 export const importStudents = async (file: File): Promise<{ message: string; imported: number; errors: string[] }> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const res = await api.post("/api/students/import/", formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -665,6 +674,21 @@ export interface OverviewDataType {
     students: { value: number; isPositive: boolean };
     instructors: { value: number; isPositive: boolean };
     completion: { value: number; isPositive: boolean };
+  };
+  district_summary?: {
+    total_districts: number;
+    active_districts: number;
+    new_districts_week: number;
+  };
+  training_summary?: {
+    active_courses: number;
+    completed_month: number;
+    upcoming: number;
+  };
+  system_stats?: {
+    active_users: number;
+    api_status: string;
+    database_status: string;
   };
   user_district?: string;
 }
@@ -931,7 +955,7 @@ export const exportData = async (type: 'students' | 'courses' | 'centers', forma
 export const importData = async (type: 'students' | 'courses' | 'centers', file: File): Promise<ImportResultType> => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const res = await api.post(`/api/${type}/import/`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -1113,7 +1137,7 @@ export const createBackup = async (): Promise<Blob> => {
 export const restoreBackup = async (file: File): Promise<{ message: string }> => {
   const formData = new FormData();
   formData.append('backup_file', file);
-  
+
   const res = await api.post("/api/restore/", formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -1147,7 +1171,7 @@ export interface StudentAttendance {
   attendance_status: 'present' | 'absent' | 'late' | null;
   check_in_time: string | null;
   remarks: string | null;
-  
+
 }
 
 export interface AttendanceSummary {
@@ -1283,22 +1307,22 @@ export const generateAttendanceReport = async (reportData: ReportRequest): Promi
   // Extract filename from headers
   const contentDisposition = res.headers['content-disposition'];
   let fileName = `attendance_report_${Date.now()}.${reportData.format}`;
-  
+
   if (contentDisposition) {
     const fileNameMatch = contentDisposition.match(/filename=\"(.+)\"/);
     if (fileNameMatch) {
       fileName = fileNameMatch[1];
     }
   }
-  
+
   // Create blob and download
-  const blob = new Blob([res.data], { 
-    type: reportData.format === 'excel' 
-      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      : 'application/pdf' 
+  const blob = new Blob([res.data], {
+    type: reportData.format === 'excel'
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'application/pdf'
   });
   const url = window.URL.createObjectURL(blob);
-  
+
   // Trigger download
   const link = document.createElement('a');
   link.href = url;
@@ -1307,7 +1331,7 @@ export const generateAttendanceReport = async (reportData: ReportRequest): Promi
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
-  
+
   return {
     success: true,
     file_url: url,
@@ -1321,7 +1345,7 @@ export const downloadReportFile = async (fileUrl: string, fileName: string): Pro
   const res = await api.get(fileUrl, {
     responseType: 'blob'
   });
-  
+
   const blob = new Blob([res.data]);
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -1436,16 +1460,16 @@ export const fetchTrainingOfficerReports = async (period?: string): Promise<Trai
 };
 
 export const exportTrainingReport = async (
-  format: 'pdf' | 'excel', 
-  period: string, 
+  format: 'pdf' | 'excel',
+  period: string,
   reportType: string = 'comprehensive'
 ): Promise<Blob> => {
-  const params = { 
-    format, 
-    period, 
-    report_type: reportType 
+  const params = {
+    format,
+    period,
+    report_type: reportType
   };
-  
+
   const res = await api.get("/api/reports/export-training-report/", {
     params,
     responseType: 'blob'
@@ -1524,7 +1548,7 @@ export const exportHeadOfficeReport = async (
     report_type,
     ...options
   };
-  
+
   const res = await api.get("/api/reports/export-head-office/", {
     params,
     responseType: 'blob'
@@ -1594,7 +1618,7 @@ export const exportDistrictReport = async (
     report_type,
     ...options
   };
-  
+
   const res = await api.get("/api/reports/export-district/", {
     params,
     responseType: 'blob'
@@ -1610,7 +1634,7 @@ export const canAccessDistrictReports = (): boolean => {
 
 export const canAccessTrainingOfficerReports = (): boolean => {
   const role = getUserRole();
-  return role === 'training_officer'; 
+  return role === 'training_officer';
 };
 
 
